@@ -44,5 +44,19 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
     }
+
+    // Quotations — any authenticated user can read; admin/vendedor can write
+    match /quotations/{quotationId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+    }
+
+    // Quotation items
+    match /quotationItems/{itemId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+    }
   }
 }
