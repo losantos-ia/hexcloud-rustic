@@ -291,7 +291,7 @@ export default function QuotationDetailPage() {
             )}
             {quotation.taxAmount > 0 && (
               <TotalRow
-                label={`IVA${quotation.taxPercent ? ` (${quotation.taxPercent}%)` : ""}`}
+                label={`ISV${quotation.taxPercent ? ` (${quotation.taxPercent}%)` : ""}`}
                 value={formatCurrency(quotation.taxAmount)}
               />
             )}

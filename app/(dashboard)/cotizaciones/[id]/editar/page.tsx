@@ -249,7 +249,7 @@ export default function EditQuotationPage() {
             <Field label="Descuento (COP)">
               <Input type="number" min={0} {...register("discountAmount", { valueAsNumber: true })} />
             </Field>
-            <Field label="IVA / Impuestos (%)">
+            <Field label="ISV / Impuestos (%)">
               <Input type="number" min={0} max={100} step="0.5" {...register("taxPercent", { valueAsNumber: true })} />
             </Field>
             <Field label="% Anticipo">
@@ -292,7 +292,7 @@ export default function EditQuotationPage() {
                         </select>
                       )}
                     />
-                    <Input type="number" min={0} step="1000" {...register(`items.${idx}.unitPrice`, { valueAsNumber: true })} />
+                    <Input type="number" min={0} {...register(`items.${idx}.unitPrice`, { valueAsNumber: true })} />
                     <Controller
                       control={control}
                       name={`items.${idx}.category`}
@@ -340,7 +340,7 @@ export default function EditQuotationPage() {
             <div className="flex flex-col gap-2 min-w-64">
               <TotalRow label="Subtotal" value={formatCurrency(subtotal)} />
               {Number(watchDiscount) > 0 && <TotalRow label="Descuento" value={`-${formatCurrency(Number(watchDiscount))}`} />}
-              {taxAmount > 0 && <TotalRow label={`IVA (${Number(watchTaxPct)}%)`} value={formatCurrency(taxAmount)} />}
+              {taxAmount > 0 && <TotalRow label={`ISV (${Number(watchTaxPct)}%)`} value={formatCurrency(taxAmount)} />}
               <div className="border-t border-zinc-700 pt-2 mt-1">
                 <TotalRow label="Total" value={formatCurrency(total)} bold />
               </div>

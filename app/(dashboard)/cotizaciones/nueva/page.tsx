@@ -202,7 +202,7 @@ export default function NuevaCotizacionPage() {
                 placeholder="0"
               />
             </Field>
-            <Field label="IVA / Impuestos (%)">
+            <Field label="ISV / Impuestos (%)">
               <Input
                 type="number"
                 min={0}
@@ -283,7 +283,6 @@ export default function NuevaCotizacionPage() {
                     <Input
                       type="number"
                       min={0}
-                      step="1000"
                       {...register(`items.${idx}.unitPrice`, { valueAsNumber: true })}
                       placeholder="0"
                     />
@@ -346,7 +345,7 @@ export default function NuevaCotizacionPage() {
                 <TotalRow label="Descuento" value={`-${formatCurrency(Number(watchDiscount))}`} />
               )}
               {taxAmount > 0 && (
-                <TotalRow label={`IVA (${Number(watchTaxPct)}%)`} value={formatCurrency(taxAmount)} />
+                <TotalRow label={`ISV (${Number(watchTaxPct)}%)`} value={formatCurrency(taxAmount)} />
               )}
               <div className="border-t border-zinc-700 pt-2 mt-1">
                 <TotalRow label="Total" value={formatCurrency(total)} bold />
