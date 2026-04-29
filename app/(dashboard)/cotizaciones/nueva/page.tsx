@@ -44,7 +44,7 @@ export default function NuevaCotizacionPage() {
       projectType: "cabin",
       status: "draft",
       discountAmount: 0,
-      taxAmount: 0,
+      taxPercent: 0,
       items: [{ description: "", quantity: 1, unit: "und", unitPrice: 0, category: "materials" }],
     },
   });
@@ -53,11 +53,12 @@ export default function NuevaCotizacionPage() {
 
   const watchItems = watch("items");
   const watchDiscount = watch("discountAmount") ?? 0;
-  const watchTax = watch("taxAmount") ?? 0;
+  const watchTaxPct = watch("taxPercent") ?? 0;
   const watchDepositPct = watch("depositPercentage");
 
   const subtotal = watchItems?.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0) ?? 0;
-  const total = subtotal - (Number(watchDiscount) || 0) + (Number(watchTax) || 0);
+  const taxAmount = subtotal * (Number(watchTaxPct) || 0) / 100;
+  const total = subtotal - (Number(watchDiscount) || 0) + taxAmount;
   const depositAmount = watchDepositPct ? (total * Number(watchDepositPct)) / 100 : 0;
 
   const onItemChange = useCallback(
@@ -94,7 +95,8 @@ export default function NuevaCotizacionPage() {
         validUntil: values.validUntil ? new Date(values.validUntil) : undefined,
         subtotal,
         discountAmount: Number(values.discountAmount) || 0,
-        taxAmount: Number(values.taxAmount) || 0,
+        taxPercent: Number(values.taxPercent) || 0,
+        taxAmount,
         total,
         depositPercentage: values.depositPercentage ? Number(values.depositPercentage) : undefined,
         depositAmount: depositAmount || undefined,
@@ -200,11 +202,13 @@ export default function NuevaCotizacionPage() {
                 placeholder="0"
               />
             </Field>
-            <Field label="IVA / Impuestos (COP)">
+            <Field label="IVA / Impuestos (%)">
               <Input
                 type="number"
                 min={0}
-                {...register("taxAmount", { valueAsNumber: true })}
+                max={100}
+                step="0.5"
+                {...register("taxPercent", { valueAsNumber: true })}
                 placeholder="0"
               />
             </Field>
@@ -341,8 +345,8 @@ export default function NuevaCotizacionPage() {
               {Number(watchDiscount) > 0 && (
                 <TotalRow label="Descuento" value={`-${formatCurrency(Number(watchDiscount))}`} />
               )}
-              {Number(watchTax) > 0 && (
-                <TotalRow label="IVA / Impuestos" value={formatCurrency(Number(watchTax))} />
+              {taxAmount > 0 && (
+                <TotalRow label={`IVA (${Number(watchTaxPct)}%)`} value={formatCurrency(taxAmount)} />
               )}
               <div className="border-t border-zinc-700 pt-2 mt-1">
                 <TotalRow label="Total" value={formatCurrency(total)} bold />

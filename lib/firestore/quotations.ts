@@ -49,6 +49,7 @@ function docToQuotation(id: string, data: Record<string, any>): Quotation {
     validUntil: toDate(data.validUntil),
     subtotal: data.subtotal ?? 0,
     discountAmount: data.discountAmount ?? 0,
+    taxPercent: data.taxPercent ?? 0,
     taxAmount: data.taxAmount ?? 0,
     total: data.total ?? 0,
     depositPercentage: data.depositPercentage ?? undefined,
@@ -104,6 +105,7 @@ export interface CreateQuotationPayload {
   validUntil?: Date;
   subtotal: number;
   discountAmount: number;
+  taxPercent?: number;
   taxAmount: number;
   total: number;
   depositPercentage?: number;

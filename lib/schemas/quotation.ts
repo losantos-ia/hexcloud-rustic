@@ -26,7 +26,7 @@ export const quotationSchema = z.object({
   status: z.enum(STATUSES),
   validUntil: z.string().optional(),
   discountAmount: z.number().min(0).optional(),
-  taxAmount: z.number().min(0).optional(),
+  taxPercent: z.number().min(0).max(100).optional(),
   depositPercentage: z.number().min(0).max(100).optional(),
   estimatedDeliveryDays: z.number().int().positive().optional(),
   notes: z.string().optional(),

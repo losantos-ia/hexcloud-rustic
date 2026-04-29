@@ -290,7 +290,10 @@ export default function QuotationDetailPage() {
               <TotalRow label="Descuento" value={`-${formatCurrency(quotation.discountAmount)}`} />
             )}
             {quotation.taxAmount > 0 && (
-              <TotalRow label="IVA / Impuestos" value={formatCurrency(quotation.taxAmount)} />
+              <TotalRow
+                label={`IVA${quotation.taxPercent ? ` (${quotation.taxPercent}%)` : ""}`}
+                value={formatCurrency(quotation.taxAmount)}
+              />
             )}
             <div className="border-t border-zinc-700 pt-2 mt-1">
               <TotalRow label="Total" value={formatCurrency(quotation.total)} bold />

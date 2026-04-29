@@ -76,6 +76,7 @@ export interface Quotation {
   validUntil?: Date;
   subtotal: number;
   discountAmount: number;
+  taxPercent: number;
   taxAmount: number;
   total: number;
   depositPercentage?: number;

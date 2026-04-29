@@ -60,7 +60,7 @@ export default function EditQuotationPage() {
       projectType: "cabin",
       status: "draft",
       discountAmount: 0,
-      taxAmount: 0,
+      taxPercent: 0,
       items: [{ description: "", quantity: 1, unit: "und", unitPrice: 0, category: "materials" }],
     },
   });
@@ -68,11 +68,12 @@ export default function EditQuotationPage() {
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const watchItems = watch("items");
   const watchDiscount = watch("discountAmount") ?? 0;
-  const watchTax = watch("taxAmount") ?? 0;
+  const watchTaxPct = watch("taxPercent") ?? 0;
   const watchDepositPct = watch("depositPercentage");
 
   const subtotal = watchItems?.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0) ?? 0;
-  const total = subtotal - (Number(watchDiscount) || 0) + (Number(watchTax) || 0);
+  const taxAmount = subtotal * (Number(watchTaxPct) || 0) / 100;
+  const total = subtotal - (Number(watchDiscount) || 0) + taxAmount;
   const depositAmount = watchDepositPct ? (total * Number(watchDepositPct)) / 100 : 0;
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function EditQuotationPage() {
         status: q.status,
         validUntil: toDateInputValue(q.validUntil),
         discountAmount: q.discountAmount,
-        taxAmount: q.taxAmount,
+        taxPercent: q.taxPercent ?? 0,
         depositPercentage: q.depositPercentage,
         estimatedDeliveryDays: q.estimatedDeliveryDays,
         notes: q.notes ?? "",
@@ -141,7 +142,8 @@ export default function EditQuotationPage() {
         validUntil: values.validUntil ? new Date(values.validUntil) : undefined,
         subtotal,
         discountAmount: Number(values.discountAmount) || 0,
-        taxAmount: Number(values.taxAmount) || 0,
+        taxPercent: Number(values.taxPercent) || 0,
+        taxAmount,
         total,
         depositPercentage: values.depositPercentage ? Number(values.depositPercentage) : undefined,
         depositAmount: depositAmount || undefined,
@@ -247,8 +249,8 @@ export default function EditQuotationPage() {
             <Field label="Descuento (COP)">
               <Input type="number" min={0} {...register("discountAmount", { valueAsNumber: true })} />
             </Field>
-            <Field label="IVA / Impuestos (COP)">
-              <Input type="number" min={0} {...register("taxAmount", { valueAsNumber: true })} />
+            <Field label="IVA / Impuestos (%)">
+              <Input type="number" min={0} max={100} step="0.5" {...register("taxPercent", { valueAsNumber: true })} />
             </Field>
             <Field label="% Anticipo">
               <Input type="number" min={0} max={100} {...register("depositPercentage", { valueAsNumber: true })} />
@@ -338,7 +340,7 @@ export default function EditQuotationPage() {
             <div className="flex flex-col gap-2 min-w-64">
               <TotalRow label="Subtotal" value={formatCurrency(subtotal)} />
               {Number(watchDiscount) > 0 && <TotalRow label="Descuento" value={`-${formatCurrency(Number(watchDiscount))}`} />}
-              {Number(watchTax) > 0 && <TotalRow label="IVA / Impuestos" value={formatCurrency(Number(watchTax))} />}
+              {taxAmount > 0 && <TotalRow label={`IVA (${Number(watchTaxPct)}%)`} value={formatCurrency(taxAmount)} />}
               <div className="border-t border-zinc-700 pt-2 mt-1">
                 <TotalRow label="Total" value={formatCurrency(total)} bold />
               </div>
