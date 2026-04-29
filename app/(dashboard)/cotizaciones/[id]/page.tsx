@@ -93,7 +93,7 @@ export default function QuotationDetailPage() {
   const isReadOnly = READ_ONLY_STATUSES.includes(quotation.status);
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
