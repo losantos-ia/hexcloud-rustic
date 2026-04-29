@@ -10,7 +10,7 @@ export function ModulePlaceholder({ title, description, icon: Icon }: ModulePlac
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-semibold text-white tracking-tight font-[family:var(--font-heading)]">{title}</h1>
         <p className="text-sm text-zinc-400 mt-1">{description}</p>
       </div>
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 py-24 text-center">
