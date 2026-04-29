@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Loader2, Edit, Send, CheckCircle, XCircle, FileText, ShoppingCart,
+  ArrowLeft, Loader2, Edit, FileText, ShoppingCart,
 } from "lucide-react";
 import { getQuotationById, updateQuotation, listQuotationItems } from "@/lib/firestore/quotations";
 import type { Quotation, QuotationItem, QuotationStatus } from "@/types/quotation";
@@ -53,6 +53,7 @@ export default function QuotationDetailPage() {
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [statusChanging, setStatusChanging] = useState(false);
 
   useEffect(() => {
     Promise.all([getQuotationById(id), listQuotationItems(id)]).then(([q, i]) => {
@@ -69,6 +70,17 @@ export default function QuotationDetailPage() {
       setQuotation((prev) => prev ? { ...prev, status: newStatus } : prev);
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  async function handleStatusChange(newStatus: QuotationStatus) {
+    if (!quotation || newStatus === quotation.status) return;
+    setStatusChanging(true);
+    try {
+      await updateQuotation(id, { status: newStatus });
+      setQuotation((prev) => prev ? { ...prev, status: newStatus } : prev);
+    } finally {
+      setStatusChanging(false);
     }
   }
 
@@ -117,7 +129,7 @@ export default function QuotationDetailPage() {
         </div>
 
         {/* Action buttons */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {!isReadOnly && (
             <Link
               href={`/cotizaciones/${id}/editar`}
@@ -126,43 +138,29 @@ export default function QuotationDetailPage() {
               <Edit size={13} /> Editar
             </Link>
           )}
-          {quotation.status === "draft" && (
-            <ActionButton
-              icon={<Send size={13} />}
-              label="Marcar como enviada"
-              actionKey="sent"
-              loading={actionLoading}
-              onClick={() => changeStatus("sent", "sent")}
-              variant="blue"
-            />
-          )}
-          {(quotation.status === "sent" || quotation.status === "draft") && (
-            <ActionButton
-              icon={<CheckCircle size={13} />}
-              label="Marcar como aceptada"
-              actionKey="accepted"
-              loading={actionLoading}
-              onClick={() => changeStatus("accepted", "accepted")}
-              variant="green"
-            />
-          )}
-          {(quotation.status === "sent" || quotation.status === "draft") && (
-            <ActionButton
-              icon={<XCircle size={13} />}
-              label="Marcar como rechazada"
-              actionKey="rejected"
-              loading={actionLoading}
-              onClick={() => changeStatus("rejected", "rejected")}
-              variant="red"
-            />
-          )}
-          <button
-            disabled
-            title="Próximamente"
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 cursor-not-allowed opacity-50"
+
+          {/* Status selector */}
+          <div className="relative flex items-center gap-1.5">
+            {statusChanging && <Loader2 size={12} className="animate-spin text-zinc-500" />}
+            <select
+              value={quotation.status}
+              onChange={(e) => handleStatusChange(e.target.value as QuotationStatus)}
+              disabled={statusChanging}
+              className="rounded-lg border border-zinc-700 bg-zinc-800 pl-3 pr-7 py-1.5 text-xs text-zinc-200 outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed [&>option]:bg-zinc-900 cursor-pointer appearance-none"
+            >
+              {(Object.keys(QUOTATION_STATUS_LABELS) as QuotationStatus[]).map((s) => (
+                <option key={s} value={s}>{QUOTATION_STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
+
+          <Link
+            href={`/cotizaciones/${id}/pdf`}
+            target="_blank"
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
           >
             <FileText size={13} /> Ver PDF
-          </button>
+          </Link>
           {quotation.status === "accepted" && (
             <button
               disabled
@@ -352,33 +350,5 @@ function TotalRow({ label, value, bold, accent }: { label: string; value: string
       <span className={`text-sm ${bold ? "font-semibold text-zinc-100" : "text-zinc-500"}`}>{label}</span>
       <span className={`text-sm ${bold ? "font-bold text-zinc-100" : accent ? "font-medium text-amber-400" : "text-zinc-300"}`}>{value}</span>
     </div>
-  );
-}
-
-function ActionButton({
-  icon, label, actionKey, loading, onClick, variant,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  actionKey: string;
-  loading: string | null;
-  onClick: () => void;
-  variant: "blue" | "green" | "red";
-}) {
-  const variantClass = {
-    blue: "border-blue-500/30 text-blue-400 hover:bg-blue-500/10",
-    green: "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10",
-    red: "border-red-500/30 text-red-400 hover:bg-red-500/10",
-  }[variant];
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={loading !== null}
-      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${variantClass}`}
-    >
-      {loading === actionKey ? <Loader2 size={12} className="animate-spin" /> : icon}
-      {label}
-    </button>
   );
 }
