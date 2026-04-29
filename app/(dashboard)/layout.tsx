@@ -25,6 +25,14 @@ export default function DashboardLayout({
           </div>
         </header>
 
+        {/* Environment banner — production */}
+        <div className="flex items-center justify-center gap-2 bg-emerald-500/10 border-b border-emerald-500/20 py-1.5 px-4">
+          <span className="size-1.5 rounded-full bg-emerald-400" />
+          <p className="text-xs font-medium text-emerald-400">
+            Entorno de producción · ra-produccion · Rustic Alexanders
+          </p>
+        </div>
+
         {/* Main content */}
         <main className="flex-1 p-6 overflow-y-auto">{children}</main>
       </div>
