@@ -79,35 +79,51 @@ export default function QuotationPdfPage() {
       <div className="print:pt-0 pt-16 bg-white text-zinc-900 min-h-screen">
         <div className="max-w-3xl mx-auto px-8 py-10 print:px-6 print:py-8">
 
-          {/* Header */}
-          <div className="flex items-start justify-between mb-8 pb-6 border-b-2 border-zinc-900">
-            <div className="flex items-center gap-4">
-              {company?.logoUrl && (
+          {/* Header — logo left, company info right */}
+          <div className="flex items-start justify-between mb-8 pb-6 border-b border-zinc-300">
+            {/* Logo */}
+            <div className="flex-shrink-0">
+              {company?.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={company.logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+                <img src={company.logoUrl} alt="Logo" className="h-20 w-auto object-contain" />
+              ) : (
+                <p className="text-2xl font-bold text-zinc-900">{company?.name || "Rustic Alexanders"}</p>
               )}
-              <div>
-                <h1 className="text-2xl font-bold text-zinc-900 leading-tight">
-                  {company?.name || "Rustic Alexanders"}
-                </h1>
-                {company?.legalName && (
-                  <p className="text-xs text-zinc-500 mt-0.5">{company.legalName}</p>
-                )}
-                <div className="flex flex-col gap-0.5 mt-1">
-                  {company?.phone && <p className="text-xs text-zinc-500">{company.phone}</p>}
-                  {company?.email && <p className="text-xs text-zinc-500">{company.email}</p>}
-                  {company?.address && (
-                    <p className="text-xs text-zinc-500">
-                      {company.address}{company.city ? `, ${company.city}` : ""}{company.country ? `, ${company.country}` : ""}
-                    </p>
-                  )}
-                  {company?.taxId && <p className="text-xs text-zinc-500">RTN/NIT: {company.taxId}</p>}
-                </div>
-              </div>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-bold text-zinc-900">{quotation.quotationNumber}</p>
-              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${
+
+            {/* Company info — right aligned */}
+            <div className="text-right text-sm text-zinc-700 flex flex-col gap-0.5">
+              <p className="font-bold text-zinc-900 text-base">{company?.name || "Rustic Alexanders"}</p>
+              {company?.taxId && <p>{company.taxId}</p>}
+              {company?.address && <p>{company.address}</p>}
+              {(company?.city || company?.country) && (
+                <p>{[company.city, company.country].filter(Boolean).join(", ")}</p>
+              )}
+              {company?.email && <p>{company.email}</p>}
+              {company?.phone && <p>{company.phone}</p>}
+            </div>
+          </div>
+
+          {/* Client + quotation meta */}
+          <div className="flex items-start justify-between mb-10">
+            {/* Client block */}
+            <div className="text-sm text-zinc-700 flex flex-col gap-0.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1">Cliente</p>
+              <p className="font-bold text-zinc-900 text-base">{quotation.clientName}</p>
+              {quotation.clientPhone && <p>{quotation.clientPhone}</p>}
+            </div>
+
+            {/* Quotation number / date block */}
+            <div className="text-right text-sm text-zinc-700 flex flex-col gap-0.5">
+              <p>
+                <span className="font-bold text-zinc-900">COTIZACIÓN</span>{" "}
+                <span className="font-bold">{quotation.quotationNumber}</span>
+              </p>
+              <p><span className="font-semibold">Fecha</span> {formatDate(quotation.createdAt)}</p>
+              {quotation.validUntil && (
+                <p><span className="font-semibold">Vencimiento</span> {formatDate(quotation.validUntil)}</p>
+              )}
+              <span className={`inline-block mt-1 self-end px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${
                 quotation.status === "accepted" ? "bg-emerald-100 text-emerald-800" :
                 quotation.status === "rejected" ? "bg-red-100 text-red-800" :
                 quotation.status === "sent" ? "bg-blue-100 text-blue-800" :
@@ -115,27 +131,6 @@ export default function QuotationPdfPage() {
               }`}>
                 {QUOTATION_STATUS_LABELS[quotation.status]}
               </span>
-              <p className="text-xs text-zinc-400 mt-2">{formatDate(quotation.createdAt)}</p>
-            </div>
-          </div>
-
-          {/* Client & project info */}
-          <div className="grid grid-cols-2 gap-8 mb-8">
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Cliente</h2>
-              <p className="text-base font-semibold text-zinc-900">{quotation.clientName}</p>
-              <p className="text-sm text-zinc-600">{quotation.clientPhone}</p>
-            </div>
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Detalles</h2>
-              <div className="flex flex-col gap-1">
-                <PdfRow label="Canal" value={QUOTATION_SOURCE_LABELS[quotation.source]} />
-                <PdfRow label="Tipo de proyecto" value={QUOTATION_PROJECT_TYPE_LABELS[quotation.projectType]} />
-                {quotation.validUntil && <PdfRow label="Válida hasta" value={formatDate(quotation.validUntil)} />}
-                {quotation.estimatedDeliveryDays && (
-                  <PdfRow label="Tiempo de entrega" value={`${quotation.estimatedDeliveryDays} días`} />
-                )}
-              </div>
             </div>
           </div>
 
