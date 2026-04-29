@@ -17,21 +17,18 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
-    // DEBUG — remove after fixing
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "(undefined)";
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "(undefined)";
-    console.log("[DEBUG] API_KEY:", apiKey.slice(0, 8) + "...", "PROJECT:", projectId);
-
     try {
       await signInWithEmailAndPassword(auth, email, password);
       window.location.href = "/";
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? "";
-      const message = (err as { message?: string }).message ?? "";
-      console.error("[DEBUG] Firebase error code:", code);
-      console.error("[DEBUG] Firebase error message:", message);
-      setError(`[${code}] ${message}`);
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+        setError("Correo o contraseña incorrectos.");
+      } else if (code === "auth/too-many-requests") {
+        setError("Demasiados intentos fallidos. Intenta más tarde.");
+      } else {
+        setError("Error al iniciar sesión. Intenta de nuevo.");
+      }
     } finally {
       setLoading(false);
     }
