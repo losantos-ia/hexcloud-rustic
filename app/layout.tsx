@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   description: "Sistema ERP para Rustic Alexanders — taller y tiendas de muebles rústicos",
 };
 
+import { AuthProvider } from "@/context/auth-context";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,7 +40,9 @@ export default function RootLayout({
       lang="es"
       className={`${jakartaSans.variable} ${outfit.variable} ${jetbrainsMono.variable} dark`}
     >
-      <body className="min-h-screen bg-zinc-950 antialiased">{children}</body>
+      <body className="min-h-screen bg-zinc-950 antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
