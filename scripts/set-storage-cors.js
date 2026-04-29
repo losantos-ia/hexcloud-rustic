@@ -7,12 +7,15 @@ const credPath = path.join(os.homedir(), ".config", "configstore", "firebase-too
 const creds = JSON.parse(fs.readFileSync(credPath, "utf8"));
 const token = creds.tokens.access_token;
 
-const bucket = "ra-staging-ea1ba.firebasestorage.app";
+// Set the bucket to match your environment:
+// Staging:    ra-staging-ea1ba.firebasestorage.app
+// Production: ra-produccion.firebasestorage.app
+const bucket = process.env.BUCKET || "ra-staging-ea1ba.firebasestorage.app";
 const corsConfig = JSON.stringify({
   cors: [
     {
       origin: [
-        "https://ra-staging.hexcloud.es",
+        "https://ra.hexcloud.es",
         "https://hexcloud.es",
         "http://localhost:3000",
         "http://localhost:3001",
