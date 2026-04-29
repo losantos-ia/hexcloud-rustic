@@ -31,11 +31,18 @@ function docToClient(id: string, data: Record<string, any>): Client {
   };
 }
 
+// Remove keys with undefined values — Firestore rejects them
+function stripUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
 export async function createClient(
   data: Omit<Client, "id" | "createdAt" | "updatedAt">
 ): Promise<string> {
   const ref = await addDoc(collection(db, COL), {
-    ...data,
+    ...stripUndefined(data),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -47,7 +54,7 @@ export async function updateClient(
   data: Partial<Omit<Client, "id" | "createdAt">>
 ): Promise<void> {
   await updateDoc(doc(db, COL, id), {
-    ...data,
+    ...stripUndefined(data),
     updatedAt: serverTimestamp(),
   });
 }

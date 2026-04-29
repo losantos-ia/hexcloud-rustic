@@ -42,12 +42,18 @@ function docToStructure(id: string, data: Record<string, any>): StructureAsset {
   };
 }
 
+function stripUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
 export async function createStructureAsset(
   clientId: string,
   data: Omit<StructureAsset, "id" | "clientId" | "createdAt" | "updatedAt">
 ): Promise<string> {
   const ref = await addDoc(structuresCol(clientId), {
-    ...data,
+    ...stripUndefined(data),
     clientId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -61,7 +67,7 @@ export async function updateStructureAsset(
   data: Partial<Omit<StructureAsset, "id" | "clientId" | "createdAt">>
 ): Promise<void> {
   await updateDoc(doc(structuresCol(clientId), structureId), {
-    ...data,
+    ...stripUndefined(data),
     updatedAt: serverTimestamp(),
   });
 }
