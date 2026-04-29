@@ -30,5 +30,19 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
       }
     }
+
+    // Leads collection — any authenticated user can read; admin/vendedor can write
+    match /leads/{leadId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+    }
+
+    // Lead activities — any authenticated user can read/write
+    match /leadActivities/{activityId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+    }
   }
 }
