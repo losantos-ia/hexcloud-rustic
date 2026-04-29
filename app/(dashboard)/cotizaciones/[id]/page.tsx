@@ -18,6 +18,7 @@ import {
 } from "@/types/quotation";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
+import { useCurrency } from "@/context/currency-context";
 
 type BadgeVariant = BadgeProps["variant"];
 
@@ -40,10 +41,6 @@ function formatDate(date?: Date): string {
   return date.toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function formatCurrency(n: number): string {
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
-}
-
 const READ_ONLY_STATUSES: QuotationStatus[] = ["accepted", "converted_to_order"];
 
 export default function QuotationDetailPage() {
@@ -51,6 +48,7 @@ export default function QuotationDetailPage() {
   const router = useRouter();
   const id = params.id;
 
+  const { formatCurrency } = useCurrency();
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QuotationItem[]>([]);
   const [loading, setLoading] = useState(true);

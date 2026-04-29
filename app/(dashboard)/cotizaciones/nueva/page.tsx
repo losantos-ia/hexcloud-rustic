@@ -19,17 +19,15 @@ import type { QuotationSource, QuotationProjectType, QuotationItemCategory } fro
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useCurrency } from "@/context/currency-context";
 
 const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
-}
 
 const UNITS = ["und", "m²", "m³", "m", "kg", "hr", "gl", "kit"];
 
 export default function NuevaCotizacionPage() {
   const router = useRouter();
+  const { formatCurrency } = useCurrency();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {

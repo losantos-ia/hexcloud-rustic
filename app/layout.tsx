@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/context/auth-context";
+import { CurrencyProvider } from "@/context/currency-context";
 
 export default function RootLayout({
   children,
@@ -41,7 +42,9 @@ export default function RootLayout({
       className={`${jakartaSans.variable} ${outfit.variable} ${jetbrainsMono.variable} dark`}
     >
       <body className="min-h-screen bg-zinc-950 antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <CurrencyProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </CurrencyProvider>
       </body>
     </html>
   );

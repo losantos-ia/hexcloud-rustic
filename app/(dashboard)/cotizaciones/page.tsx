@@ -13,6 +13,7 @@ import {
 } from "@/types/quotation";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
+import { useCurrency } from "@/context/currency-context";
 
 type BadgeVariant = BadgeProps["variant"];
 
@@ -40,16 +41,13 @@ function formatDate(date?: Date): string {
   return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(amount);
-}
-
 export default function CotizacionesPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<QuotationStatus | "all">("all");
   const [filterType, setFilterType] = useState<QuotationProjectType | "all">("all");
+  const { formatCurrency } = useCurrency();
 
   useEffect(() => {
     listQuotations()
@@ -270,10 +268,8 @@ function SummaryCard({
     green: "text-emerald-400 bg-emerald-500/10",
     amber: "text-amber-400 bg-amber-500/10",
   };
-  const displayValue =
-    display === "currency"
-      ? new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0, notation: "compact" }).format(value)
-      : value;
+  const { formatCompact } = useCurrency();
+  const displayValue = display === "currency" ? formatCompact(value) : value;
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex items-center gap-3">

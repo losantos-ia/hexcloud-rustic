@@ -25,12 +25,9 @@ import { quotationSchema, type QuotationFormValues } from "@/lib/schemas/quotati
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useCurrency } from "@/context/currency-context";
 
 const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
-
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n);
-}
 
 function toDateInputValue(date?: Date): string {
   if (!date) return "";
@@ -44,6 +41,7 @@ export default function EditQuotationPage() {
   const router = useRouter();
   const id = params.id;
 
+  const { formatCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [existingItems, setExistingItems] = useState<QuotationItem[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
