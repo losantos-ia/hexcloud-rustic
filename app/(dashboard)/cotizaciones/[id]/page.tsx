@@ -231,7 +231,7 @@ export default function QuotationDetailPage() {
                       <tr key={item.id}>
                         <td className="px-4 py-3">
                           <p className="text-zinc-200">{item.description}</p>
-                          {item.notes && <p className="text-xs text-zinc-500 mt-0.5">{item.notes}</p>}
+                          {item.notes && <p className="text-xs text-zinc-500 mt-0.5 whitespace-pre-wrap">{item.notes}</p>}
                         </td>
                         <td className="px-4 py-3 text-xs text-zinc-400">{QUOTATION_ITEM_CATEGORY_LABELS[item.category]}</td>
                         <td className="px-4 py-3 text-right text-zinc-300">{item.quantity}</td>

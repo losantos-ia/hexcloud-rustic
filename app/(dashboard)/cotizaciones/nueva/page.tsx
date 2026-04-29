@@ -317,10 +317,11 @@ export default function NuevaCotizacionPage() {
                     <span className="text-xs text-zinc-400">{formatCurrency(lineTotal)}</span>
                   </div>
                   {/* Notes */}
-                  <Input
+                  <textarea
                     {...register(`items.${idx}.notes`)}
                     placeholder="Notas del ítem (opcional)"
-                    className="text-xs"
+                    rows={2}
+                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-y min-h-[2.5rem]"
                   />
                 </div>
               );
