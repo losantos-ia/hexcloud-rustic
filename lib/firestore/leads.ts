@@ -6,7 +6,6 @@ import {
   getDoc,
   getDocs,
   query,
-  orderBy,
   where,
   serverTimestamp,
   Timestamp,
@@ -100,19 +99,18 @@ export async function getLeadById(id: string): Promise<Lead | null> {
 }
 
 export async function listLeads(): Promise<Lead[]> {
-  const q = query(collection(db, LEADS_COL), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => docToLead(d.id, d.data()));
+  const snap = await getDocs(collection(db, LEADS_COL));
+  return snap.docs
+    .map((d) => docToLead(d.id, d.data()))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function listLeadsByStatus(status: LeadStatus): Promise<Lead[]> {
-  const q = query(
-    collection(db, LEADS_COL),
-    where("status", "==", status),
-    orderBy("createdAt", "desc")
-  );
+  const q = query(collection(db, LEADS_COL), where("status", "==", status));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => docToLead(d.id, d.data()));
+  return snap.docs
+    .map((d) => docToLead(d.id, d.data()))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 // ── Activity CRUD ─────────────────────────────────────────
@@ -128,11 +126,9 @@ export async function createLeadActivity(
 }
 
 export async function listLeadActivities(leadId: string): Promise<LeadActivity[]> {
-  const q = query(
-    collection(db, ACTIVITIES_COL),
-    where("leadId", "==", leadId),
-    orderBy("createdAt", "desc")
-  );
+  const q = query(collection(db, ACTIVITIES_COL), where("leadId", "==", leadId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => docToActivity(d.id, d.data()));
+  return snap.docs
+    .map((d) => docToActivity(d.id, d.data()))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
