@@ -19,7 +19,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // AuthProvider will set the cookie; redirect to dashboard
       window.location.href = "/";
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? "";
