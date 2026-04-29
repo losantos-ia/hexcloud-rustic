@@ -84,10 +84,10 @@ export async function generateQuotationNumber(): Promise<string> {
   const snap = await getDocs(collection(db, QUOTATIONS_COL));
   const thisYearCount = snap.docs.filter((d) => {
     const num: string = d.data().quotationNumber ?? "";
-    return num.startsWith(`COT-${year}-`);
+    return num.startsWith(`C${year}`);
   }).length;
   const next = String(thisYearCount + 1).padStart(4, "0");
-  return `COT-${year}-${next}`;
+  return `C${year}${next}`;
 }
 
 // ── Quotation CRUD ──────────────────────────────────────

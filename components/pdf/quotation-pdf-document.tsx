@@ -48,7 +48,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  logo: { width: 90, height: 50, objectFit: "contain" },
+  logo: { width: 140, height: 80, objectFit: "contain" },
   companyNameFallback: { fontSize: 16, fontFamily: "Helvetica-Bold", color: C.black },
   companyInfo: { alignItems: "flex-end", gap: 2 },
   companyName: { fontSize: 11, fontFamily: "Helvetica-Bold", color: C.black },
