@@ -93,9 +93,13 @@ export default function ConfiguracionPage() {
     }
     setLogoError(null);
     setUploadingLogo(true);
+    setLogoError(null);
     try {
       const url = await uploadCompanyLogo(file);
       setLogoUrl(url);
+    } catch (err) {
+      console.error("Logo upload failed:", err);
+      setLogoError("No se pudo subir el logo. Verifica tu conexión e inténtalo de nuevo.");
     } finally {
       setUploadingLogo(false);
       if (fileRef.current) fileRef.current.value = "";
