@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { Printer, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { getQuotationById, listQuotationItems } from "@/lib/firestore/quotations";
+import { getCompanySettings, type CompanySettings } from "@/lib/firestore/company";
 import type { Quotation, QuotationItem } from "@/types/quotation";
 import {
   QUOTATION_STATUS_LABELS,
@@ -28,12 +29,14 @@ export default function QuotationPdfPage() {
 
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [items, setItems] = useState<QuotationItem[]>([]);
+  const [company, setCompany] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getQuotationById(id), listQuotationItems(id)]).then(([q, i]) => {
+    Promise.all([getQuotationById(id), listQuotationItems(id), getCompanySettings()]).then(([q, i, c]) => {
       setQuotation(q);
       setItems(i);
+      setCompany(c);
     }).finally(() => setLoading(false));
   }, [id]);
 
@@ -78,9 +81,29 @@ export default function QuotationPdfPage() {
 
           {/* Header */}
           <div className="flex items-start justify-between mb-8 pb-6 border-b-2 border-zinc-900">
-            <div>
-              <h1 className="text-2xl font-bold text-zinc-900 leading-tight">Rustic Alexanders</h1>
-              <p className="text-sm text-zinc-500 mt-0.5">Estructuras de madera rústica</p>
+            <div className="flex items-center gap-4">
+              {company?.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={company.logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-zinc-900 leading-tight">
+                  {company?.name || "Rustic Alexanders"}
+                </h1>
+                {company?.legalName && (
+                  <p className="text-xs text-zinc-500 mt-0.5">{company.legalName}</p>
+                )}
+                <div className="flex flex-col gap-0.5 mt-1">
+                  {company?.phone && <p className="text-xs text-zinc-500">{company.phone}</p>}
+                  {company?.email && <p className="text-xs text-zinc-500">{company.email}</p>}
+                  {company?.address && (
+                    <p className="text-xs text-zinc-500">
+                      {company.address}{company.city ? `, ${company.city}` : ""}{company.country ? `, ${company.country}` : ""}
+                    </p>
+                  )}
+                  {company?.taxId && <p className="text-xs text-zinc-500">RTN/NIT: {company.taxId}</p>}
+                </div>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-lg font-bold text-zinc-900">{quotation.quotationNumber}</p>
@@ -92,6 +115,7 @@ export default function QuotationPdfPage() {
               }`}>
                 {QUOTATION_STATUS_LABELS[quotation.status]}
               </span>
+              <p className="text-xs text-zinc-400 mt-2">{formatDate(quotation.createdAt)}</p>
             </div>
           </div>
 
