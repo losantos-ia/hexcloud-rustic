@@ -12,7 +12,6 @@ import type { CompanySettings } from "@/lib/firestore/company";
 import type { Quotation, QuotationItem } from "@/types/quotation";
 import {
   QUOTATION_STATUS_LABELS,
-  QUOTATION_ITEM_CATEGORY_LABELS,
 } from "@/types/quotation";
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
@@ -101,9 +100,8 @@ const s = StyleSheet.create({
   tableRowAlt: { backgroundColor: C.bg },
   colDesc: { flex: 1, paddingRight: 8 },
   colQty: { width: 36, textAlign: "center" },
-  colUnit: { width: 32, textAlign: "center" },
-  colPrice: { width: 64, textAlign: "right" },
-  colTotal: { width: 64, textAlign: "right" },
+  colPrice: { width: 72, textAlign: "right" },
+  colTotal: { width: 72, textAlign: "right" },
   thText: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.black, textTransform: "uppercase", letterSpacing: 0.5 },
   itemDesc: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.black },
   itemNotes: { fontSize: 7.5, color: C.mid, marginTop: 2, lineHeight: 1.4 },
@@ -212,7 +210,12 @@ export function QuotationPDFDocument({
           <View style={s.clientBlock}>
             <Text style={s.clientLabel}>Cliente</Text>
             <Text style={s.clientName}>{quotation.clientName}</Text>
+            {quotation.clientDocumentId && <Text style={s.clientDetail}>RTN: {quotation.clientDocumentId}</Text>}
             {quotation.clientPhone && <Text style={s.clientDetail}>{quotation.clientPhone}</Text>}
+            {quotation.clientAddress && <Text style={s.clientDetail}>{quotation.clientAddress}</Text>}
+            {(quotation.clientCity || quotation.clientDepartment) && (
+              <Text style={s.clientDetail}>{[quotation.clientCity, quotation.clientDepartment].filter(Boolean).join(", ")}</Text>
+            )}
           </View>
 
           {/* Quote meta */}
@@ -248,8 +251,7 @@ export function QuotationPDFDocument({
           <View style={s.tableHeader}>
             <View style={s.colDesc}><Text style={s.thText}>Descripción</Text></View>
             <View style={s.colQty}><Text style={s.thText}>Cant.</Text></View>
-            <View style={s.colUnit}><Text style={s.thText}>Und.</Text></View>
-            <View style={s.colPrice}><Text style={s.thText}>P. Unit.</Text></View>
+            <View style={s.colPrice}><Text style={s.thText}>PVP</Text></View>
             <View style={s.colTotal}><Text style={s.thText}>Total</Text></View>
           </View>
 
@@ -259,10 +261,8 @@ export function QuotationPDFDocument({
               <View style={s.colDesc}>
                 <Text style={s.itemDesc}>{item.description}</Text>
                 {item.notes && <Text style={s.itemNotes}>{item.notes}</Text>}
-                <Text style={s.itemCategory}>{QUOTATION_ITEM_CATEGORY_LABELS[item.category]}</Text>
               </View>
               <View style={s.colQty}><Text style={s.tdText}>{item.quantity}</Text></View>
-              <View style={s.colUnit}><Text style={s.tdText}>{item.unit}</Text></View>
               <View style={s.colPrice}><Text style={s.tdText}>{formatCurrency(item.unitPrice)}</Text></View>
               <View style={s.colTotal}><Text style={s.tdTotal}>{formatCurrency(item.total)}</Text></View>
             </View>
