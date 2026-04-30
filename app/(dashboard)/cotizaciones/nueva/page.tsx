@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2, Plus, Trash2, Search, X } from "lucide-react";
 import Link from "next/link";
@@ -15,17 +15,14 @@ import type { Client } from "@/types/client";
 import {
   QUOTATION_SOURCE_LABELS,
   QUOTATION_PROJECT_TYPE_LABELS,
-  QUOTATION_ITEM_CATEGORY_LABELS,
 } from "@/types/quotation";
-import type { QuotationSource, QuotationProjectType, QuotationItemCategory } from "@/types/quotation";
+import type { QuotationSource, QuotationProjectType } from "@/types/quotation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
 
 const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
-
-const UNITS = ["und", "m²", "m³", "m", "kg", "hr", "gl", "kit"];
 
 export default function NuevaCotizacionPage() {
   const router = useRouter();
@@ -361,12 +358,11 @@ export default function NuevaCotizacionPage() {
 
           <div className="flex flex-col gap-2">
             {/* Header row (desktop) */}
-            <div className="hidden md:grid grid-cols-[1fr_80px_90px_120px_130px_auto] gap-2 text-xs text-zinc-500 px-1">
+            <div className="hidden md:grid grid-cols-[1fr_80px_120px_100px_auto] gap-2 text-xs text-zinc-500 px-1">
               <span>Descripción *</span>
               <span>Cant. *</span>
-              <span>Unidad *</span>
-              <span>Precio unit. *</span>
-              <span>Categoría</span>
+              <span>PVP *</span>
+              <span>Subt.</span>
               <span />
             </div>
 
@@ -377,7 +373,7 @@ export default function NuevaCotizacionPage() {
 
               return (
                 <div key={field.id} className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3 flex flex-col gap-2 md:border-0 md:bg-transparent md:p-0">
-                  <div className="grid grid-cols-1 md:grid-cols-[1fr_80px_90px_120px_130px_auto] gap-2 items-start">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_80px_120px_100px_auto] gap-2 items-start">
                     <div>
                       <Input
                         {...register(`items.${idx}.description`)}
@@ -394,40 +390,16 @@ export default function NuevaCotizacionPage() {
                       {...register(`items.${idx}.quantity`, { valueAsNumber: true })}
                       placeholder="1"
                     />
-                    <Controller
-                      control={control}
-                      name={`items.${idx}.unit`}
-                      render={({ field: f }) => (
-                        <select
-                          {...f}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
-                        >
-                          {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      )}
-                    />
                     <Input
                       type="number"
                       min={0}
                       {...register(`items.${idx}.unitPrice`, { valueAsNumber: true })}
                       placeholder="0"
                     />
-                    <Controller
-                      control={control}
-                      name={`items.${idx}.category`}
-                      render={({ field: f }) => (
-                        <select
-                          {...f}
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
-                        >
-                          {(Object.keys(QUOTATION_ITEM_CATEGORY_LABELS) as QuotationItemCategory[]).map((c) => (
-                            <option key={c} value={c}>{QUOTATION_ITEM_CATEGORY_LABELS[c]}</option>
-                          ))}
-                        </select>
-                      )}
-                    />
+                    <div className="flex items-center">
+                      <span className="text-sm text-zinc-300">{formatCurrency(lineTotal)}</span>
+                    </div>
                     <div className="flex items-center justify-between md:justify-end gap-2">
-                      <span className="text-xs font-medium text-zinc-300 md:hidden">{formatCurrency(lineTotal)}</span>
                       <button
                         type="button"
                         onClick={() => remove(idx)}
@@ -437,10 +409,6 @@ export default function NuevaCotizacionPage() {
                         <Trash2 size={13} />
                       </button>
                     </div>
-                  </div>
-                  {/* Line total (desktop) */}
-                  <div className="hidden md:flex justify-end">
-                    <span className="text-xs text-zinc-400">{formatCurrency(lineTotal)}</span>
                   </div>
                   {/* Notes */}
                   <textarea
