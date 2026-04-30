@@ -2,14 +2,16 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Search, X } from "lucide-react";
 import Link from "next/link";
 import { quotationSchema, type QuotationFormValues } from "@/lib/schemas/quotation";
 import { createQuotation } from "@/lib/firestore/quotations";
+import { listClients } from "@/lib/firestore/clients";
+import type { Client } from "@/types/client";
 import {
   QUOTATION_SOURCE_LABELS,
   QUOTATION_PROJECT_TYPE_LABELS,
@@ -29,6 +31,53 @@ export default function NuevaCotizacionPage() {
   const router = useRouter();
   const { formatCurrency } = useCurrency();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  // ── Client search ──
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listClients().then(setClients);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filteredClients = clientSearch.trim().length > 0
+    ? clients.filter((c) =>
+        c.fullName.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        c.phone?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        c.documentId?.toLowerCase().includes(clientSearch.toLowerCase())
+      )
+    : clients.slice(0, 8);
+
+  function pickClient(c: Client) {
+    setSelectedClient(c);
+    setClientSearch(c.fullName);
+    setShowDropdown(false);
+    setValue("clientName", c.fullName, { shouldValidate: true });
+    setValue("clientPhone", c.phone ?? "", { shouldValidate: true });
+    setValue("clientId", c.id);
+  }
+
+  function clearClient() {
+    setSelectedClient(null);
+    setClientSearch("");
+    setValue("clientName", "");
+    setValue("clientPhone", "");
+    setValue("clientId", "");
+  }
 
   const {
     register,
@@ -132,6 +181,59 @@ export default function NuevaCotizacionPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* Client info */}
         <Section title="Información del cliente">
+          {/* Client search combobox */}
+          <div ref={searchRef} className="relative">
+            <Label>Buscar cliente existente</Label>
+            <div className="relative mt-1.5">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              <input
+                type="text"
+                value={clientSearch}
+                onChange={(e) => { setClientSearch(e.target.value); setShowDropdown(true); setSelectedClient(null); }}
+                onFocus={() => setShowDropdown(true)}
+                placeholder="Buscar por nombre, teléfono o ID…"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 pl-8 pr-8 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              />
+              {clientSearch && (
+                <button type="button" onClick={clearClient} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition-colors">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {showDropdown && filteredClients.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl max-h-56 overflow-y-auto">
+                {filteredClients.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onMouseDown={() => pickClient(c)}
+                    className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-0"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-medium text-zinc-100 truncate">{c.fullName}</span>
+                      <span className="text-xs text-zinc-500">{c.phone}{c.documentId ? ` · ${c.documentId}` : ""}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {showDropdown && clientSearch.trim().length > 0 && filteredClients.length === 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-xs text-zinc-500">
+                Sin resultados. Completa los datos manualmente abajo.
+              </div>
+            )}
+          </div>
+
+          {selectedClient && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-400">
+              <span className="font-medium">Cliente seleccionado:</span>
+              <span>{selectedClient.fullName}</span>
+              <span className="text-zinc-500">({selectedClient.phone})</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Nombre del cliente *" error={errors.clientName?.message}>
               <Input {...register("clientName")} placeholder="Ej. Juan Pérez" />
