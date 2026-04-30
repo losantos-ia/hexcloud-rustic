@@ -3,6 +3,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -73,4 +74,8 @@ export async function listClients(): Promise<Client[]> {
   const q = query(collection(db, COL), orderBy("createdAt", "desc"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => docToClient(d.id, d.data()));
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  await deleteDoc(doc(db, COL, id));
 }
