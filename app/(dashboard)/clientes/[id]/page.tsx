@@ -258,18 +258,31 @@ export default function ClientDetailPage() {
         )}
       </div>
 
-      {/* Addresses — placeholder */}
-      <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-5">
-        <div className="flex items-center gap-2 mb-1">
-          <MapPin className="size-4 text-zinc-500" />
-          <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-widest">
-            Direcciones
-          </h2>
+      {/* Address */}
+      {(client.address || client.city || client.department || client.postalCode) && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <MapPin className="size-4 text-zinc-500" />
+            <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-widest">
+              Direcciones
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {client.address && (
+              <InfoRow icon={MapPin} label="Dirección" value={client.address} />
+            )}
+            {client.city && (
+              <InfoRow icon={MapPin} label="Ciudad" value={client.city} />
+            )}
+            {client.department && (
+              <InfoRow icon={MapPin} label="Departamento" value={client.department} />
+            )}
+            {client.postalCode && (
+              <InfoRow icon={MapPin} label="Código postal" value={client.postalCode} />
+            )}
+          </div>
         </div>
-        <p className="text-xs text-zinc-600 ml-6">
-          Gestión de direcciones disponible próximamente.
-        </p>
-      </div>
+      )}
 
       {/* Structures */}
       <div className="space-y-3">
