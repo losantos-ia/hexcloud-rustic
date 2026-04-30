@@ -42,7 +42,7 @@ const s = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
