@@ -127,10 +127,10 @@ export default function QuotationPdfPage() {
     <div className="flex flex-col h-screen bg-zinc-950">
       <div className="flex items-center justify-between gap-4 bg-zinc-900 border-b border-zinc-800 px-6 py-3 shrink-0">
         <Link
-          href={`/cotizaciones/${id}`}
+          href="/cotizaciones"
           className="flex items-center gap-2 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
         >
-          <ArrowLeft size={14} /> Volver a cotizacion
+          <ArrowLeft size={14} /> Volver a cotizaciones
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-500">{quotation.quotationNumber}</span>
