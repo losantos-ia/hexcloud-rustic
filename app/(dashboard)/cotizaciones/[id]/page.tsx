@@ -160,14 +160,13 @@ export default function QuotationDetailPage() {
           >
             <FileText size={13} /> Ver PDF
           </Link>
-          {quotation.status === "accepted" && (
-            <button
-              disabled
-              title="Próximamente"
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 cursor-not-allowed opacity-50"
+          {quotation.status !== "converted_to_order" && quotation.status !== "rejected" && (
+            <Link
+              href={`/pedidos/nuevo?fromQuotation=${id}`}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
             >
               <ShoppingCart size={13} /> Convertir en pedido
-            </button>
+            </Link>
           )}
         </div>
       </div>

@@ -3,13 +3,14 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Loader2, Plus, Trash2, Search, X } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Search, X, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { orderSchema, type OrderFormValues } from "@/lib/schemas/order";
 import { createOrder } from "@/lib/firestore/orders";
+import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
 import { listClients } from "@/lib/firestore/clients";
 import type { Client } from "@/types/client";
 import {
@@ -60,8 +61,11 @@ function TotalRow({ label, value, bold, accent }: { label: string; value: string
 
 export default function NewOrderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromQuotationId = searchParams.get("fromQuotation");
   const { formatCurrency } = useCurrency();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [fromQuotationNumber, setFromQuotationNumber] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [clientSearch, setClientSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -89,6 +93,7 @@ export default function NewOrderPage() {
   const {
     register,
     handleSubmit,
+    reset,
     control,
     watch,
     setValue,
@@ -107,6 +112,55 @@ export default function NewOrderPage() {
       items: [{ description: "", quantity: 1, unit: "und", unitPrice: 0, category: "product" }],
     },
   });
+
+  // Pre-fill form from quotation when converting
+  useEffect(() => {
+    if (!fromQuotationId) return;
+    Promise.all([getQuotationById(fromQuotationId), listQuotationItems(fromQuotationId)]).then(
+      ([q, qItems]) => {
+        if (!q) return;
+        setFromQuotationNumber(q.quotationNumber);
+        setClientSearch(q.clientName);
+        const mapCat = (cat: string) =>
+          (cat === "materials" ? "material" : cat) as OrderFormValues["items"][number]["category"];
+        const addressParts = [q.clientAddress, q.clientCity, q.clientDepartment].filter(Boolean);
+        const deliveryAddress = addressParts.length > 0 ? addressParts.join(", ") : "";
+        const depositRequired = q.depositAmount
+          ? q.depositAmount
+          : q.depositPercentage
+          ? Math.round((q.total * q.depositPercentage) / 100)
+          : 0;
+        reset({
+          clientName: q.clientName,
+          clientPhone: q.clientPhone,
+          clientId: q.clientId ?? "",
+          quotationId: fromQuotationId,
+          source: "quotation",
+          projectType: q.projectType as OrderFormValues["projectType"],
+          title: q.title,
+          description: q.description ?? "",
+          status: "deposit_pending",
+          priority: "medium",
+          finalSalePrice: q.total,
+          depositRequired,
+          depositPaid: 0,
+          installationRequired: true,
+          deliveryAddress,
+          notes: q.notes ?? "",
+          internalNotes: q.internalNotes ?? "",
+          items: qItems.map((i) => ({
+            description: i.description,
+            quantity: i.quantity,
+            unit: i.unit ?? "und",
+            unitPrice: i.unitPrice,
+            category: mapCat(i.category),
+            notes: i.notes ?? "",
+          })),
+        });
+      }
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromQuotationId]);
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const watchItems = watch("items");
@@ -159,6 +213,9 @@ export default function NewOrderPage() {
         internalNotes: clean(values.internalNotes),
         items: values.items,
       });
+      if (fromQuotationId) {
+        await updateQuotation(fromQuotationId, { status: "converted_to_order" });
+      }
       router.push(`/pedidos/${id}`);
     } catch {
       setServerError("Error al crear el pedido. Intenta de nuevo.");
@@ -182,6 +239,15 @@ export default function NewOrderPage() {
           <p className="text-xs text-zinc-500">Registra un pedido confirmado o en proceso de anticipo</p>
         </div>
       </div>
+
+      {fromQuotationNumber && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300">
+          <ShoppingCart size={14} />
+          Convirtiendo la cotización{" "}
+          <span className="font-mono font-semibold">{fromQuotationNumber}</span>{" "}
+          en pedido. Revisa y ajusta los datos antes de guardar.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* Client info */}
@@ -446,7 +512,7 @@ export default function NewOrderPage() {
             className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-            {isSubmitting ? "Guardando..." : "Crear pedido"}
+            {isSubmitting ? "Guardando..." : fromQuotationId ? "Crear pedido desde cotización" : "Crear pedido"}
           </button>
         </div>
       </form>
