@@ -226,7 +226,7 @@ export default function OrderDetailPage() {
   const allStatusActions = STATUS_FLOW.filter((s) => s.status !== order.status);
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
@@ -335,8 +335,8 @@ export default function OrderDetailPage() {
                     {items.map((item) => (
                       <tr key={item.id}>
                         <td className="py-2.5 pr-4">
-                          <p className="text-zinc-200">{item.description}</p>
-                          {item.notes && <p className="text-xs text-zinc-500 mt-0.5">{item.notes}</p>}
+                          <p className="text-zinc-200 whitespace-pre-wrap">{item.description}</p>
+                          {item.notes && <p className="text-xs text-zinc-500 mt-0.5 whitespace-pre-wrap">{item.notes}</p>}
                         </td>
                         <td className="py-2.5 text-right text-zinc-400">{item.quantity} {item.unit}</td>
                         <td className="py-2.5 text-right text-zinc-400">{formatCurrency(item.unitPrice)}</td>
