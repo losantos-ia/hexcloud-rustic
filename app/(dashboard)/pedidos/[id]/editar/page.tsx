@@ -63,6 +63,7 @@ export default function EditOrderPage() {
   const { formatCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [existingItemIds, setExistingItemIds] = useState<string[]>([]);
 
@@ -99,45 +100,51 @@ export default function EditOrderPage() {
   const balanceDue = (Number(watchFinalSalePrice) || 0) - (Number(watchDepositPaid) || 0);
 
   useEffect(() => {
-    Promise.all([getOrderById(orderId), listOrderItems(orderId)]).then(([order, items]) => {
-      if (!order) { setNotFound(true); return; }
-      setExistingItemIds(items.map((i) => i.id));
-      reset({
-        clientName: order.clientName,
-        clientPhone: order.clientPhone,
-        quotationId: order.quotationId ?? "",
-        leadId: order.leadId ?? "",
-        clientId: order.clientId ?? "",
-        source: order.source,
-        storeId: order.storeId ?? "",
-        projectType: order.projectType,
-        title: order.title,
-        description: order.description ?? "",
-        status: order.status,
-        priority: order.priority,
-        finalSalePrice: order.finalSalePrice,
-        depositRequired: order.depositRequired,
-        depositPaid: order.depositPaid,
-        promisedDeliveryDate: order.promisedDeliveryDate
-          ? order.promisedDeliveryDate.toISOString().split("T")[0]
-          : "",
-        installationRequired: order.installationRequired,
-        deliveryAddress: order.deliveryAddress ?? "",
-        googleMapsUrl: order.googleMapsUrl ?? "",
-        notes: order.notes ?? "",
-        internalNotes: order.internalNotes ?? "",
-        items: items.length > 0
-          ? items.map((i) => ({
-              description: i.description,
-              quantity: i.quantity,
-              unit: i.unit,
-              unitPrice: i.unitPrice,
-              category: i.category,
-              notes: i.notes ?? "",
-            }))
-          : [{ description: "", quantity: 1, unit: "und", unitPrice: 0, category: "product" }],
-      });
-    }).finally(() => setLoading(false));
+    Promise.all([getOrderById(orderId), listOrderItems(orderId)])
+      .then(([order, items]) => {
+        if (!order) { setNotFound(true); return; }
+        setExistingItemIds(items.map((i) => i.id));
+        reset({
+          clientName: order.clientName,
+          clientPhone: order.clientPhone,
+          quotationId: order.quotationId ?? "",
+          leadId: order.leadId ?? "",
+          clientId: order.clientId ?? "",
+          source: order.source,
+          storeId: order.storeId ?? "",
+          projectType: order.projectType,
+          title: order.title,
+          description: order.description ?? "",
+          status: order.status,
+          priority: order.priority,
+          finalSalePrice: order.finalSalePrice,
+          depositRequired: order.depositRequired,
+          depositPaid: order.depositPaid,
+          promisedDeliveryDate: order.promisedDeliveryDate
+            ? order.promisedDeliveryDate.toISOString().split("T")[0]
+            : "",
+          installationRequired: order.installationRequired,
+          deliveryAddress: order.deliveryAddress ?? "",
+          googleMapsUrl: order.googleMapsUrl ?? "",
+          notes: order.notes ?? "",
+          internalNotes: order.internalNotes ?? "",
+          items: items.length > 0
+            ? items.map((i) => ({
+                description: i.description,
+                quantity: i.quantity,
+                unit: i.unit,
+                unitPrice: i.unitPrice,
+                category: i.category,
+                notes: i.notes ?? "",
+              }))
+            : [{ description: "", quantity: 1, unit: "und", unitPrice: 0, category: "product" }],
+        });
+      })
+      .catch((err) => {
+        console.error("Error loading order:", err);
+        setLoadError("Error al cargar el pedido. Verifica tu conexión e intenta de nuevo.");
+      })
+      .finally(() => setLoading(false));
   }, [orderId, reset]);
 
   async function onSubmit(values: OrderFormValues) {
@@ -190,6 +197,15 @@ export default function EditOrderPage() {
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <p className="text-sm text-zinc-400">Pedido no encontrado</p>
         <Link href="/pedidos" className="text-xs text-amber-400 hover:underline">Volver a pedidos</Link>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <p className="text-sm text-red-400">{loadError}</p>
+        <Link href={`/pedidos/${orderId}`} className="text-xs text-amber-400 hover:underline">Volver al pedido</Link>
       </div>
     );
   }
