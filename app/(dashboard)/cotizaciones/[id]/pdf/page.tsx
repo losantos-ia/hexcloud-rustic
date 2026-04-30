@@ -4,12 +4,13 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Download, ArrowLeft, Loader2, LayoutList } from "lucide-react";
+import { Download, ArrowLeft, Loader2, LayoutList, Edit } from "lucide-react";
 import Link from "next/link";
 import nextDynamic from "next/dynamic";
-import { getQuotationById, listQuotationItems } from "@/lib/firestore/quotations";
+import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
 import { getCompanySettings, type CompanySettings } from "@/lib/firestore/company";
-import type { Quotation, QuotationItem } from "@/types/quotation";
+import type { Quotation, QuotationItem, QuotationStatus } from "@/types/quotation";
+import { QUOTATION_STATUS_LABELS } from "@/types/quotation";
 import { useCurrency } from "@/context/currency-context";
 import type { QuotationPDFProps } from "@/components/pdf/quotation-pdf-document";
 
@@ -38,6 +39,18 @@ export default function QuotationPdfPage() {
   const [company, setCompany] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [statusChanging, setStatusChanging] = useState(false);
+
+  async function handleStatusChange(newStatus: QuotationStatus) {
+    if (!quotation || newStatus === quotation.status) return;
+    setStatusChanging(true);
+    try {
+      await updateQuotation(id, { status: newStatus });
+      setQuotation((prev) => prev ? { ...prev, status: newStatus } : prev);
+    } finally {
+      setStatusChanging(false);
+    }
+  }
 
   useEffect(() => {
     Promise.all([getQuotationById(id), listQuotationItems(id), getCompanySettings()])
@@ -121,6 +134,25 @@ export default function QuotationPdfPage() {
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-500">{quotation.quotationNumber}</span>
+          <Link
+            href={`/cotizaciones/${id}/editar`}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
+          >
+            <Edit size={13} /> Editar
+          </Link>
+          <div className="relative flex items-center gap-1.5">
+            {statusChanging && <Loader2 size={12} className="animate-spin text-zinc-500" />}
+            <select
+              value={quotation.status}
+              onChange={(e) => handleStatusChange(e.target.value as QuotationStatus)}
+              disabled={statusChanging}
+              className="rounded-lg border border-zinc-700 bg-zinc-800 pl-3 pr-7 py-1.5 text-xs text-zinc-200 outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed [&>option]:bg-zinc-900 cursor-pointer appearance-none"
+            >
+              {(Object.keys(QUOTATION_STATUS_LABELS) as QuotationStatus[]).map((s) => (
+                <option key={s} value={s}>{QUOTATION_STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
           <Link
             href={`/cotizaciones/${id}`}
             className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
