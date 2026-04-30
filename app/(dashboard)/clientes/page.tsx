@@ -37,6 +37,7 @@ export default function ClientesPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -58,6 +59,23 @@ export default function ClientesPage() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  function openMenu(e: React.MouseEvent<HTMLButtonElement>, id: string) {
+    e.stopPropagation();
+    if (openMenuId === id) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      setOpenMenuId(id);
+    }
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null);
+    setMenuPos(null);
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -155,7 +173,7 @@ export default function ClientesPage() {
 
       {/* Table */}
       {!loading && filtered.length > 0 && (
-        <div className="rounded-xl border border-zinc-800 overflow-hidden" ref={menuRef}>
+        <div className="rounded-xl border border-zinc-800 overflow-hidden">
           {/* Desktop table */}
           <table className="hidden md:table w-full text-sm">
             <thead>
@@ -231,34 +249,13 @@ export default function ClientesPage() {
                   </td>
                   {/* 3-dot menu */}
                   <td className="px-2 py-3.5">
-                    <div className="relative flex justify-center">
+                    <div className="flex justify-center">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuId(openMenuId === client.id ? null : client.id);
-                        }}
+                        onClick={(e) => openMenu(e, client.id)}
                         className="flex items-center justify-center size-8 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-colors"
                       >
                         <MoreVertical className="size-4" />
                       </button>
-                      {openMenuId === client.id && (
-                        <div className="absolute right-0 top-9 z-20 w-40 rounded-lg border border-zinc-700 bg-zinc-800 shadow-xl py-1">
-                          <button
-                            onClick={() => { setOpenMenuId(null); router.push(`/clientes/${client.id}/editar`); }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
-                          >
-                            <Pencil className="size-3.5 text-zinc-400" />
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => { setOpenMenuId(null); setDeleteTarget(client); }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-700 transition-colors"
-                          >
-                            <Trash2 className="size-3.5" />
-                            Eliminar
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -288,29 +285,11 @@ export default function ClientesPage() {
                   </div>
                   <div className="relative">
                     <button
-                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === client.id ? null : client.id); }}
+                      onClick={(e) => openMenu(e, client.id)}
                       className="flex items-center justify-center size-8 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-colors"
                     >
                       <MoreVertical className="size-4" />
                     </button>
-                    {openMenuId === client.id && (
-                      <div className="absolute right-0 top-9 z-20 w-40 rounded-lg border border-zinc-700 bg-zinc-800 shadow-xl py-1">
-                        <button
-                          onClick={() => { setOpenMenuId(null); router.push(`/clientes/${client.id}/editar`); }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
-                        >
-                          <Pencil className="size-3.5 text-zinc-400" />
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => { setOpenMenuId(null); setDeleteTarget(client); }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-700 transition-colors"
-                        >
-                          <Trash2 className="size-3.5" />
-                          Eliminar
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -318,6 +297,34 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
+
+      {/* Fixed dropdown menu (escapes overflow-hidden) */}
+      {openMenuId && menuPos && (() => {
+        const client = filtered.find((c) => c.id === openMenuId);
+        if (!client) return null;
+        return (
+          <div
+            ref={menuRef}
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="w-40 rounded-lg border border-zinc-700 bg-zinc-800 shadow-xl py-1"
+          >
+            <button
+              onClick={() => { closeMenu(); router.push(`/clientes/${client.id}/editar`); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+            >
+              <Pencil className="size-3.5 text-zinc-400" />
+              Editar
+            </button>
+            <button
+              onClick={() => { closeMenu(); setDeleteTarget(client); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-700 transition-colors"
+            >
+              <Trash2 className="size-3.5" />
+              Eliminar
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Delete confirmation modal */}
       {deleteTarget && (
