@@ -21,9 +21,10 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { USER_ROLE_LABELS } from "@/types/user";
+import { useSidebar } from "@/context/sidebar-context";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -43,8 +44,15 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed } = useSidebar();
   const { user, signOut } = useAuth();
+
+  // Collapse by default on mobile
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setCollapsed(true);
+    }
+  }, [setCollapsed]);
 
   const initials = user?.displayName
     ? user.displayName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
@@ -52,11 +60,11 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay — closes sidebar when tapping outside */}
       <div
         className={cn(
-          "fixed inset-0 z-20 bg-black/60 lg:hidden",
-          collapsed ? "hidden" : "block"
+          "fixed inset-0 z-20 bg-black/60 lg:hidden transition-opacity duration-300",
+          collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
         )}
         onClick={() => setCollapsed(true)}
       />
@@ -65,7 +73,10 @@ export function Sidebar() {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 flex flex-col bg-zinc-950 border-r border-zinc-800 transition-all duration-300 ease-in-out",
-          collapsed ? "w-16" : "w-64"
+          // Mobile: slide in/out as full drawer; Desktop: collapse to icons or expand
+          collapsed
+            ? "-translate-x-full lg:translate-x-0 w-64 lg:w-16"
+            : "translate-x-0 w-64"
         )}
       >
         {/* Logo */}
@@ -101,11 +112,11 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* Toggle when collapsed */}
+        {/* Toggle when collapsed — desktop only */}
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
-            className="flex items-center justify-center h-10 w-full text-zinc-400 hover:text-white border-b border-zinc-800 transition-colors"
+            className="hidden lg:flex items-center justify-center h-10 w-full text-zinc-400 hover:text-white border-b border-zinc-800 transition-colors"
             aria-label="Expandir sidebar"
           >
             <Menu className="size-4" />
@@ -122,6 +133,11 @@ export function Sidebar() {
                 key={href}
                 href={href}
                 title={collapsed ? label : undefined}
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                    setCollapsed(true);
+                  }
+                }}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors group",
                   active
@@ -144,7 +160,7 @@ export function Sidebar() {
         {/* Footer — user info */}
         <div className="border-t border-zinc-800 shrink-0">
           {collapsed ? (
-            <div className="flex flex-col items-center gap-2 py-3">
+            <div className="hidden lg:flex flex-col items-center gap-2 py-3">
               <div className="size-8 rounded-full bg-amber-500 flex items-center justify-center">
                 <span className="text-zinc-950 font-bold text-xs">{initials}</span>
               </div>

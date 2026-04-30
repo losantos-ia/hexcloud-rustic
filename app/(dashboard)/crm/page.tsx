@@ -138,8 +138,8 @@ export default function CrmPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-48">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="relative sm:flex-1 sm:min-w-48">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
@@ -149,37 +149,39 @@ export default function CrmPage() {
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 pl-9 pr-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
           />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as LeadStatus | "all" | "active")}
-          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
-        >
-          <option value="active">Activos</option>
-          <option value="all">Todos los estados</option>
-          {(Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((s) => (
-            <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
-          ))}
-        </select>
-        <select
-          value={filterSource}
-          onChange={(e) => setFilterSource(e.target.value as LeadSource | "all")}
-          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
-        >
-          <option value="all">Todos los canales</option>
-          {(Object.keys(LEAD_SOURCE_LABELS) as LeadSource[]).map((s) => (
-            <option key={s} value={s}>{LEAD_SOURCE_LABELS[s]}</option>
-          ))}
-        </select>
-        <select
-          value={filterInterest}
-          onChange={(e) => setFilterInterest(e.target.value as LeadInterestedIn | "all")}
-          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
-        >
-          <option value="all">Todo tipo</option>
-          {(Object.keys(LEAD_INTERESTED_IN_LABELS) as LeadInterestedIn[]).map((i) => (
-            <option key={i} value={i}>{LEAD_INTERESTED_IN_LABELS[i]}</option>
-          ))}
-        </select>
+        <div className="grid grid-cols-3 gap-2 sm:contents">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as LeadStatus | "all" | "active")}
+            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+          >
+            <option value="active">Activos</option>
+            <option value="all">Todos los estados</option>
+            {(Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((s) => (
+              <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+            ))}
+          </select>
+          <select
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value as LeadSource | "all")}
+            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+          >
+            <option value="all">Todos los canales</option>
+            {(Object.keys(LEAD_SOURCE_LABELS) as LeadSource[]).map((s) => (
+              <option key={s} value={s}>{LEAD_SOURCE_LABELS[s]}</option>
+            ))}
+          </select>
+          <select
+            value={filterInterest}
+            onChange={(e) => setFilterInterest(e.target.value as LeadInterestedIn | "all")}
+            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+          >
+            <option value="all">Todo tipo</option>
+            {(Object.keys(LEAD_INTERESTED_IN_LABELS) as LeadInterestedIn[]).map((i) => (
+              <option key={i} value={i}>{LEAD_INTERESTED_IN_LABELS[i]}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}

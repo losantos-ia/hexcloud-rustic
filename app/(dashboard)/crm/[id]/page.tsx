@@ -184,7 +184,7 @@ export default function LeadDetailPage() {
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/crm"
@@ -199,7 +199,7 @@ export default function LeadDetailPage() {
             <p className="text-xs text-zinc-500">Lead · {formatDateTime(lead.createdAt)}</p>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 sm:shrink-0">
           <button
             disabled
             title="Próximamente"
