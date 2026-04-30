@@ -17,15 +17,12 @@ import {
   ORDER_PROJECT_TYPE_LABELS,
   ORDER_PRIORITY_LABELS,
   ORDER_STATUS_LABELS,
-  ORDER_ITEM_CATEGORY_LABELS,
 } from "@/types/order";
-import type { OrderSource, OrderProjectType, OrderPriority, OrderStatus, OrderItemCategory } from "@/types/order";
+import type { OrderSource, OrderProjectType, OrderPriority, OrderStatus } from "@/types/order";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useCurrency } from "@/context/currency-context";
-
-const UNITS = ["und", "m²", "m³", "m", "kg", "hr", "gl", "kit"];
 
 const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
 
@@ -349,12 +346,10 @@ export default function NewOrderPage() {
             <p className="text-xs text-red-400 -mt-2">{errors.items.message}</p>
           )}
           <div className="flex flex-col gap-2">
-            <div className="hidden md:grid grid-cols-[1fr_80px_90px_120px_130px_100px_auto] gap-2 text-xs text-zinc-500 px-1">
+            <div className="hidden md:grid grid-cols-[1fr_80px_120px_100px_auto] gap-2 text-xs text-zinc-500 px-1">
               <span>Descripción *</span>
               <span>Cant. *</span>
-              <span>Unidad</span>
               <span>PVP *</span>
-              <span>Categoría</span>
               <span>Subtotal</span>
               <span />
             </div>
@@ -364,7 +359,7 @@ export default function NewOrderPage() {
               const lineTotal = qty * price;
               return (
                 <div key={field.id} className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-3 flex flex-col gap-2 md:border-0 md:bg-transparent md:p-0">
-                  <div className="grid grid-cols-1 md:grid-cols-[1fr_80px_90px_120px_130px_100px_auto] gap-2 items-start">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_80px_120px_100px_auto] gap-2 items-start">
                     <div>
                       <Input {...register(`items.${idx}.description`)} placeholder="Descripción del ítem" />
                       {errors.items?.[idx]?.description && (
@@ -372,15 +367,7 @@ export default function NewOrderPage() {
                       )}
                     </div>
                     <Input type="number" min={0} step="0.01" {...register(`items.${idx}.quantity`, { valueAsNumber: true })} placeholder="1" />
-                    <select {...register(`items.${idx}.unit`)} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900">
-                      {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                    </select>
                     <Input type="number" min={0} {...register(`items.${idx}.unitPrice`, { valueAsNumber: true })} placeholder="0" />
-                    <select {...register(`items.${idx}.category`)} className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2.5 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900">
-                      {(Object.keys(ORDER_ITEM_CATEGORY_LABELS) as OrderItemCategory[]).map((c) => (
-                        <option key={c} value={c}>{ORDER_ITEM_CATEGORY_LABELS[c]}</option>
-                      ))}
-                    </select>
                     <div className="flex items-center">
                       <span className="text-sm text-zinc-300">{formatCurrency(lineTotal)}</span>
                     </div>
