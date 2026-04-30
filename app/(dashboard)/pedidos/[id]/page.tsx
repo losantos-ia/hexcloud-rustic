@@ -101,6 +101,7 @@ export default function OrderDetailPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [closeWarning, setCloseWarning] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const {
     register,
@@ -121,11 +122,17 @@ export default function OrderDetailPage() {
       getOrderById(orderId),
       listOrderItems(orderId),
       listOrderPayments(orderId),
-    ]).then(([o, i, p]) => {
-      setOrder(o);
-      setItems(i);
-      setPayments(p);
-    }).finally(() => setLoading(false));
+    ])
+      .then(([o, i, p]) => {
+        setOrder(o);
+        setItems(i);
+        setPayments(p);
+      })
+      .catch((err) => {
+        console.error("Error loading order:", err);
+        setLoadError("Error al cargar el pedido. Verifica tu conexión e intenta de nuevo.");
+      })
+      .finally(() => setLoading(false));
   }, [orderId]);
 
   async function handleStatusChange(newStatus: OrderStatus) {
@@ -188,6 +195,15 @@ export default function OrderDetailPage() {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={20} className="animate-spin text-zinc-500" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <p className="text-sm text-red-400">{loadError}</p>
+        <Link href="/pedidos" className="text-xs text-amber-400 hover:underline">Volver a pedidos</Link>
       </div>
     );
   }
