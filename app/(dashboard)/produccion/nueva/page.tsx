@@ -2,14 +2,15 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Factory, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { productionOrderSchema, type ProductionOrderFormValues } from "@/lib/schemas/production";
 import { createProductionOrder } from "@/lib/firestore/production";
+import { getOrderById } from "@/lib/firestore/orders";
 import {
   PRODUCTION_PROJECT_TYPE_LABELS,
   PRODUCTION_STATUS_LABELS,
@@ -41,11 +42,17 @@ function Field({ label, error, children, className }: { label: string; error?: s
 
 export default function NuevaOrdenProduccionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromOrderId = searchParams.get("fromOrder");
+
   const [serverError, setServerError] = useState<string | null>(null);
+  const [fromOrderNumber, setFromOrderNumber] = useState<string | null>(null);
+  const [loadingOrder, setLoadingOrder] = useState(!!fromOrderId);
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ProductionOrderFormValues>({
     resolver: zodResolver(productionOrderSchema),
@@ -55,6 +62,32 @@ export default function NuevaOrdenProduccionPage() {
       projectType: "custom",
     },
   });
+
+  useEffect(() => {
+    if (!fromOrderId) return;
+    getOrderById(fromOrderId)
+      .then((order) => {
+        if (!order) return;
+        setFromOrderNumber(order.orderNumber);
+        reset({
+          clientName: order.clientName,
+          clientPhone: order.clientPhone ?? "",
+          orderId: fromOrderId,
+          projectType: order.projectType as ProductionProjectType,
+          title: order.title,
+          description: order.description ?? "",
+          priority: order.priority as ProductionPriority,
+          promisedDeliveryDate: order.promisedDeliveryDate
+            ? order.promisedDeliveryDate.toISOString().split("T")[0]
+            : "",
+          notes: order.notes ?? "",
+          internalNotes: order.internalNotes ?? "",
+          workshopInternalPrice: order.finalSalePrice,
+          status: "pending",
+        });
+      })
+      .finally(() => setLoadingOrder(false));
+  }, [fromOrderId, reset]);
 
   async function onSubmit(values: ProductionOrderFormValues) {
     setServerError(null);
@@ -66,12 +99,16 @@ export default function NuevaOrdenProduccionPage() {
     }
   }
 
+  if (loadingOrder) {
+    return <div className="flex items-center justify-center py-24"><Loader2 size={20} className="animate-spin text-zinc-500" /></div>;
+  }
+
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
-          href="/produccion"
+          href={fromOrderId ? `/pedidos/${fromOrderId}` : "/produccion"}
           className="flex items-center justify-center size-8 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors shrink-0"
         >
           <ArrowLeft size={15} />
@@ -80,9 +117,22 @@ export default function NuevaOrdenProduccionPage() {
           <h1 className="text-xl font-bold text-zinc-100" style={{ fontFamily: "var(--font-heading)" }}>
             Nueva orden de producción
           </h1>
-          <p className="text-xs text-zinc-500">Registra un proyecto para fabricación en taller</p>
+          <p className="text-xs text-zinc-500">
+            {fromOrderNumber ? `Desde pedido ${fromOrderNumber}` : "Registra un proyecto para fabricación en taller"}
+          </p>
         </div>
       </div>
+
+      {/* From-order banner */}
+      {fromOrderNumber && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+          <Factory size={15} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">Datos precargados desde el pedido {fromOrderNumber}</p>
+            <p className="text-xs text-amber-400/70 mt-0.5">Completa los campos faltantes (responsable, equipo, fechas, costos internos) y guarda para crear la orden.</p>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* Client */}
@@ -95,7 +145,7 @@ export default function NuevaOrdenProduccionPage() {
               <Input {...register("clientPhone")} placeholder="+504 9999-9999" />
             </Field>
             <Field label="ID del pedido (opcional)">
-              <Input {...register("orderId")} placeholder="ID del pedido relacionado" />
+              <Input {...register("orderId")} placeholder="ID del pedido relacionado" readOnly={!!fromOrderId} className={fromOrderId ? "opacity-60 cursor-not-allowed" : ""} />
             </Field>
           </div>
         </Section>
@@ -195,7 +245,7 @@ export default function NuevaOrdenProduccionPage() {
             className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-            {isSubmitting ? "Creando…" : "Crear orden de producción"}
+            {isSubmitting ? "Creando…" : fromOrderId ? "Crear orden desde pedido" : "Crear orden de producción"}
           </button>
         </div>
       </form>
