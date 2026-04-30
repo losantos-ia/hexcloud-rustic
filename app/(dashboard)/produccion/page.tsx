@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import {
   Plus, Search, Factory, AlertTriangle, Clock, CheckCircle2, Hammer, MoreVertical,
 } from "lucide-react";
-import { listProductionOrders } from "@/lib/firestore/production";
+import { listProductionOrders, updateProductionOrder } from "@/lib/firestore/production";
 import type { ProductionOrder, ProductionStatus, ProductionPriority, ProductionProjectType } from "@/types/production";
 import {
   PRODUCTION_STATUS_LABELS,
@@ -79,19 +79,41 @@ function SummaryCard({
   );
 }
 
-function ProductionCard({ order, onMenuOpen }: { order: ProductionOrder; onMenuOpen: (id: string, e: React.MouseEvent) => void }) {
+function ProductionCard({
+  order, onMenuOpen, onDragStart, isDragging,
+}: {
+  order: ProductionOrder;
+  onMenuOpen: (id: string, e: React.MouseEvent) => void;
+  onDragStart: (id: string) => void;
+  isDragging: boolean;
+}) {
+  const router = useRouter();
   const overdue = isOverdue(order.promisedDeliveryDate, order.status);
   const urgent = order.priority === "urgent";
+  const wasDragging = useRef(false);
+
   return (
-    <Link
-      href={`/produccion/${order.id}`}
-      className={`block rounded-lg border bg-zinc-900 p-3 hover:border-zinc-600 transition-colors group cursor-pointer ${urgent ? "border-red-500/50" : overdue ? "border-amber-500/40" : "border-zinc-800"}`}
+    <div
+      draggable
+      onDragStart={(e) => {
+        wasDragging.current = true;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", order.id);
+        onDragStart(order.id);
+      }}
+      onClick={() => {
+        if (wasDragging.current) { wasDragging.current = false; return; }
+        router.push(`/produccion/${order.id}`);
+      }}
+      className={`rounded-lg border bg-zinc-900 p-3 transition-colors group cursor-grab active:cursor-grabbing select-none ${
+        isDragging ? "opacity-40 scale-95" : "hover:border-zinc-600"
+      } ${urgent ? "border-red-500/50" : overdue ? "border-amber-500/40" : "border-zinc-800"}`}
     >
       <div className="flex items-start justify-between gap-1 mb-2">
         <span className="text-[10px] font-mono text-amber-400">{order.productionNumber}</span>
         <button
           type="button"
-          onClick={(e) => { e.preventDefault(); onMenuOpen(order.id, e); }}
+          onClick={(e) => { e.stopPropagation(); onMenuOpen(order.id, e); }}
           className="size-5 flex items-center justify-center rounded text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100"
         >
           <MoreVertical size={12} />
@@ -127,7 +149,7 @@ function ProductionCard({ order, onMenuOpen }: { order: ProductionOrder; onMenuO
           {order.estimatedLaborHours !== undefined ? `${order.estimatedLaborHours}h est.` : ""}
         </div>
       )}
-    </Link>
+    </div>
   );
 }
 
@@ -143,6 +165,8 @@ export default function ProduccionPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverStatus, setDragOverStatus] = useState<ProductionStatus | null>(null);
 
   useEffect(() => {
     listProductionOrders().then(setOrders).finally(() => setLoading(false));
@@ -161,6 +185,23 @@ export default function ProduccionPage() {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
     setOpenMenuId(id);
+  }
+
+  async function handleDrop(targetStatus: ProductionStatus, e: React.DragEvent) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain");
+    setDragOverStatus(null);
+    setDraggedId(null);
+    if (!id) return;
+    const order = orders.find((o) => o.id === id);
+    if (!order || order.status === targetStatus) return;
+    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: targetStatus } : o));
+    try {
+      await updateProductionOrder(id, { status: targetStatus });
+    } catch {
+      // revert on failure
+      setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: order.status } : o));
+    }
   }
 
   const filtered = useMemo(() => {
@@ -296,14 +337,35 @@ export default function ProduccionPage() {
                     {col.length}
                   </span>
                 </div>
-                <div className="flex flex-col gap-2 min-h-16">
+                <div
+                  className={`flex flex-col gap-2 min-h-16 rounded-lg p-1 transition-colors ${
+                    dragOverStatus === status && draggedId
+                      ? "bg-amber-500/5 ring-1 ring-amber-500/30"
+                      : ""
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); if (draggedId) setDragOverStatus(status); }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverStatus(null);
+                  }}
+                  onDrop={(e) => handleDrop(status, e)}
+                >
                   {col.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-zinc-800 px-3 py-4 text-center text-[10px] text-zinc-700">
-                      Sin órdenes
+                    <div className={`rounded-lg border border-dashed px-3 py-4 text-center text-[10px] transition-colors ${
+                      dragOverStatus === status && draggedId
+                        ? "border-amber-500/40 text-amber-600"
+                        : "border-zinc-800 text-zinc-700"
+                    }`}>
+                      {dragOverStatus === status && draggedId ? "Soltar aquí" : "Sin órdenes"}
                     </div>
                   )}
                   {col.map((order) => (
-                    <ProductionCard key={order.id} order={order} onMenuOpen={openMenu} />
+                    <ProductionCard
+                      key={order.id}
+                      order={order}
+                      onMenuOpen={openMenu}
+                      onDragStart={setDraggedId}
+                      isDragging={draggedId === order.id}
+                    />
                   ))}
                 </div>
               </div>
