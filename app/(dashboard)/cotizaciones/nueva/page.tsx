@@ -215,7 +215,7 @@ export default function NuevaCotizacionPage() {
         internalNotes: clean(values.internalNotes),
         items,
       });
-      router.push(`/cotizaciones/${id}`);
+      router.push(`/cotizaciones/${id}/pdf`);
     } catch {
       setServerError("Error al crear la cotización. Intenta de nuevo.");
     }

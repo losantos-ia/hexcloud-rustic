@@ -149,7 +149,7 @@ export default function EditQuotationPage() {
         internalNotes: clean(values.internalNotes),
       });
 
-      router.push(`/cotizaciones/${id}`);
+      router.push(`/cotizaciones/${id}/pdf`);
     } catch {
       setServerError("Error al guardar los cambios. Intenta de nuevo.");
     }
