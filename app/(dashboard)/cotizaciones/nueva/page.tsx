@@ -271,12 +271,6 @@ export default function NuevaCotizacionPage() {
             <Field label="Código postal (opcional)">
               <Input {...register("clientPostalCode")} placeholder="11101" />
             </Field>
-            <Field label="ID de lead (opcional)">
-              <Input {...register("leadId")} placeholder="ID del CRM" />
-            </Field>
-            <Field label="ID de cliente (opcional)">
-              <Input {...register("clientId")} placeholder="ID de Clientes" />
-            </Field>
           </div>
         </Section>
 
