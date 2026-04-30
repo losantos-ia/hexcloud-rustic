@@ -243,3 +243,39 @@ export async function recalculateQuotationTotals(
     depositAmount,
   });
 }
+
+// ── Duplicate quotation ─────────────────────────────────
+
+export async function duplicateQuotation(id: string): Promise<string> {
+  const [original, originalItems] = await Promise.all([
+    getQuotationById(id),
+    listQuotationItems(id),
+  ]);
+  if (!original) throw new Error("Cotización no encontrada");
+
+  const quotationNumber = await generateQuotationNumber();
+  const { id: _id, quotationNumber: _num, createdAt: _ca, updatedAt: _ua, ...rest } = original;
+
+  const quotationRef = await addDoc(collection(db, QUOTATIONS_COL), {
+    ...stripUndefined(rest as object),
+    quotationNumber,
+    status: "draft" as QuotationStatus,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  const batch = writeBatch(db);
+  for (let i = 0; i < originalItems.length; i++) {
+    const item = originalItems[i];
+    const itemRef = doc(collection(db, ITEMS_COL));
+    const { id: _iid, quotationId: _qid, ...itemRest } = item;
+    batch.set(itemRef, {
+      ...stripUndefined(itemRest as object),
+      quotationId: quotationRef.id,
+      order: i,
+    });
+  }
+  await batch.commit();
+
+  return quotationRef.id;
+}

@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Download, ArrowLeft, Loader2, LayoutList } from "lucide-react";
 import Link from "next/link";
 import nextDynamic from "next/dynamic";
@@ -29,6 +29,8 @@ const PDFViewerBlock = nextDynamic(
 export default function QuotationPdfPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const searchParams = useSearchParams();
+  const autoDownload = searchParams.get("download") === "1";
   const { formatCurrency, currencyConfig } = useCurrency();
 
   const [quotation, setQuotation] = useState<Quotation | null>(null);
@@ -46,6 +48,14 @@ export default function QuotationPdfPage() {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Auto-trigger download when ?download=1 is present and data is ready
+  useEffect(() => {
+    if (autoDownload && !loading && quotation) {
+      handleDownload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDownload, loading, quotation]);
 
   const handleDownload = useCallback(async () => {
     if (!quotation) return;

@@ -2,10 +2,11 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Search, FileText, Send, CheckCircle, DollarSign } from "lucide-react";
-import { listQuotations } from "@/lib/firestore/quotations";
+import { useRouter } from "next/navigation";
+import { Plus, Search, FileText, Send, CheckCircle, DollarSign, MoreVertical, Pencil, Copy, Download } from "lucide-react";
+import { listQuotations, duplicateQuotation } from "@/lib/firestore/quotations";
 import type { Quotation, QuotationStatus, QuotationProjectType } from "@/types/quotation";
 import {
   QUOTATION_STATUS_LABELS,
@@ -47,13 +48,40 @@ export default function CotizacionesPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<QuotationStatus | "all">("all");
   const [filterType, setFilterType] = useState<QuotationProjectType | "all">("all");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { formatCurrency } = useCurrency();
+  const router = useRouter();
 
   useEffect(() => {
     listQuotations()
       .then(setQuotations)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleDuplicate = useCallback(async (id: string) => {
+    setOpenMenuId(null);
+    setDuplicatingId(id);
+    try {
+      const newId = await duplicateQuotation(id);
+      const updated = await listQuotations();
+      setQuotations(updated);
+      router.push(`/cotizaciones/${newId}`);
+    } catch {
+      setDuplicatingId(null);
+    }
+  }, [router]);
 
   const stats = useMemo(() => {
     const drafts = quotations.filter((q) => q.status === "draft").length;
@@ -189,6 +217,7 @@ export default function CotizacionesPage() {
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500 text-right">Total</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Válida hasta</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Creada</th>
+                  <th className="w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -214,6 +243,42 @@ export default function CotizacionesPage() {
                       <td className="px-4 py-3 text-right font-medium text-zinc-100">{formatCurrency(q.total)}</td>
                       <td className="px-4 py-3 text-xs text-zinc-400">{formatDate(q.validUntil)}</td>
                       <td className="px-4 py-3 text-xs text-zinc-500">{formatDate(q.createdAt)}</td>
+                      <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative" ref={openMenuId === q.id ? menuRef : null}>
+                          <button
+                            className="flex items-center justify-center size-7 rounded-md text-zinc-500 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
+                            onClick={() => setOpenMenuId(openMenuId === q.id ? null : q.id)}
+                            disabled={duplicatingId === q.id}
+                          >
+                            <MoreVertical size={15} />
+                          </button>
+                          {openMenuId === q.id && (
+                            <div className="absolute right-0 top-8 z-50 w-44 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
+                              <Link
+                                href={`/cotizaciones/${q.id}/editar`}
+                                className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+                                onClick={() => setOpenMenuId(null)}
+                              >
+                                <Pencil size={13} className="text-zinc-400" /> Editar
+                              </Link>
+                              <button
+                                className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                                onClick={() => handleDuplicate(q.id)}
+                                disabled={duplicatingId === q.id}
+                              >
+                                <Copy size={13} className="text-zinc-400" /> Duplicar
+                              </button>
+                              <Link
+                                href={`/cotizaciones/${q.id}/pdf?download=1`}
+                                className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+                                onClick={() => setOpenMenuId(null)}
+                              >
+                                <Download size={13} className="text-zinc-400" /> Descargar PDF
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -241,6 +306,29 @@ export default function CotizacionesPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-zinc-400">{QUOTATION_PROJECT_TYPE_LABELS[q.projectType]}</span>
                       <span className="font-medium text-zinc-100 text-sm">{formatCurrency(q.total)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-zinc-800">
+                      <Link
+                        href={`/cotizaciones/${q.id}/editar`}
+                        className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Pencil size={11} /> Editar
+                      </Link>
+                      <button
+                        className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDuplicate(q.id); }}
+                        disabled={duplicatingId === q.id}
+                      >
+                        <Copy size={11} /> Duplicar
+                      </button>
+                      <Link
+                        href={`/cotizaciones/${q.id}/pdf?download=1`}
+                        className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Download size={11} /> Descargar PDF
+                      </Link>
                     </div>
                   </Link>
                 );
