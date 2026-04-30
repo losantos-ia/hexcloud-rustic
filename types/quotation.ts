@@ -70,6 +70,9 @@ export interface Quotation {
   clientPhone: string;
   clientDocumentId?: string;
   clientAddress?: string;
+  clientCity?: string;
+  clientDepartment?: string;
+  clientPostalCode?: string;
   source: QuotationSource;
   projectType: QuotationProjectType;
   title: string;

@@ -17,6 +17,9 @@ export interface Client {
   email?: string;
   documentId?: string;
   address?: string;
+  postalCode?: string;
+  city?: string;
+  department?: string;
   clientType: ClientType;
   source: ClientSource;
   notes?: string;

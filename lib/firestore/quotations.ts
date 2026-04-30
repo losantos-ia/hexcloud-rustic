@@ -43,6 +43,9 @@ function docToQuotation(id: string, data: Record<string, any>): Quotation {
     clientPhone: data.clientPhone,
     clientDocumentId: data.clientDocumentId ?? undefined,
     clientAddress: data.clientAddress ?? undefined,
+    clientCity: data.clientCity ?? undefined,
+    clientDepartment: data.clientDepartment ?? undefined,
+    clientPostalCode: data.clientPostalCode ?? undefined,
     source: data.source,
     projectType: data.projectType,
     title: data.title,
@@ -99,6 +102,9 @@ export interface CreateQuotationPayload {
   clientPhone: string;
   clientDocumentId?: string;
   clientAddress?: string;
+  clientCity?: string;
+  clientDepartment?: string;
+  clientPostalCode?: string;
   leadId?: string;
   clientId?: string;
   source: Quotation["source"];

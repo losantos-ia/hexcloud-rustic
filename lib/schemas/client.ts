@@ -7,6 +7,9 @@ export const clientSchema = z.object({
   email: z.string().optional(),
   documentId: z.string().optional(),
   address: z.string().optional(),
+  postalCode: z.string().optional(),
+  city: z.string().optional(),
+  department: z.string().optional(),
   clientType: z.enum(["individual", "company"]),
   source: z.enum([
     "store",

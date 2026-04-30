@@ -49,6 +49,9 @@ export default function NuevoClientePage() {
         email: clean(values.email),
           documentId: clean(values.documentId),
         address: clean(values.address),
+        postalCode: clean(values.postalCode),
+        city: clean(values.city),
+        department: clean(values.department),
         clientType: values.clientType,
         source: values.source,
         notes: clean(values.notes),
@@ -195,8 +198,32 @@ export default function NuevoClientePage() {
               <Label htmlFor="address">Dirección</Label>
               <Input
                 id="address"
-                placeholder="Colonia, ciudad, departamento…"
+                placeholder="Col. Kennedy, Bloque 5, Casa 12"
                 {...register("address")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="city">Ciudad</Label>
+              <Input
+                id="city"
+                placeholder="Tegucigalpa"
+                {...register("city")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="department">Departamento</Label>
+              <Input
+                id="department"
+                placeholder="Francisco Morazán"
+                {...register("department")}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="postalCode">Código postal</Label>
+              <Input
+                id="postalCode"
+                placeholder="11101"
+                {...register("postalCode")}
               />
             </div>
 

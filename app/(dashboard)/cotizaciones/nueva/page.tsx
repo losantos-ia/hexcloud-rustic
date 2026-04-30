@@ -71,6 +71,9 @@ export default function NuevaCotizacionPage() {
     setValue("clientId", c.id);
     setValue("clientDocumentId", c.documentId ?? "");
     setValue("clientAddress", c.address ?? "");
+    setValue("clientCity", c.city ?? "");
+    setValue("clientDepartment", c.department ?? "");
+    setValue("clientPostalCode", c.postalCode ?? "");
   }
 
   function clearClient() {
@@ -81,6 +84,9 @@ export default function NuevaCotizacionPage() {
     setValue("clientId", "");
     setValue("clientDocumentId", "");
     setValue("clientAddress", "");
+    setValue("clientCity", "");
+    setValue("clientDepartment", "");
+    setValue("clientPostalCode", "");
   }
 
   const {
@@ -140,6 +146,9 @@ export default function NuevaCotizacionPage() {
         clientPhone: values.clientPhone.trim(),
         clientDocumentId: clean(values.clientDocumentId),
         clientAddress: clean(values.clientAddress),
+        clientCity: clean(values.clientCity),
+        clientDepartment: clean(values.clientDepartment),
+        clientPostalCode: clean(values.clientPostalCode),
         leadId: clean(values.leadId),
         clientId: clean(values.clientId),
         source: values.source,
@@ -251,7 +260,16 @@ export default function NuevaCotizacionPage() {
               <Input {...register("clientDocumentId")} placeholder="0801-1990-12345" />
             </Field>
             <Field label="Dirección (opcional)">
-              <Input {...register("clientAddress")} placeholder="Colonia, ciudad..." />
+              <Input {...register("clientAddress")} placeholder="Col. Kennedy, Bloque 5, Casa 12" />
+            </Field>
+            <Field label="Ciudad (opcional)">
+              <Input {...register("clientCity")} placeholder="Tegucigalpa" />
+            </Field>
+            <Field label="Departamento (opcional)">
+              <Input {...register("clientDepartment")} placeholder="Francisco Morazán" />
+            </Field>
+            <Field label="Código postal (opcional)">
+              <Input {...register("clientPostalCode")} placeholder="11101" />
             </Field>
             <Field label="ID de lead (opcional)">
               <Input {...register("leadId")} placeholder="ID del CRM" />
