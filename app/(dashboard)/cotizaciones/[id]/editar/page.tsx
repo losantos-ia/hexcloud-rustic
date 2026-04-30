@@ -171,7 +171,7 @@ export default function EditQuotationPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
-          href={`/cotizaciones/${id}`}
+          href="/cotizaciones"
           className="flex items-center justify-center size-8 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
         >
           <ArrowLeft size={15} />
@@ -376,7 +376,7 @@ export default function EditQuotationPage() {
 
         <div className="flex gap-3">
           <Link
-            href={`/cotizaciones/${id}`}
+            href="/cotizaciones"
             className="flex-1 flex items-center justify-center rounded-lg border border-zinc-700 px-4 py-2.5 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
           >
             Cancelar
