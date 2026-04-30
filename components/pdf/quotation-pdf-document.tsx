@@ -41,8 +41,8 @@ const s = StyleSheet.create({
   // ── Header ──
   header: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "flex-start",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -61,7 +61,7 @@ const s = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 24,
   },
-  clientBlock: { gap: 2, justifyContent: "flex-end" },
+  clientBlock: { gap: 2 },
   clientLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.light, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 },
   clientName: { fontSize: 12, fontFamily: "Helvetica-Bold", color: C.black },
   clientDetail: { fontSize: 8.5, color: C.mid },
@@ -182,9 +182,16 @@ export function QuotationPDFDocument({
       creator="HEXCLOUD ERP"
     >
       <Page size="A4" style={s.page}>
-        {/* ── HEADER — company info only (repeats on all pages) ── */}
+        {/* ── HEADER: logo left + company info right (repeats on all pages) ── */}
         <View style={s.header} fixed>
-          {/* Company info — right only */}
+          {/* Logo — left */}
+          {company?.logoUrl ? (
+            <Image src={company.logoUrl} style={s.logo} />
+          ) : (
+            <Text style={s.companyNameFallback}>{company?.name ?? "Rustic Alexanders"}</Text>
+          )}
+
+          {/* Company info — right */}
           <View style={s.companyInfo}>
             <Text style={s.companyName}>{company?.name ?? "Rustic Alexanders"}</Text>
             {company?.taxId && <Text style={s.companyDetail}>{company.taxId}</Text>}
@@ -199,16 +206,11 @@ export function QuotationPDFDocument({
           </View>
         </View>
 
-        {/* ── LOGO + CLIENT (left) / QUOTE META (right) ── */}
+        {/* ── CLIENT + QUOTE META ── */}
         <View style={s.metaRow}>
-          {/* LEFT: logo above client data */}
+          {/* Client */}
           <View style={s.clientBlock}>
-            {company?.logoUrl ? (
-              <Image src={company.logoUrl} style={s.logo} />
-            ) : (
-              <Text style={s.companyNameFallback}>{company?.name ?? "Rustic Alexanders"}</Text>
-            )}
-            <Text style={[s.clientLabel, { marginTop: 10 }]}>Cliente</Text>
+            <Text style={s.clientLabel}>Cliente</Text>
             <Text style={s.clientName}>{quotation.clientName}</Text>
             {quotation.clientPhone && <Text style={s.clientDetail}>{quotation.clientPhone}</Text>}
           </View>
