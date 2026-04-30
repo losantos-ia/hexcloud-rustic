@@ -1,21 +1,20 @@
-﻿"use client";
+"use client";
 
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Download, ArrowLeft, Loader2, LayoutList, Edit, ShoppingCart } from "lucide-react";
+import { Download, ArrowLeft, Loader2, LayoutList, Edit } from "lucide-react";
 import Link from "next/link";
 import nextDynamic from "next/dynamic";
-import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
+import { getOrderById, listOrderItems } from "@/lib/firestore/orders";
 import { getCompanySettings, type CompanySettings } from "@/lib/firestore/company";
-import type { Quotation, QuotationItem, QuotationStatus } from "@/types/quotation";
-import { QUOTATION_STATUS_LABELS } from "@/types/quotation";
+import type { Order, OrderItem } from "@/types/order";
 import { useCurrency } from "@/context/currency-context";
-import type { QuotationPDFProps } from "@/components/pdf/quotation-pdf-document";
+import type { OrderPDFProps } from "@/components/pdf/order-pdf-document";
 
 const PDFViewerBlock = nextDynamic(
-  () => import("@/components/pdf/quotation-pdf-viewer").then((m) => m.QuotationPDFViewer),
+  () => import("@/components/pdf/order-pdf-viewer").then((m) => m.OrderPDFViewer),
   {
     ssr: false,
     loading: () => (
@@ -27,76 +26,64 @@ const PDFViewerBlock = nextDynamic(
   }
 );
 
-export default function QuotationPdfPage() {
+export default function OrderPdfPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const searchParams = useSearchParams();
   const autoDownload = searchParams.get("download") === "1";
   const { formatCurrency, currencyConfig } = useCurrency();
 
-  const [quotation, setQuotation] = useState<Quotation | null>(null);
-  const [items, setItems] = useState<QuotationItem[]>([]);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [items, setItems] = useState<OrderItem[]>([]);
   const [company, setCompany] = useState<CompanySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
-  const [statusChanging, setStatusChanging] = useState(false);
-
-  async function handleStatusChange(newStatus: QuotationStatus) {
-    if (!quotation || newStatus === quotation.status) return;
-    setStatusChanging(true);
-    try {
-      await updateQuotation(id, { status: newStatus });
-      setQuotation((prev) => prev ? { ...prev, status: newStatus } : prev);
-    } finally {
-      setStatusChanging(false);
-    }
-  }
 
   useEffect(() => {
-    Promise.all([getQuotationById(id), listQuotationItems(id), getCompanySettings()])
-      .then(([q, i, c]) => {
-        setQuotation(q);
+    Promise.all([getOrderById(id), listOrderItems(id), getCompanySettings()])
+      .then(([o, i, c]) => {
+        setOrder(o);
         setItems(i);
         setCompany(c);
       })
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Auto-trigger download when ?download=1 is present and data is ready
-  useEffect(() => {
-    if (autoDownload && !loading && quotation) {
-      handleDownload();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoDownload, loading, quotation]);
-
   const handleDownload = useCallback(async () => {
-    if (!quotation) return;
+    if (!order) return;
     setDownloading(true);
     try {
       const { pdf } = await import("@react-pdf/renderer");
-      const { QuotationPDFDocument } = await import("@/components/pdf/quotation-pdf-document");
+      const { OrderPDFDocument } = await import("@/components/pdf/order-pdf-document");
       const { createElement } = await import("react");
-      const props: QuotationPDFProps = {
-        quotation,
+      const props: OrderPDFProps = {
+        order,
         items,
         company,
         formatCurrency,
         currencyCode: currencyConfig.code,
       };
-      const doc = createElement(QuotationPDFDocument, props);
+      const doc = createElement(OrderPDFDocument, props);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const blob = await pdf(doc as any).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${quotation.quotationNumber}.pdf`;
+      a.download = `${order.orderNumber}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
       setDownloading(false);
     }
-  }, [quotation, items, company, formatCurrency, currencyConfig.code]);
+  }, [order, items, company, formatCurrency, currencyConfig.code]);
+
+  // Auto-trigger download when ?download=1 is present and data is ready
+  useEffect(() => {
+    if (autoDownload && !loading && order) {
+      handleDownload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDownload, loading, order]);
 
   if (loading) {
     return (
@@ -106,17 +93,17 @@ export default function QuotationPdfPage() {
     );
   }
 
-  if (!quotation) {
+  if (!order) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-3 bg-zinc-950">
-        <p className="text-sm text-zinc-400">Cotizacion no encontrada</p>
-        <Link href="/cotizaciones" className="text-xs text-amber-400 hover:underline">Volver</Link>
+        <p className="text-sm text-zinc-400">Pedido no encontrado</p>
+        <Link href="/pedidos" className="text-xs text-amber-400 hover:underline">Volver</Link>
       </div>
     );
   }
 
-  const pdfProps: QuotationPDFProps = {
-    quotation,
+  const pdfProps: OrderPDFProps = {
+    order,
     items,
     company,
     formatCurrency,
@@ -127,46 +114,25 @@ export default function QuotationPdfPage() {
     <div className="flex flex-col h-screen bg-zinc-950">
       <div className="flex items-center justify-between gap-4 bg-zinc-900 border-b border-zinc-800 px-6 py-3 shrink-0">
         <Link
-          href="/cotizaciones"
+          href="/pedidos"
           className="flex items-center gap-2 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
         >
-          <ArrowLeft size={14} /> Volver a cotizaciones
+          <ArrowLeft size={14} /> Volver a pedidos
         </Link>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500">{quotation.quotationNumber}</span>
+          <span className="text-xs text-zinc-500">{order.orderNumber}</span>
           <Link
-            href={`/cotizaciones/${id}/editar`}
+            href={`/pedidos/${id}/editar`}
             className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
           >
             <Edit size={13} /> Editar
           </Link>
-          <div className="relative flex items-center gap-1.5">
-            {statusChanging && <Loader2 size={12} className="animate-spin text-zinc-500" />}
-            <select
-              value={quotation.status}
-              onChange={(e) => handleStatusChange(e.target.value as QuotationStatus)}
-              disabled={statusChanging}
-              className="rounded-lg border border-zinc-700 bg-zinc-800 pl-3 pr-7 py-1.5 text-xs text-zinc-200 outline-none focus:border-amber-500 disabled:opacity-60 disabled:cursor-not-allowed [&>option]:bg-zinc-900 cursor-pointer appearance-none"
-            >
-              {(Object.keys(QUOTATION_STATUS_LABELS) as QuotationStatus[]).map((s) => (
-                <option key={s} value={s}>{QUOTATION_STATUS_LABELS[s]}</option>
-              ))}
-            </select>
-          </div>
           <Link
-            href={`/cotizaciones/${id}`}
+            href={`/pedidos/${id}`}
             className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
           >
             <LayoutList size={13} /> Ver detalles
           </Link>
-          {quotation.status === "accepted" && (
-            <Link
-              href={`/pedidos/nuevo?fromQuotation=${id}`}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
-            >
-              <ShoppingCart size={13} /> Convertir en pedido
-            </Link>
-          )}
           <button
             onClick={handleDownload}
             disabled={downloading}
