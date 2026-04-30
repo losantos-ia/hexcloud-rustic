@@ -204,7 +204,7 @@ export default function EditQuotationPage() {
         </Section>
 
         {/* Project info */}
-        <Section title="Información del proyecto">
+        <Section title="Encabezado del presupuesto">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Canal *">
               <SelectField {...register("source")}>
@@ -213,7 +213,7 @@ export default function EditQuotationPage() {
                 ))}
               </SelectField>
             </Field>
-            <Field label="Tipo de proyecto *">
+            <Field label="Categoría *">
               <SelectField {...register("projectType")}>
                 {(Object.keys(QUOTATION_PROJECT_TYPE_LABELS) as QuotationProjectType[]).map((t) => (
                   <option key={t} value={t}>{QUOTATION_PROJECT_TYPE_LABELS[t]}</option>
@@ -228,10 +228,10 @@ export default function EditQuotationPage() {
                 <option value="expired">Vencida</option>
               </SelectField>
             </Field>
-            <Field label="Título *" error={errors.title?.message} className="sm:col-span-3">
+            <Field label="Título del presupuesto *" error={errors.title?.message} className="sm:col-span-3">
               <Input {...register("title")} />
             </Field>
-            <Field label="Descripción" className="sm:col-span-3">
+            <Field label="Subtítulo / texto adicional" className="sm:col-span-3">
               <Textarea {...register("description")} rows={2} />
             </Field>
           </div>

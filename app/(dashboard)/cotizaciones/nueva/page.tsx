@@ -332,7 +332,7 @@ export default function NuevaCotizacionPage() {
         </Section>
 
         {/* Project info */}
-        <Section title="Información del proyecto">
+        <Section title="Encabezado del presupuesto">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Canal *" error={errors.source?.message}>
               <Select {...register("source")}>
@@ -341,7 +341,7 @@ export default function NuevaCotizacionPage() {
                 ))}
               </Select>
             </Field>
-            <Field label="Tipo de proyecto *" error={errors.projectType?.message}>
+            <Field label="Categoría *" error={errors.projectType?.message}>
               <Select {...register("projectType")}>
                 {(Object.keys(QUOTATION_PROJECT_TYPE_LABELS) as QuotationProjectType[]).map((t) => (
                   <option key={t} value={t}>{QUOTATION_PROJECT_TYPE_LABELS[t]}</option>
@@ -357,7 +357,7 @@ export default function NuevaCotizacionPage() {
             <Field label="Título *" error={errors.title?.message} className="sm:col-span-3">
               <Input {...register("title")} placeholder="Ej. Construcción de cabaña 4x6m" />
             </Field>
-            <Field label="Descripción" className="sm:col-span-3">
+            <Field label="Subtítulo / texto adicional" className="sm:col-span-3">
               <Textarea {...register("description")} placeholder="Descripción detallada del proyecto..." rows={2} />
             </Field>
           </div>
