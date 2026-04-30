@@ -243,7 +243,7 @@ export default function ClientDetailPage() {
           {client.documentId && (
             <InfoRow
               icon={client.clientType === "company" ? Building2 : User}
-              label="Cédula / NIT"
+              label="Cédula / RTN"
               value={client.documentId}
             />
           )}

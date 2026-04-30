@@ -181,10 +181,10 @@ export default function NuevoClientePage() {
 
             {/* Document ID */}
             <div className="space-y-1.5">
-              <Label htmlFor="documentId">Cédula / NIT</Label>
+              <Label htmlFor="documentId">Cédula / RTN</Label>
               <Input
                 id="documentId"
-                placeholder="12.345.678 / 900.123.456-7"
+                placeholder="0801-1990-12345 / RTN"
                 {...register("documentId")}
               />
             </div>

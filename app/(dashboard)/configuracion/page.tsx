@@ -212,7 +212,7 @@ export default function ConfiguracionPage() {
                 <Input {...field("legalName")} placeholder="Rustic Alexanders S.A." />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>RTN / NIT / RUC</Label>
+                <Label>RTN</Label>
                 <Input {...field("taxId")} placeholder="0801-1990-12345" />
               </div>
               <div className="flex flex-col gap-1.5">
