@@ -3,13 +3,13 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Loader2, Plus, Trash2, Search, X } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Search, X, Copy } from "lucide-react";
 import Link from "next/link";
 import { quotationSchema, type QuotationFormValues } from "@/lib/schemas/quotation";
-import { createQuotation } from "@/lib/firestore/quotations";
+import { createQuotation, getQuotationById, listQuotationItems } from "@/lib/firestore/quotations";
 import { listClients } from "@/lib/firestore/clients";
 import type { Client } from "@/types/client";
 import {
@@ -26,8 +26,11 @@ const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
 
 export default function NuevaCotizacionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const duplicateFromId = searchParams.get("duplicateFrom");
   const { formatCurrency } = useCurrency();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isDuplicate, setIsDuplicate] = useState(false);
 
   // ── Client search ──
   const [clients, setClients] = useState<Client[]>([]);
@@ -92,6 +95,7 @@ export default function NuevaCotizacionPage() {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationSchema),
@@ -104,6 +108,51 @@ export default function NuevaCotizacionPage() {
       items: [{ description: "", quantity: 1, unit: "und", unitPrice: 0, category: "materials" }],
     },
   });
+
+  // Pre-fill form when duplicating
+  useEffect(() => {
+    if (!duplicateFromId) return;
+    Promise.all([getQuotationById(duplicateFromId), listQuotationItems(duplicateFromId)]).then(
+      ([q, items]) => {
+        if (!q) return;
+        setIsDuplicate(true);
+        const toDateStr = (d?: Date) => d ? d.toISOString().split("T")[0] : undefined;
+        reset({
+          clientName: q.clientName,
+          clientPhone: q.clientPhone,
+          clientDocumentId: q.clientDocumentId ?? "",
+          clientAddress: q.clientAddress ?? "",
+          clientCity: q.clientCity ?? "",
+          clientDepartment: q.clientDepartment ?? "",
+          clientPostalCode: q.clientPostalCode ?? "",
+          clientId: q.clientId ?? "",
+          source: q.source,
+          projectType: q.projectType,
+          title: q.title,
+          description: q.description ?? "",
+          status: "draft",
+          validUntil: toDateStr(q.validUntil),
+          discountAmount: q.discountAmount ?? 0,
+          taxPercent: q.taxPercent ?? 0,
+          depositPercentage: q.depositPercentage,
+          estimatedDeliveryDays: q.estimatedDeliveryDays,
+          notes: q.notes ?? "",
+          internalNotes: q.internalNotes ?? "",
+          items: items.map((i) => ({
+            description: i.description,
+            quantity: i.quantity,
+            unit: i.unit ?? "und",
+            unitPrice: i.unitPrice,
+            category: i.category ?? "materials",
+            notes: i.notes ?? "",
+          })),
+        });
+        // Also restore client search display
+        setClientSearch(q.clientName);
+      }
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duplicateFromId]);
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
@@ -184,11 +233,22 @@ export default function NuevaCotizacionPage() {
         </Link>
         <div>
           <h1 className="text-xl font-bold text-zinc-100" style={{ fontFamily: "var(--font-heading)" }}>
-            Nueva cotización
+            {isDuplicate ? "Duplicar cotización" : "Nueva cotización"}
           </h1>
-          <p className="text-xs text-zinc-500">Completa la información para generar la cotización</p>
+          <p className="text-xs text-zinc-500">
+            {isDuplicate
+              ? "Revisa y edita los datos antes de guardar. El duplicado solo se crea al pulsar Guardar."
+              : "Completa la información para generar la cotización"}
+          </p>
         </div>
       </div>
+
+      {isDuplicate && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300">
+          <Copy size={14} />
+          Estás creando una copia. Si sales sin guardar, no se creará ninguna cotización.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {/* Client info */}

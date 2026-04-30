@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search, FileText, Send, CheckCircle, DollarSign, MoreVertical, Pencil, Copy, Download } from "lucide-react";
-import { listQuotations, duplicateQuotation } from "@/lib/firestore/quotations";
+import { listQuotations } from "@/lib/firestore/quotations";
 import type { Quotation, QuotationStatus, QuotationProjectType } from "@/types/quotation";
 import {
   QUOTATION_STATUS_LABELS,
@@ -50,7 +50,6 @@ export default function CotizacionesPage() {
   const [filterType, setFilterType] = useState<QuotationProjectType | "all">("all");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { formatCurrency } = useCurrency();
   const router = useRouter();
@@ -89,18 +88,10 @@ export default function CotizacionesPage() {
     setMenuPos(null);
   }
 
-  const handleDuplicate = useCallback(async (id: string) => {
+  const handleDuplicate = useCallback((id: string) => {
     setOpenMenuId(null);
     setMenuPos(null);
-    setDuplicatingId(id);
-    try {
-      const newId = await duplicateQuotation(id);
-      const updated = await listQuotations();
-      setQuotations(updated);
-      router.push(`/cotizaciones/${newId}`);
-    } catch {
-      setDuplicatingId(null);
-    }
+    router.push(`/cotizaciones/nueva?duplicateFrom=${id}`);
   }, [router]);
 
   const stats = useMemo(() => {
@@ -268,7 +259,6 @@ export default function CotizacionesPage() {
                           <button
                             className="flex items-center justify-center size-7 rounded-md text-zinc-500 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
                             onClick={(e) => openMenu(e, q.id)}
-                            disabled={duplicatingId === q.id}
                           >
                             <MoreVertical size={15} />
                           </button>
@@ -313,7 +303,6 @@ export default function CotizacionesPage() {
                       <button
                         className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDuplicate(q.id); }}
-                        disabled={duplicatingId === q.id}
                       >
                         <Copy size={11} /> Duplicar
                       </button>
@@ -351,9 +340,8 @@ export default function CotizacionesPage() {
               <Pencil size={13} className="text-zinc-400" /> Editar
             </Link>
             <button
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
               onClick={() => handleDuplicate(q.id)}
-              disabled={duplicatingId === q.id}
             >
               <Copy size={13} className="text-zinc-400" /> Duplicar
             </button>
