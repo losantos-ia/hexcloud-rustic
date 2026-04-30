@@ -17,6 +17,8 @@ export const quotationItemSchema = z.object({
 export const quotationSchema = z.object({
   clientName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   clientPhone: z.string().min(7, "Ingresa un teléfono válido"),
+  clientDocumentId: z.string().optional(),
+  clientAddress: z.string().optional(),
   leadId: z.string().optional(),
   clientId: z.string().optional(),
   source: z.enum(SOURCES),

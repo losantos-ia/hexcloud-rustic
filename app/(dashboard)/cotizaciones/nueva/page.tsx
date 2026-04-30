@@ -69,6 +69,8 @@ export default function NuevaCotizacionPage() {
     setValue("clientName", c.fullName, { shouldValidate: true });
     setValue("clientPhone", c.phone ?? "", { shouldValidate: true });
     setValue("clientId", c.id);
+    setValue("clientDocumentId", c.documentId ?? "");
+    setValue("clientAddress", c.address ?? "");
   }
 
   function clearClient() {
@@ -77,6 +79,8 @@ export default function NuevaCotizacionPage() {
     setValue("clientName", "");
     setValue("clientPhone", "");
     setValue("clientId", "");
+    setValue("clientDocumentId", "");
+    setValue("clientAddress", "");
   }
 
   const {
@@ -134,6 +138,8 @@ export default function NuevaCotizacionPage() {
       const id = await createQuotation({
         clientName: values.clientName.trim(),
         clientPhone: values.clientPhone.trim(),
+        clientDocumentId: clean(values.clientDocumentId),
+        clientAddress: clean(values.clientAddress),
         leadId: clean(values.leadId),
         clientId: clean(values.clientId),
         source: values.source,
@@ -239,7 +245,13 @@ export default function NuevaCotizacionPage() {
               <Input {...register("clientName")} placeholder="Ej. Juan Pérez" />
             </Field>
             <Field label="Teléfono *" error={errors.clientPhone?.message}>
-              <Input {...register("clientPhone")} placeholder="+57 300 000 0000" />
+              <Input {...register("clientPhone")} placeholder="+504 9999-9999" />
+            </Field>
+            <Field label="Cédula / RTN (opcional)">
+              <Input {...register("clientDocumentId")} placeholder="0801-1990-12345" />
+            </Field>
+            <Field label="Dirección (opcional)">
+              <Input {...register("clientAddress")} placeholder="Colonia, ciudad..." />
             </Field>
             <Field label="ID de lead (opcional)">
               <Input {...register("leadId")} placeholder="ID del CRM" />

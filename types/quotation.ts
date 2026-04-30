@@ -68,6 +68,8 @@ export interface Quotation {
   clientId?: string;
   clientName: string;
   clientPhone: string;
+  clientDocumentId?: string;
+  clientAddress?: string;
   source: QuotationSource;
   projectType: QuotationProjectType;
   title: string;

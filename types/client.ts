@@ -16,6 +16,7 @@ export interface Client {
   secondaryPhone?: string;
   email?: string;
   documentId?: string;
+  address?: string;
   clientType: ClientType;
   source: ClientSource;
   notes?: string;

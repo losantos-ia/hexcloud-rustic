@@ -23,6 +23,7 @@ function docToClient(id: string, data: Record<string, any>): Client {
     secondaryPhone: data.secondaryPhone ?? undefined,
     email: data.email ?? undefined,
     documentId: data.documentId ?? undefined,
+    address: data.address ?? undefined,
     clientType: data.clientType,
     source: data.source,
     notes: data.notes ?? undefined,

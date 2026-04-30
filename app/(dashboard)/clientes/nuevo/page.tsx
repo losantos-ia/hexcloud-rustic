@@ -47,7 +47,8 @@ export default function NuevoClientePage() {
         phone: values.phone.trim(),
         secondaryPhone: clean(values.secondaryPhone),
         email: clean(values.email),
-        documentId: clean(values.documentId),
+          documentId: clean(values.documentId),
+        address: clean(values.address),
         clientType: values.clientType,
         source: values.source,
         notes: clean(values.notes),
@@ -186,6 +187,16 @@ export default function NuevoClientePage() {
                 id="documentId"
                 placeholder="0801-1990-12345 / RTN"
                 {...register("documentId")}
+              />
+            </div>
+
+            {/* Address */}
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="address">Dirección</Label>
+              <Input
+                id="address"
+                placeholder="Colonia, ciudad, departamento…"
+                {...register("address")}
               />
             </div>
 

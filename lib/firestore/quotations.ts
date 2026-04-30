@@ -41,6 +41,8 @@ function docToQuotation(id: string, data: Record<string, any>): Quotation {
     clientId: data.clientId ?? undefined,
     clientName: data.clientName,
     clientPhone: data.clientPhone,
+    clientDocumentId: data.clientDocumentId ?? undefined,
+    clientAddress: data.clientAddress ?? undefined,
     source: data.source,
     projectType: data.projectType,
     title: data.title,
@@ -95,6 +97,8 @@ export async function generateQuotationNumber(): Promise<string> {
 export interface CreateQuotationPayload {
   clientName: string;
   clientPhone: string;
+  clientDocumentId?: string;
+  clientAddress?: string;
   leadId?: string;
   clientId?: string;
   source: Quotation["source"];
