@@ -10,7 +10,7 @@ import { ArrowLeft, Factory, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { productionOrderSchema, type ProductionOrderFormValues } from "@/lib/schemas/production";
 import { createProductionOrder } from "@/lib/firestore/production";
-import { getOrderById } from "@/lib/firestore/orders";
+import { getOrderById, updateOrder } from "@/lib/firestore/orders";
 import {
   PRODUCTION_PROJECT_TYPE_LABELS,
   PRODUCTION_STATUS_LABELS,
@@ -93,6 +93,9 @@ export default function NuevaOrdenProduccionPage() {
     setServerError(null);
     try {
       const id = await createProductionOrder(values);
+      if (fromOrderId) {
+        await updateOrder(fromOrderId, { status: "sent_to_workshop" });
+      }
       router.push(`/produccion/${id}`);
     } catch {
       setServerError("Error al crear la orden. Intenta de nuevo.");

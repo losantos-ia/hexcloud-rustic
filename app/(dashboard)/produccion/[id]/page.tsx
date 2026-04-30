@@ -18,6 +18,7 @@ import {
   createProductionTask,
   updateProductionTask,
 } from "@/lib/firestore/production";
+import { getOrderById } from "@/lib/firestore/orders";
 import type { ProductionOrder, ProductionTask, ProductionStatus } from "@/types/production";
 import {
   PRODUCTION_STATUS_LABELS,
@@ -103,6 +104,7 @@ export default function ProductionOrderDetailPage() {
 
   const [order, setOrder] = useState<ProductionOrder | null>(null);
   const [tasks, setTasks] = useState<ProductionTask[]>([]);
+  const [linkedOrderNumber, setLinkedOrderNumber] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -128,6 +130,11 @@ export default function ProductionOrderDetailPage() {
     ])
       .then(([o, t]) => {
         setOrder(o);
+        if (o?.orderId) {
+          getOrderById(o.orderId).then((linked) => {
+            if (linked) setLinkedOrderNumber(linked.orderNumber);
+          }).catch(() => {});
+        }
         setTasks(t);
         if (o) setHoursInput(o.actualLaborHours?.toString() ?? "");
       })
@@ -293,7 +300,17 @@ export default function ProductionOrderDetailPage() {
               <InfoRow label="Prioridad" value={PRODUCTION_PRIORITY_LABELS[order.priority]} />
               <InfoRow label="Responsable" value={order.responsiblePerson} />
               <InfoRow label="Equipo" value={order.assignedTeam} />
-              {order.orderId && <InfoRow label="ID Pedido" value={order.orderId} />}
+              {order.orderId && (
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-xs text-zinc-500">Pedido vinculado</p>
+                  <Link
+                    href={`/pedidos/${order.orderId}`}
+                    className="text-sm font-medium text-amber-400 hover:text-amber-300 hover:underline transition-colors"
+                  >
+                    {linkedOrderNumber ?? order.orderId}
+                  </Link>
+                </div>
+              )}
             </div>
             {order.description && (
               <div className="rounded-lg bg-zinc-800/50 px-3 py-2.5">
