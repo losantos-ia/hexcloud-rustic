@@ -211,11 +211,11 @@ export function QuotationPDFDocument({
             <Text style={s.clientLabel}>Cliente</Text>
             <Text style={s.clientName}>{quotation.clientName}</Text>
             {quotation.clientDocumentId && <Text style={s.clientDetail}>RTN: {quotation.clientDocumentId}</Text>}
-            {quotation.clientPhone && <Text style={s.clientDetail}>{quotation.clientPhone}</Text>}
             {quotation.clientAddress && <Text style={s.clientDetail}>{quotation.clientAddress}</Text>}
             {(quotation.clientCity || quotation.clientDepartment) && (
               <Text style={s.clientDetail}>{[quotation.clientCity, quotation.clientDepartment].filter(Boolean).join(", ")}</Text>
             )}
+            {quotation.clientPhone && <Text style={s.clientDetail}>{quotation.clientPhone}</Text>}
           </View>
 
           {/* Quote meta */}

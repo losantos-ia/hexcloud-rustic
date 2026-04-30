@@ -79,6 +79,7 @@ function docToItem(id: string, data: Record<string, any>): QuotationItem {
     total: data.total,
     category: data.category,
     notes: data.notes ?? undefined,
+    order: data.order ?? 0,
   };
 }
 
@@ -138,12 +139,14 @@ export async function createQuotation(payload: CreateQuotationPayload): Promise<
   });
 
   const batch = writeBatch(db);
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
     const itemRef = doc(collection(db, ITEMS_COL));
     batch.set(itemRef, {
       ...stripUndefined(item),
       quotationId: quotationRef.id,
       total: item.quantity * item.unitPrice,
+      order: i,
     });
   }
   await batch.commit();
@@ -187,7 +190,9 @@ export async function listQuotationsByStatus(status: QuotationStatus): Promise<Q
 export async function listQuotationItems(quotationId: string): Promise<QuotationItem[]> {
   const q = query(collection(db, ITEMS_COL), where("quotationId", "==", quotationId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => docToItem(d.id, d.data()));
+  return snap.docs
+    .map((d) => docToItem(d.id, d.data()))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 export async function addQuotationItem(

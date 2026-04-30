@@ -103,4 +103,5 @@ export interface QuotationItem {
   total: number;
   category: QuotationItemCategory;
   notes?: string;
+  order?: number;
 }
