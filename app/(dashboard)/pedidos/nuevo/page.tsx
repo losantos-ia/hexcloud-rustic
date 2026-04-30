@@ -134,7 +134,7 @@ export default function NewOrderPage() {
           clientName: q.clientName,
           clientPhone: q.clientPhone,
           clientId: q.clientId ?? "",
-          quotationId: fromQuotationId,
+          quotationId: q.quotationNumber,
           source: "quotation",
           projectType: q.projectType as OrderFormValues["projectType"],
           title: q.title,
@@ -350,8 +350,13 @@ export default function NewOrderPage() {
             <Field label="Descripción" className="sm:col-span-2">
               <Textarea {...register("description")} rows={2} placeholder="Detalles adicionales del proyecto..." />
             </Field>
-            <Field label="ID de cotización (opcional)">
-              <Input {...register("quotationId")} placeholder="C20260001" />
+            <Field label="Nº de cotización (opcional)">
+              <Input
+                {...register("quotationId")}
+                placeholder="C20260001"
+                readOnly={!!fromQuotationId}
+                className={fromQuotationId ? "opacity-60 cursor-default" : ""}
+              />
             </Field>
             <Field label="ID de tienda (opcional)">
               <Input {...register("storeId")} placeholder="ID de tienda de origen" />
