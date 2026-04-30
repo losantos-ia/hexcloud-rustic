@@ -211,19 +211,19 @@ export default function NuevoClientePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="department">Departamento</Label>
-              <Input
-                id="department"
-                placeholder="Francisco Morazán"
-                {...register("department")}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label htmlFor="postalCode">Código postal</Label>
               <Input
                 id="postalCode"
                 placeholder="11101"
                 {...register("postalCode")}
+              />
+            </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="department">Departamento</Label>
+              <Input
+                id="department"
+                placeholder="Francisco Morazán"
+                {...register("department")}
               />
             </div>
 
