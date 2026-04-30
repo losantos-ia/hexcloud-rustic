@@ -18,9 +18,12 @@ import {
   Settings,
   ChevronLeft,
   Menu,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/context/auth-context";
+import { USER_ROLE_LABELS } from "@/types/user";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -41,6 +44,11 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const initials = user?.displayName
+    ? user.displayName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
+    : "??";
 
   return (
     <>
@@ -133,14 +141,40 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Footer */}
-        {!collapsed && (
-          <div className="border-t border-zinc-800 px-4 py-3 shrink-0">
-            <p className="text-[10px] text-zinc-600 text-center">
-              staging · v0.1.0
-            </p>
-          </div>
-        )}
+        {/* Footer — user info */}
+        <div className="border-t border-zinc-800 shrink-0">
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-2 py-3">
+              <div className="size-8 rounded-full bg-amber-500 flex items-center justify-center">
+                <span className="text-zinc-950 font-bold text-xs">{initials}</span>
+              </div>
+              <button
+                onClick={signOut}
+                title="Cerrar sesión"
+                className="size-8 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="size-8 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                <span className="text-zinc-950 font-bold text-xs">{initials}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-zinc-200 truncate">{user?.displayName}</p>
+                <p className="text-[10px] text-zinc-500 capitalize">{user ? USER_ROLE_LABELS[user.role] : ""}</p>
+              </div>
+              <button
+                onClick={signOut}
+                title="Cerrar sesión"
+                className="size-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors shrink-0"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
     </>
   );
