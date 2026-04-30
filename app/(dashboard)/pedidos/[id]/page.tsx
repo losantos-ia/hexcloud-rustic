@@ -324,10 +324,9 @@ export default function OrderDetailPage() {
                 <table className="w-full text-sm">
                   <colgroup>
                     <col className="w-full" />
-                    <col className="w-24 shrink-0" />
+                    <col className="w-20 shrink-0" />
                     <col className="w-32 shrink-0" />
                     <col className="w-32 shrink-0" />
-                    <col className="w-28 shrink-0" />
                   </colgroup>
                   <thead>
                     <tr className="border-b border-zinc-800 text-left">
@@ -335,7 +334,6 @@ export default function OrderDetailPage() {
                       <th className="pb-2 pl-4 text-xs font-medium text-zinc-500 text-right whitespace-nowrap">Cant.</th>
                       <th className="pb-2 pl-4 text-xs font-medium text-zinc-500 text-right whitespace-nowrap">PVP</th>
                       <th className="pb-2 pl-4 text-xs font-medium text-zinc-500 text-right whitespace-nowrap">Subtotal</th>
-                      <th className="pb-2 pl-4 text-xs font-medium text-zinc-500 whitespace-nowrap">Categoría</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800">
@@ -345,10 +343,9 @@ export default function OrderDetailPage() {
                           <p className="text-zinc-200 whitespace-pre-wrap">{item.description}</p>
                           {item.notes && <p className="text-xs text-zinc-500 mt-0.5 whitespace-pre-wrap">{item.notes}</p>}
                         </td>
-                        <td className="py-2.5 pl-4 text-right text-zinc-400 whitespace-nowrap">{item.quantity} {item.unit}</td>
+                        <td className="py-2.5 pl-4 text-right text-zinc-400 whitespace-nowrap">{item.quantity}</td>
                         <td className="py-2.5 pl-4 text-right text-zinc-400 whitespace-nowrap">{formatCurrency(item.unitPrice)}</td>
                         <td className="py-2.5 pl-4 text-right font-medium text-zinc-200 whitespace-nowrap">{formatCurrency(item.total)}</td>
-                        <td className="py-2.5 pl-4 text-xs text-zinc-500 whitespace-nowrap">{ORDER_ITEM_CATEGORY_LABELS[item.category]}</td>
                       </tr>
                     ))}
                   </tbody>
