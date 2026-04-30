@@ -87,17 +87,21 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
     }
 
-    // Production orders — any auth user can read; admin/taller can write
+    // Production orders — any auth user can read; vendedor can create; admin/taller can update/delete
     match /productionOrders/{orderId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
+      allow create: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'taller', 'vendedor'];
+      allow update, delete: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'taller'];
     }
 
-    // Production tasks — any auth user can read; admin/taller can write
+    // Production tasks — any auth user can read; vendedor can create; admin/taller can update/delete
     match /productionTasks/{taskId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
+      allow create: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'taller', 'vendedor'];
+      allow update, delete: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'taller'];
     }
 
