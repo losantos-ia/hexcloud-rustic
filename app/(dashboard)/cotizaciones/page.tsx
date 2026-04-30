@@ -49,6 +49,7 @@ export default function CotizacionesPage() {
   const [filterStatus, setFilterStatus] = useState<QuotationStatus | "all">("all");
   const [filterType, setFilterType] = useState<QuotationProjectType | "all">("all");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { formatCurrency } = useCurrency();
@@ -64,14 +65,33 @@ export default function CotizacionesPage() {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpenMenuId(null);
+        setMenuPos(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  function openMenu(e: React.MouseEvent<HTMLButtonElement>, id: string) {
+    e.stopPropagation();
+    if (openMenuId === id) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      setOpenMenuId(id);
+    }
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null);
+    setMenuPos(null);
+  }
+
   const handleDuplicate = useCallback(async (id: string) => {
     setOpenMenuId(null);
+    setMenuPos(null);
     setDuplicatingId(id);
     try {
       const newId = await duplicateQuotation(id);
@@ -244,39 +264,14 @@ export default function CotizacionesPage() {
                       <td className="px-4 py-3 text-xs text-zinc-400">{formatDate(q.validUntil)}</td>
                       <td className="px-4 py-3 text-xs text-zinc-500">{formatDate(q.createdAt)}</td>
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative" ref={openMenuId === q.id ? menuRef : null}>
+                        <div className="flex justify-center">
                           <button
                             className="flex items-center justify-center size-7 rounded-md text-zinc-500 hover:text-zinc-100 hover:bg-zinc-700 transition-colors"
-                            onClick={() => setOpenMenuId(openMenuId === q.id ? null : q.id)}
+                            onClick={(e) => openMenu(e, q.id)}
                             disabled={duplicatingId === q.id}
                           >
                             <MoreVertical size={15} />
                           </button>
-                          {openMenuId === q.id && (
-                            <div className="absolute right-0 top-8 z-50 w-44 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
-                              <Link
-                                href={`/cotizaciones/${q.id}/editar`}
-                                className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
-                                onClick={() => setOpenMenuId(null)}
-                              >
-                                <Pencil size={13} className="text-zinc-400" /> Editar
-                              </Link>
-                              <button
-                                className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-                                onClick={() => handleDuplicate(q.id)}
-                                disabled={duplicatingId === q.id}
-                              >
-                                <Copy size={13} className="text-zinc-400" /> Duplicar
-                              </button>
-                              <Link
-                                href={`/cotizaciones/${q.id}/pdf?download=1`}
-                                className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
-                                onClick={() => setOpenMenuId(null)}
-                              >
-                                <Download size={13} className="text-zinc-400" /> Descargar PDF
-                              </Link>
-                            </div>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -337,6 +332,41 @@ export default function CotizacionesPage() {
           </>
         )}
       </div>
+
+      {/* Fixed dropdown menu (escapes overflow-hidden) */}
+      {openMenuId && menuPos && (() => {
+        const q = filtered.find((x) => x.id === openMenuId);
+        if (!q) return null;
+        return (
+          <div
+            ref={menuRef}
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="w-44 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1"
+          >
+            <Link
+              href={`/cotizaciones/${q.id}/editar`}
+              className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+              onClick={closeMenu}
+            >
+              <Pencil size={13} className="text-zinc-400" /> Editar
+            </Link>
+            <button
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+              onClick={() => handleDuplicate(q.id)}
+              disabled={duplicatingId === q.id}
+            >
+              <Copy size={13} className="text-zinc-400" /> Duplicar
+            </button>
+            <Link
+              href={`/cotizaciones/${q.id}/pdf?download=1`}
+              className="flex items-center gap-2.5 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+              onClick={closeMenu}
+            >
+              <Download size={13} className="text-zinc-400" /> Descargar PDF
+            </Link>
+          </div>
+        );
+      })()}
     </div>
   );
 }
