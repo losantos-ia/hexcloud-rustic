@@ -41,14 +41,14 @@ const s = StyleSheet.create({
   // ── Header ──
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    justifyContent: "flex-end",
+    alignItems: "flex-start",
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  logo: { width: 165, height: 95, objectFit: "contain" },
+  logo: { width: 190, height: 110, objectFit: "contain" },
   companyNameFallback: { fontSize: 16, fontFamily: "Helvetica-Bold", color: C.black },
   companyInfo: { alignItems: "flex-end", gap: 2 },
   companyName: { fontSize: 11, fontFamily: "Helvetica-Bold", color: C.black },
@@ -61,7 +61,7 @@ const s = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 24,
   },
-  clientBlock: { gap: 2 },
+  clientBlock: { gap: 2, justifyContent: "flex-end" },
   clientLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.light, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 },
   clientName: { fontSize: 12, fontFamily: "Helvetica-Bold", color: C.black },
   clientDetail: { fontSize: 8.5, color: C.mid },
@@ -182,16 +182,9 @@ export function QuotationPDFDocument({
       creator="HEXCLOUD ERP"
     >
       <Page size="A4" style={s.page}>
-        {/* ── HEADER ── */}
+        {/* ── HEADER — company info only (repeats on all pages) ── */}
         <View style={s.header} fixed>
-          {/* Logo or company name */}
-          {company?.logoUrl ? (
-            <Image src={company.logoUrl} style={s.logo} />
-          ) : (
-            <Text style={s.companyNameFallback}>{company?.name ?? "Rustic Alexanders"}</Text>
-          )}
-
-          {/* Company info — right */}
+          {/* Company info — right only */}
           <View style={s.companyInfo}>
             <Text style={s.companyName}>{company?.name ?? "Rustic Alexanders"}</Text>
             {company?.taxId && <Text style={s.companyDetail}>{company.taxId}</Text>}
@@ -206,11 +199,16 @@ export function QuotationPDFDocument({
           </View>
         </View>
 
-        {/* ── CLIENT + QUOTE META ── */}
+        {/* ── LOGO + CLIENT (left) / QUOTE META (right) ── */}
         <View style={s.metaRow}>
-          {/* Client */}
+          {/* LEFT: logo above client data */}
           <View style={s.clientBlock}>
-            <Text style={s.clientLabel}>Cliente</Text>
+            {company?.logoUrl ? (
+              <Image src={company.logoUrl} style={s.logo} />
+            ) : (
+              <Text style={s.companyNameFallback}>{company?.name ?? "Rustic Alexanders"}</Text>
+            )}
+            <Text style={[s.clientLabel, { marginTop: 10 }]}>Cliente</Text>
             <Text style={s.clientName}>{quotation.clientName}</Text>
             {quotation.clientPhone && <Text style={s.clientDetail}>{quotation.clientPhone}</Text>}
           </View>
