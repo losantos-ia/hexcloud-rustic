@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Download, ArrowLeft, Loader2 } from "lucide-react";
+import { Download, ArrowLeft, Loader2, LayoutList } from "lucide-react";
 import Link from "next/link";
 import nextDynamic from "next/dynamic";
 import { getQuotationById, listQuotationItems } from "@/lib/firestore/quotations";
@@ -111,6 +111,12 @@ export default function QuotationPdfPage() {
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-500">{quotation.quotationNumber}</span>
+          <Link
+            href={`/cotizaciones/${id}`}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
+          >
+            <LayoutList size={13} /> Ver detalles
+          </Link>
           <button
             onClick={handleDownload}
             disabled={downloading}

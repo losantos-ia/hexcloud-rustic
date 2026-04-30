@@ -198,7 +198,7 @@ export default function CotizacionesPage() {
                     <tr
                       key={q.id}
                       className="hover:bg-zinc-800/50 transition-colors cursor-pointer"
-                      onClick={() => (window.location.href = `/cotizaciones/${q.id}`)}
+                      onClick={() => (window.location.href = `/cotizaciones/${q.id}/pdf`)}
                     >
                       <td className="px-4 py-3 font-mono text-xs text-amber-400">{q.quotationNumber}</td>
                       <td className="px-4 py-3">
@@ -227,7 +227,7 @@ export default function CotizacionesPage() {
                 return (
                   <Link
                     key={q.id}
-                    href={`/cotizaciones/${q.id}`}
+                    href={`/cotizaciones/${q.id}/pdf`}
                     className="block px-4 py-3 hover:bg-zinc-800/50 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">

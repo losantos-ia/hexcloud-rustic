@@ -156,8 +156,7 @@ export default function QuotationDetailPage() {
 
           <Link
             href={`/cotizaciones/${id}/pdf`}
-            target="_blank"
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-amber-400 transition-colors"
           >
             <FileText size={13} /> Ver PDF
           </Link>
