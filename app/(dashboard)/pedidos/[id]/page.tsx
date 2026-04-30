@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowLeft, Loader2, Plus, Edit, MapPin, Phone,
-  CheckCircle2, Factory, Truck, Package, DollarSign,
+  CheckCircle2, Factory, Truck, Package, DollarSign, Download,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -239,6 +239,12 @@ export default function OrderDetailPage() {
             className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
           >
             <Edit size={12} /> Editar
+          </Link>
+          <Link
+            href={`/pedidos/${orderId}/pdf`}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
+          >
+            <Download size={12} /> Ver PDF
           </Link>
           <button
             disabled

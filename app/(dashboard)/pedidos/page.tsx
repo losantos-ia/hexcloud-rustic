@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Plus, Search, Clock, CheckCircle2, Factory, Truck, DollarSign, MoreVertical,
+  Plus, Search, Clock, CheckCircle2, Factory, Truck, DollarSign, MoreVertical, Download,
 } from "lucide-react";
 import { listOrders } from "@/lib/firestore/orders";
 import type { Order, OrderStatus, OrderProjectType, OrderPriority, OrderSource } from "@/types/order";
@@ -374,6 +374,12 @@ export default function PedidosPage() {
             onClick={() => { router.push(`/pedidos/${openMenuId}/editar`); setOpenMenuId(null); }}
           >
             Editar
+          </button>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+            onClick={() => { router.push(`/pedidos/${openMenuId}/pdf`); setOpenMenuId(null); }}
+          >
+            <Download size={13} className="text-zinc-400" /> Ver PDF
           </button>
         </div>
       )}
