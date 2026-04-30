@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Download, ArrowLeft, Loader2, LayoutList, Edit } from "lucide-react";
+import { Download, ArrowLeft, Loader2, LayoutList, Edit, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import nextDynamic from "next/dynamic";
 import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
@@ -159,6 +159,14 @@ export default function QuotationPdfPage() {
           >
             <LayoutList size={13} /> Ver detalles
           </Link>
+          {quotation.status === "accepted" && (
+            <Link
+              href={`/pedidos/nuevo?fromQuotation=${id}`}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 transition-colors"
+            >
+              <ShoppingCart size={13} /> Convertir en pedido
+            </Link>
+          )}
           <button
             onClick={handleDownload}
             disabled={downloading}
