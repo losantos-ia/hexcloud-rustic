@@ -245,7 +245,7 @@ export default function NuevoInventarioPage() {
                 name="lastPurchaseCost"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-zinc-300">\u00daltimo costo de compra</FormLabel>
+                    <FormLabel className="text-zinc-300">Último costo de compra</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
