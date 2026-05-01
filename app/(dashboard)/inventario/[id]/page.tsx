@@ -268,7 +268,7 @@ export default function InventarioDetailPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+      <div className="flex flex-col gap-6">
         {/* Header */}
         <div className="flex items-start gap-3">
           <Link
@@ -305,7 +305,7 @@ export default function InventarioDetailPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {/* ── Left column ── */}
           <div className="lg:col-span-2 flex flex-col gap-4">
             {/* Item info */}
