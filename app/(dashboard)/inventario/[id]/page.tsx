@@ -177,9 +177,17 @@ export default function InventarioDetailPage() {
   async function onTransfer(values: TransferStockFormValues) {
     setModalError(null);
     try {
-      const targetItem = allItems.find((i) => i.id === values.targetItemId);
-      const targetLocationName = targetItem ? locMap[targetItem.locationId]?.name : undefined;
-      await transferInventoryStock(id, values.targetItemId, values.quantity, {
+      // Resolve target item: same name in destination location
+      const itemsInLoc = allItems.filter((i) => i.locationId === transferTargetLocationId);
+      const targetItem =
+        itemsInLoc.find((i) => i.name.toLowerCase() === item.name.toLowerCase()) ??
+        (itemsInLoc.length === 1 ? itemsInLoc[0] : null);
+      if (!targetItem) {
+        setModalError("No se encontró el artículo en la ubicación destino. Créalo primero.");
+        return;
+      }
+      const targetLocationName = locMap[targetItem.locationId]?.name;
+      await transferInventoryStock(id, targetItem.id, values.quantity, {
         notes: values.notes,
         sourceLocationName: location?.name,
         targetLocationName,
@@ -527,24 +535,14 @@ export default function InventarioDetailPage() {
         <Modal title="Transferir stock" onClose={() => { setModal(null); setTransferTargetLocationId(""); }}>
           <form onSubmit={transferForm.handleSubmit(onTransfer)} className="flex flex-col gap-3">
             <p className="text-xs text-zinc-500">
-              Transfiere unidades de <span className="text-zinc-300 font-medium">{item.name}</span>{" "}
-              desde <span className="text-amber-400 font-medium">{location?.name ?? "esta ubicación"}</span> a otra ubicación.
+              Transfiere <span className="text-zinc-300 font-medium">{item.name}</span>{" "}
+              desde <span className="text-amber-400 font-medium">{location?.name ?? "esta ubicación"}</span>.
             </p>
-            {/* Step 1: destination location */}
             <div className="flex flex-col gap-1.5">
               <Label className="text-zinc-400 text-xs">Ubicación destino *</Label>
               <Select
                 value={transferTargetLocationId}
-                onChange={(e) => {
-                  const locId = e.target.value;
-                  setTransferTargetLocationId(locId);
-                  // Auto-select matching item in destination location (same name)
-                  const itemsInLoc = allItems.filter((i) => i.locationId === locId);
-                  const match = itemsInLoc.find(
-                    (i) => i.name.toLowerCase() === item.name.toLowerCase()
-                  ) ?? (itemsInLoc.length === 1 ? itemsInLoc[0] : null);
-                  transferForm.setValue("targetItemId", match?.id ?? "");
-                }}
+                onChange={(e) => setTransferTargetLocationId(e.target.value)}
               >
                 <option value="">Seleccionar ubicación…</option>
                 {allLocations
@@ -554,34 +552,6 @@ export default function InventarioDetailPage() {
                   ))}
               </Select>
             </div>
-            {/* Step 2: item in that location */}
-            {transferTargetLocationId && (() => {
-              const itemsInLoc = allItems.filter((i) => i.locationId === transferTargetLocationId);
-              if (itemsInLoc.length === 0) {
-                return (
-                  <p className="text-xs text-amber-400 bg-amber-500/10 px-3 py-2 rounded-lg border border-amber-500/20">
-                    No hay artículos registrados en{" "}
-                    <span className="font-medium">{locMap[transferTargetLocationId]?.name}</span>.
-                    Crea el artículo primero desde{" "}
-                    <Link href="/inventario/nuevo" className="underline">Nuevo artículo</Link>.
-                  </p>
-                );
-              }
-              return (
-                <div className="flex flex-col gap-1.5">
-                  <Label className="text-zinc-400 text-xs">Artículo destino *</Label>
-                  <Select {...transferForm.register("targetItemId")}>
-                    <option value="">Seleccionar artículo…</option>
-                    {itemsInLoc.map((i) => (
-                      <option key={i.id} value={i.id}>{i.name} ({INVENTORY_UNIT_LABELS[i.unit]})</option>
-                    ))}
-                  </Select>
-                  {transferForm.formState.errors.targetItemId && (
-                    <p className="text-xs text-red-400">{transferForm.formState.errors.targetItemId.message}</p>
-                  )}
-                </div>
-              );
-            })()}
             <div className="flex flex-col gap-1.5">
               <Label className="text-zinc-400 text-xs">Cantidad a transferir *</Label>
               <Input
