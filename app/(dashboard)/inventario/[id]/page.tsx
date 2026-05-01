@@ -177,6 +177,7 @@ export default function InventarioDetailPage() {
   async function onTransfer(values: TransferStockFormValues) {
     setModalError(null);
     try {
+      if (!item) return;
       // Resolve target item: same name in destination location
       const itemsInLoc = allItems.filter((i) => i.locationId === transferTargetLocationId);
       const targetItem =
