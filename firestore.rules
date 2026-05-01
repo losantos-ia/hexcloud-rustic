@@ -99,5 +99,24 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create, update, delete: if isAdminOrVendedor() || isTaller();
     }
+
+    // Inventory items
+    match /inventoryItems/{itemId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Inventory locations
+    match /inventoryLocations/{locationId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor();
+    }
+
+    // Inventory movements
+    match /inventoryMovements/{movementId} {
+      allow read: if request.auth != null;
+      allow create: if isAdminOrVendedor() || isTaller();
+      allow update, delete: if isAdminOrVendedor();
+    }
   }
 }
