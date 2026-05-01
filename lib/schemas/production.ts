@@ -15,7 +15,7 @@ const PRODUCTION_PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 
 const TASK_STATUSES = ["pending", "in_progress", "completed", "blocked"] as const;
 
-export const productionOrderSchema = z.object({
+const productionOrderBaseSchema = z.object({
   productionType: z.enum(["order_based", "stock"] as const),
   orderId: z.string().optional(),
   clientName: z.string().optional(),
@@ -41,7 +41,9 @@ export const productionOrderSchema = z.object({
   responsiblePerson: z.string().optional(),
   notes: z.string().optional(),
   internalNotes: z.string().optional(),
-}).superRefine((val, ctx) => {
+});
+
+export const productionOrderSchema = productionOrderBaseSchema.superRefine((val, ctx) => {
   if (val.productionType === "order_based") {
     if (!val.clientName || val.clientName.trim().length < 2) {
       ctx.addIssue({
@@ -76,7 +78,8 @@ export const productionOrderSchema = z.object({
   }
 });
 
-export const updateProductionOrderSchema = productionOrderSchema.partial();
+export const updateProductionOrderSchema = productionOrderBaseSchema.partial();
+
 
 export const productionTaskSchema = z.object({
   title: z.string().min(2, "El título es obligatorio"),
