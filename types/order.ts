@@ -3,11 +3,11 @@ export type OrderSource = "quotation" | "store" | "direct" | "crm" | "other";
 export type OrderProjectType =
   | "cabin"
   | "pergola"
-  | "kiosk"
   | "deck"
+  | "kiosk"
   | "playground"
-  | "rustic_cafe"
   | "maintenance"
+  | "standard_product"
   | "custom";
 
 export type OrderStatus =
@@ -50,11 +50,11 @@ export const ORDER_SOURCE_LABELS: Record<OrderSource, string> = {
 export const ORDER_PROJECT_TYPE_LABELS: Record<OrderProjectType, string> = {
   cabin: "Cabaña",
   pergola: "Pérgola",
-  kiosk: "Kiosco",
   deck: "Deck",
-  playground: "Parque infantil",
-  rustic_cafe: "Café rústico",
+  kiosk: "Kiosco",
+  playground: "Juego infantil",
   maintenance: "Mantenimiento",
+  standard_product: "Producto estándar",
   custom: "Proyecto personalizado",
 };
 

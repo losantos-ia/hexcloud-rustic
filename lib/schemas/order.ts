@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const ORDER_SOURCES = ["quotation", "store", "direct", "crm", "other"] as const;
-const ORDER_PROJECT_TYPES = ["cabin", "pergola", "kiosk", "deck", "playground", "rustic_cafe", "maintenance", "custom"] as const;
+const ORDER_PROJECT_TYPES = ["cabin", "pergola", "deck", "kiosk", "playground", "maintenance", "standard_product", "custom"] as const;
 const ORDER_STATUSES = ["deposit_pending", "confirmed", "sent_to_workshop", "in_production", "ready_for_delivery", "delivered", "installed", "paid", "closed", "cancelled"] as const;
 const ORDER_PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 const ORDER_ITEM_CATEGORIES = ["product", "material", "labor", "transport", "installation", "finish", "other"] as const;
