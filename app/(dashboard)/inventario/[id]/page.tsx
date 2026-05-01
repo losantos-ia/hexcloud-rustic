@@ -107,6 +107,9 @@ export default function InventarioDetailPage() {
 
   // All items for transfer target selection
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
+  const [allLocations, setAllLocations] = useState<InventoryLocation[]>([]);
+  const [locMap, setLocMap] = useState<Record<string, InventoryLocation>>({});
+  const [transferTargetLocationId, setTransferTargetLocationId] = useState<string>("");
 
   // Modal state
   type ModalType = "adjust" | "transfer" | null;
@@ -125,9 +128,11 @@ export default function InventarioDetailPage() {
       ]);
       setItem(it);
       setMovements(mvs);
-      const locMap = Object.fromEntries(locs.map((l) => [l.id, l]));
-      if (it) setLocation(locMap[it.locationId] ?? null);
+      const lm = Object.fromEntries(locs.map((l) => [l.id, l]));
+      if (it) setLocation(lm[it.locationId] ?? null);
       setAllItems(its.filter((i) => i.id !== id));
+      setAllLocations(locs);
+      setLocMap(lm);
     } catch {
       setLoadError("Error al cargar el artículo.");
     } finally {
@@ -172,8 +177,12 @@ export default function InventarioDetailPage() {
   async function onTransfer(values: TransferStockFormValues) {
     setModalError(null);
     try {
+      const targetItem = allItems.find((i) => i.id === values.targetItemId);
+      const targetLocationName = targetItem ? locMap[targetItem.locationId]?.name : undefined;
       await transferInventoryStock(id, values.targetItemId, values.quantity, {
         notes: values.notes,
+        sourceLocationName: location?.name,
+        targetLocationName,
       });
       const newItem = await getInventoryItemById(id);
       const newMovs = await listInventoryMovementsByItem(id);
@@ -181,6 +190,7 @@ export default function InventarioDetailPage() {
       setMovements(newMovs);
       setModalSuccess("Transferencia realizada.");
       transferForm.reset({ quantity: 1 });
+      setTransferTargetLocationId("");
       setTimeout(() => { setModal(null); setModalSuccess(null); }, 1500);
     } catch (err) {
       setModalError(err instanceof Error ? err.message : "Error al transferir.");
@@ -428,7 +438,7 @@ export default function InventarioDetailPage() {
                 icon={<ArrowRightLeft size={14} />}
                 label="Transferir stock"
                 color="blue"
-                onClick={() => { transferForm.reset({ quantity: 1 }); setModalError(null); setModalSuccess(null); setModal("transfer"); }}
+                onClick={() => { transferForm.reset({ quantity: 1 }); setTransferTargetLocationId(""); setModalError(null); setModalSuccess(null); setModal("transfer"); }}
               />
             </div>
           </div>
@@ -514,23 +524,58 @@ export default function InventarioDetailPage() {
 
       {/* ── Transfer modal ── */}
       {modal === "transfer" && (
-        <Modal title="Transferir stock" onClose={() => setModal(null)}>
+        <Modal title="Transferir stock" onClose={() => { setModal(null); setTransferTargetLocationId(""); }}>
           <form onSubmit={transferForm.handleSubmit(onTransfer)} className="flex flex-col gap-3">
             <p className="text-xs text-zinc-500">
-              Transfiere unidades de <span className="text-zinc-300 font-medium">{item.name}</span> a otro artículo en el inventario.
+              Transfiere unidades de <span className="text-zinc-300 font-medium">{item.name}</span>{" "}
+              desde <span className="text-amber-400 font-medium">{location?.name ?? "esta ubicación"}</span> a otra ubicación.
             </p>
+            {/* Step 1: destination location */}
             <div className="flex flex-col gap-1.5">
-              <Label className="text-zinc-400 text-xs">Artículo destino *</Label>
-              <Select {...transferForm.register("targetItemId")}>
-                <option value="">Seleccionar artículo…</option>
-                {allItems.map((i) => (
-                  <option key={i.id} value={i.id}>{i.name} ({INVENTORY_UNIT_LABELS[i.unit]})</option>
-                ))}
+              <Label className="text-zinc-400 text-xs">Ubicación destino *</Label>
+              <Select
+                value={transferTargetLocationId}
+                onChange={(e) => {
+                  setTransferTargetLocationId(e.target.value);
+                  transferForm.setValue("targetItemId", "");
+                }}
+              >
+                <option value="">Seleccionar ubicación…</option>
+                {allLocations
+                  .filter((l) => l.id !== item.locationId)
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
               </Select>
-              {transferForm.formState.errors.targetItemId && (
-                <p className="text-xs text-red-400">{transferForm.formState.errors.targetItemId.message}</p>
-              )}
             </div>
+            {/* Step 2: item in that location */}
+            {transferTargetLocationId && (() => {
+              const itemsInLoc = allItems.filter((i) => i.locationId === transferTargetLocationId);
+              if (itemsInLoc.length === 0) {
+                return (
+                  <p className="text-xs text-amber-400 bg-amber-500/10 px-3 py-2 rounded-lg border border-amber-500/20">
+                    No hay artículos registrados en{" "}
+                    <span className="font-medium">{locMap[transferTargetLocationId]?.name}</span>.
+                    Crea el artículo primero desde{" "}
+                    <Link href="/inventario/nuevo" className="underline">Nuevo artículo</Link>.
+                  </p>
+                );
+              }
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-zinc-400 text-xs">Artículo destino *</Label>
+                  <Select {...transferForm.register("targetItemId")}>
+                    <option value="">Seleccionar artículo…</option>
+                    {itemsInLoc.map((i) => (
+                      <option key={i.id} value={i.id}>{i.name} ({INVENTORY_UNIT_LABELS[i.unit]})</option>
+                    ))}
+                  </Select>
+                  {transferForm.formState.errors.targetItemId && (
+                    <p className="text-xs text-red-400">{transferForm.formState.errors.targetItemId.message}</p>
+                  )}
+                </div>
+              );
+            })()}
             <div className="flex flex-col gap-1.5">
               <Label className="text-zinc-400 text-xs">Cantidad a transferir *</Label>
               <Input

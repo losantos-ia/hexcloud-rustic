@@ -328,6 +328,8 @@ export async function transferInventoryStock(
   opts?: {
     notes?: string;
     createdBy?: string;
+    sourceLocationName?: string;
+    targetLocationName?: string;
   }
 ): Promise<void> {
   const sourceRef = doc(db, ITEMS_COL, sourceItemId);
@@ -368,6 +370,8 @@ export async function transferInventoryStock(
     });
 
     // Movement: transfer_out from source
+    const outNotes = opts?.notes
+      ?? (opts?.targetLocationName ? `→ ${opts.targetLocationName}` : undefined);
     const outRef = doc(movementsCol);
     tx.set(outRef, {
       itemId: sourceItemId,
@@ -376,12 +380,14 @@ export async function transferInventoryStock(
       quantity,
       referenceType: "transfer" as InventoryReferenceType,
       referenceId: transferRefId,
-      ...(opts?.notes ? { notes: opts.notes } : {}),
+      ...(outNotes ? { notes: outNotes } : {}),
       ...(opts?.createdBy ? { createdBy: opts.createdBy } : {}),
       createdAt: serverTimestamp(),
     });
 
     // Movement: transfer_in to target
+    const inNotes = opts?.notes
+      ?? (opts?.sourceLocationName ? `← ${opts.sourceLocationName}` : undefined);
     const inRef = doc(movementsCol);
     tx.set(inRef, {
       itemId: targetItemId,
@@ -390,7 +396,7 @@ export async function transferInventoryStock(
       quantity,
       referenceType: "transfer" as InventoryReferenceType,
       referenceId: transferRefId,
-      ...(opts?.notes ? { notes: opts.notes } : {}),
+      ...(inNotes ? { notes: inNotes } : {}),
       ...(opts?.createdBy ? { createdBy: opts.createdBy } : {}),
       createdAt: serverTimestamp(),
     });
