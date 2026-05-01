@@ -68,8 +68,8 @@ export const purchaseOrderSchema = z.object({
   supplierName: z.string().optional(),
   destinationLocationId: z.string().min(1, "Selecciona una ubicación destino"),
   expectedDeliveryDate: z.string().optional(),
-  discountAmount: z.number().min(0).optional().default(0),
-  taxAmount: z.number().min(0).optional().default(0),
+  discountAmount: z.coerce.number().min(0).default(0),
+  taxAmount: z.coerce.number().min(0).default(0),
   notes: z.string().optional(),
   internalNotes: z.string().optional(),
 });
