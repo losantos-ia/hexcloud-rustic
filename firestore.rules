@@ -124,5 +124,42 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create, update, delete: if isAdminOrVendedor() || isTaller();
     }
+
+    // Suppliers
+    match /suppliers/{supplierId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor();
+    }
+
+    // Purchase requests
+    match /purchaseRequests/{requestId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Purchase request items
+    match /purchaseRequestItems/{itemId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Purchase orders
+    match /purchaseOrders/{orderId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor();
+    }
+
+    // Purchase order items
+    match /purchaseOrderItems/{itemId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Purchase payments
+    match /purchasePayments/{paymentId} {
+      allow read: if request.auth != null;
+      allow create: if isAdminOrVendedor();
+      allow update, delete: if isAdminOrVendedor();
+    }
   }
 }
