@@ -287,7 +287,7 @@ export default function LeadDetailPage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label>Descripción</Label>
-                  <Textarea {...register("description")} placeholder="Detalles de la actividad..." rows={2} />
+                  <Textarea {...register("description")} placeholder="Detalles de la actividad..." rows={2} className="resize-y" />
                 </div>
                 {activityError && <p className="text-xs text-red-400">{activityError}</p>}
                 <div className="flex gap-2 justify-end">

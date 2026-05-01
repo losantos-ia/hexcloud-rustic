@@ -183,7 +183,7 @@ export default function NewLeadPage() {
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="notes">Notas</Label>
-            <Textarea id="notes" {...register("notes")} placeholder="Información adicional sobre el lead..." rows={3} />
+            <Textarea id="notes" {...register("notes")} placeholder="Información adicional sobre el lead..." rows={3} className="resize-y" />
           </div>
         </div>
 
