@@ -81,12 +81,12 @@ export const INVENTORY_UNIT_LABELS: Record<InventoryUnit, string> = {
   ft: "Pie (ft)",
   m: "Metro (m)",
   board: "Tabla",
-  gallon: "Galón",
+  gallon: "Gal\u00f3n",
   liter: "Litro",
   kg: "Kilogramo (kg)",
   box: "Caja",
   roll: "Rollo",
-  sheet: "Lámina",
+  sheet: "L\u00e1mina",
   pack: "Paquete",
   other: "Otro",
 };
@@ -95,23 +95,33 @@ export const INVENTORY_LOCATION_TYPE_LABELS: Record<InventoryLocationType, strin
   workshop: "Taller",
   store: "Tienda",
   warehouse: "Bodega",
-  vehicle: "Vehículo",
+  vehicle: "Veh\u00edculo",
   other: "Otro",
 };
 
 export const INVENTORY_MOVEMENT_TYPE_LABELS: Record<InventoryMovementType, string> = {
   purchase_in: "Compra (entrada)",
-  production_out: "Uso en producción",
+  production_out: "Uso en producci\u00f3n",
   transfer_in: "Transferencia (entrada)",
   transfer_out: "Transferencia (salida)",
   adjustment_in: "Ajuste (entrada)",
   adjustment_out: "Ajuste (salida)",
   sale_out: "Venta (salida)",
-  return_in: "Devolución (entrada)",
+  return_in: "Devoluci\u00f3n (entrada)",
+};
+
+export const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
+  ok: "OK",
+  bajo_minimo: "Bajo m\u00ednimo",
+  sin_stock: "Sin stock",
 };
 
 // ── Interfaces ───────────────────────────────────────────
 
+/**
+ * Master catalog item - no location, no stock.
+ * Stock is tracked per location in InventoryStockByLocation.
+ */
 export interface InventoryItem {
   id: string;
   sku?: string;
@@ -120,16 +130,29 @@ export interface InventoryItem {
   category: InventoryCategory;
   itemType: InventoryItemType;
   unit: InventoryUnit;
-  currentStock: number;
-  minimumStock: number;
   averageCost: number;
   lastPurchaseCost?: number;
   salePrice?: number;
-  locationId: string;
   supplierId?: string;
   isActive: boolean;
   notes?: string;
   createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Stock record per item + location.
+ * One document per (itemId, locationId) pair.
+ */
+export interface InventoryStockByLocation {
+  id: string;
+  itemId: string;
+  locationId: string;
+  currentStock: number;
+  minimumStock: number;
+  /** Override average cost for this location; falls back to InventoryItem.averageCost */
+  averageCost?: number;
+  totalValue: number;
   updatedAt: Date;
 }
 
@@ -146,7 +169,12 @@ export interface InventoryLocation {
 export interface InventoryMovement {
   id: string;
   itemId: string;
-  locationId: string;
+  /** For single-location movements (entry, exit, adjustment) */
+  locationId?: string;
+  /** Source location for transfers */
+  fromLocationId?: string;
+  /** Destination location for transfers */
+  toLocationId?: string;
   type: InventoryMovementType;
   quantity: number;
   unitCost?: number;
@@ -160,17 +188,23 @@ export interface InventoryMovement {
 
 // ── Helpers ──────────────────────────────────────────────
 
-export function getStockStatus(item: InventoryItem): StockStatus {
-  if (item.currentStock <= 0) return "sin_stock";
-  if (item.currentStock <= item.minimumStock) return "bajo_minimo";
+export function getStockStatusForEntry(entry: InventoryStockByLocation): StockStatus {
+  if (entry.currentStock <= 0) return "sin_stock";
+  if (entry.minimumStock > 0 && entry.currentStock <= entry.minimumStock) return "bajo_minimo";
   return "ok";
 }
 
-export const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
-  ok: "OK",
-  bajo_minimo: "Bajo mínimo",
-  sin_stock: "Sin stock",
-};
+/** Aggregate stock status across all locations for an item */
+export function getAggregateStockStatus(entries: InventoryStockByLocation[]): StockStatus {
+  if (entries.length === 0) return "sin_stock";
+  const total = entries.reduce((s, e) => s + e.currentStock, 0);
+  if (total <= 0) return "sin_stock";
+  const allBelowMin = entries.every(
+    (e) => e.minimumStock > 0 && e.currentStock <= e.minimumStock
+  );
+  if (allBelowMin) return "bajo_minimo";
+  return "ok";
+}
 
 /** IN movement types (positive stock change) */
 export const IN_MOVEMENT_TYPES: InventoryMovementType[] = [

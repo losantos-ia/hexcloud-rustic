@@ -1,353 +1,328 @@
 "use client";
-
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  Plus, Search, Package, AlertTriangle, Warehouse, MoreVertical,
-  TrendingDown, ShoppingBag,
+  Package,
+  Plus,
+  MapPin,
+  TrendingDown,
+  DollarSign,
+  Search,
+  Filter,
 } from "lucide-react";
-import { listInventoryItems, listInventoryLocations } from "@/lib/firestore/inventory";
-import type { InventoryItem, InventoryLocation, InventoryCategory, InventoryItemType } from "@/types/inventory";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  listInventoryItems,
+  listAllStock,
+  listInventoryLocations,
+} from "@/lib/firestore/inventory";
+import type { InventoryItem, InventoryStockByLocation, InventoryLocation } from "@/types/inventory";
 import {
   INVENTORY_CATEGORY_LABELS,
   INVENTORY_ITEM_TYPE_LABELS,
   INVENTORY_UNIT_LABELS,
   STOCK_STATUS_LABELS,
-  getStockStatus,
+  getAggregateStockStatus,
+  getStockStatusForEntry,
 } from "@/types/inventory";
-import { Badge } from "@/components/ui/badge";
-import type { BadgeProps } from "@/components/ui/badge";
-import { useCurrency } from "@/context/currency-context";
 
-type BadgeVariant = BadgeProps["variant"];
+// ── Helpers ──────────────────────────────────────────────
 
-const STOCK_STATUS_VARIANT: Record<string, BadgeVariant> = {
-  ok: "green",
-  bajo_minimo: "amber",
-  sin_stock: "red",
-};
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("es-PA", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+  }).format(n);
+}
 
-const CATEGORY_VARIANT: Record<InventoryCategory, BadgeVariant> = {
-  wood: "amber",
-  hardware: "default",
-  roofing: "blue",
-  paint_sealer: "purple",
-  consumable: "default",
-  tool: "default",
-  finished_product: "green",
-  other: "default",
-};
+function stockBadgeClass(status: "ok" | "bajo_minimo" | "sin_stock") {
+  if (status === "ok") return "bg-green-500/20 text-green-400 border-green-500/30";
+  if (status === "bajo_minimo") return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+  return "bg-red-500/20 text-red-400 border-red-500/30";
+}
+
+// ── Page ─────────────────────────────────────────────────
 
 export default function InventarioPage() {
-  const router = useRouter();
-  const { formatCurrency } = useCurrency();
-
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [allStock, setAllStock] = useState<InventoryStockByLocation[]>([]);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [search, setSearch] = useState("");
-  const [filterCategory, setFilterCategory] = useState<InventoryCategory | "">("");
-  const [filterItemType, setFilterItemType] = useState<InventoryItemType | "">("");
-  const [filterLocation, setFilterLocation] = useState("");
-  const [filterLowStock, setFilterLowStock] = useState(false);
-
-  // Context menu
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [filterLocation, setFilterLocation] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   useEffect(() => {
-    Promise.all([listInventoryItems(), listInventoryLocations()])
-      .then(([its, locs]) => {
-        setItems(its);
-        setLocations(locs);
+    Promise.all([listInventoryItems(), listAllStock(), listInventoryLocations()])
+      .then(([i, s, l]) => {
+        setItems(i);
+        setAllStock(s);
+        setLocations(l);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const locationMap = useMemo(
-    () => Object.fromEntries(locations.map((l) => [l.id, l])),
-    [locations]
+  // Stock map: itemId -> InventoryStockByLocation[]
+  const stockByItem = useMemo(() => {
+    const map = new Map<string, InventoryStockByLocation[]>();
+    for (const s of allStock) {
+      const arr = map.get(s.itemId) ?? [];
+      arr.push(s);
+      map.set(s.itemId, arr);
+    }
+    return map;
+  }, [allStock]);
+
+  // Summary cards
+  const totalValue = useMemo(
+    () => allStock.reduce((s, e) => s + e.totalValue, 0),
+    [allStock]
   );
 
-  // ── Summary stats ─────────────────────────────────────
-  const stats = useMemo(() => {
-    const totalValue = items.reduce((s, i) => s + i.currentStock * i.averageCost, 0);
-    const belowMin = items.filter(
-      (i) => i.currentStock > 0 && i.currentStock <= i.minimumStock
-    ).length;
-    const sinStock = items.filter((i) => i.currentStock <= 0).length;
-    const finished = items.filter((i) => i.itemType === "finished_product").length;
+  const locationValues = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of allStock) {
+      map.set(s.locationId, (map.get(s.locationId) ?? 0) + s.totalValue);
+    }
+    return map;
+  }, [allStock]);
 
-    const workshopIds = new Set(
-      locations.filter((l) => l.type === "workshop").map((l) => l.id)
-    );
-    const storeIds = new Set(
-      locations.filter((l) => l.type === "store").map((l) => l.id)
-    );
-
-    const tallerItems = items.filter((i) => workshopIds.has(i.locationId)).length;
-    const tiendaItems = items.filter((i) => storeIds.has(i.locationId)).length;
-
-    return { totalValue, belowMin, sinStock, finished, tallerItems, tiendaItems };
-  }, [items, locations]);
-
-  // ── Filtered items ────────────────────────────────────
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+  const lowStockCount = useMemo(() => {
     return items.filter((item) => {
-      if (q && !item.name.toLowerCase().includes(q) && !(item.sku ?? "").toLowerCase().includes(q)) return false;
-      if (filterCategory && item.category !== filterCategory) return false;
-      if (filterItemType && item.itemType !== filterItemType) return false;
-      if (filterLocation && item.locationId !== filterLocation) return false;
-      if (filterLowStock) {
-        const s = getStockStatus(item);
-        if (s === "ok") return false;
+      const entries = stockByItem.get(item.id) ?? [];
+      const status = getAggregateStockStatus(entries);
+      return status !== "ok";
+    }).length;
+  }, [items, stockByItem]);
+
+  // Filtered items
+  const filtered = useMemo(() => {
+    return items.filter((item) => {
+      const entries = stockByItem.get(item.id) ?? [];
+      const status = getAggregateStockStatus(entries);
+      const totalStock = entries.reduce((s, e) => s + e.currentStock, 0);
+
+      if (search && !item.name.toLowerCase().includes(search.toLowerCase()) &&
+          !(item.sku?.toLowerCase().includes(search.toLowerCase()))) return false;
+      if (filterCategory !== "all" && item.category !== filterCategory) return false;
+      if (filterType !== "all" && item.itemType !== filterType) return false;
+      if (filterStatus === "sin_stock" && totalStock > 0) return false;
+      if (filterStatus === "bajo_minimo" && status !== "bajo_minimo") return false;
+      if (filterStatus === "ok" && status !== "ok") return false;
+
+      if (filterLocation !== "all") {
+        const hasEntry = entries.some((e) => e.locationId === filterLocation);
+        if (!hasEntry) return false;
       }
+
       return true;
     });
-  }, [items, search, filterCategory, filterItemType, filterLocation, filterLowStock]);
+  }, [items, stockByItem, search, filterLocation, filterCategory, filterType, filterStatus]);
 
   return (
-    <div className="flex flex-col gap-6" onClick={() => setOpenMenu(null)}>
+    <div className="w-full max-w-full px-4 py-6 space-y-6 md:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1
-            className="text-2xl font-bold text-zinc-100"
-            style={{ fontFamily: "var(--font-heading)" }}
-          >
-            Inventario
-          </h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            {loading ? "Cargando…" : `${items.length} artículos · ${locations.length} ubicaciones`}
-          </p>
+          <h1 className="text-2xl font-bold text-white">Inventario</h1>
+          <p className="text-sm text-zinc-400 mt-0.5">Cat&aacute;logo de art&iacute;culos y stock por ubicaci&oacute;n</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/inventario/ubicaciones"
-            className="flex items-center gap-2 h-9 px-3 rounded-lg border border-zinc-700 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
-          >
-            <Warehouse size={14} />
-            <span className="hidden sm:inline">Ubicaciones</span>
+          <Link href="/inventario/ubicaciones">
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white gap-1.5">
+              <MapPin className="h-4 w-4" />
+              Ubicaciones
+            </Button>
           </Link>
-          <Link
-            href="/inventario/nuevo"
-            className="flex items-center gap-2 h-9 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-sm font-semibold transition-colors"
-          >
-            <Plus size={14} />
-            <span className="hidden sm:inline">Nuevo artículo</span>
+          <Link href="/inventario/nuevo">
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold gap-1.5">
+              <Plus className="h-4 w-4" />
+              Nuevo art&iacute;culo
+            </Button>
           </Link>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <SummaryCard
-          label="Valor total"
-          value={formatCurrency(stats.totalValue)}
-          icon={<Package size={16} className="text-amber-400" />}
-          accent="amber"
-        />
-        <SummaryCard
-          label="Bajo mínimo"
-          value={String(stats.belowMin + stats.sinStock)}
-          icon={<AlertTriangle size={16} className="text-red-400" />}
-          accent="red"
-          sub={`${stats.sinStock} sin stock`}
-        />
-        <SummaryCard
-          label="Prod. terminados"
-          value={String(stats.finished)}
-          icon={<ShoppingBag size={16} className="text-green-400" />}
-          accent="green"
-        />
-        <SummaryCard
-          label="Artíc. en taller"
-          value={String(stats.tallerItems)}
-          icon={<Warehouse size={16} className="text-blue-400" />}
-          accent="blue"
-        />
-        <SummaryCard
-          label="Artíc. en tiendas"
-          value={String(stats.tiendaItems)}
-          icon={<TrendingDown size={16} className="text-purple-400" />}
-          accent="purple"
-        />
-      </div>
+      {!loading && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4 col-span-2 sm:col-span-1">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="h-4 w-4 text-amber-400" />
+              <span className="text-xs text-zinc-400">Valor total</span>
+            </div>
+            <p className="text-xl font-bold text-white">{formatCurrency(totalValue)}</p>
+          </div>
+          {locations.slice(0, 3).map((loc) => (
+            <div key={loc.id} className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin className="h-4 w-4 text-blue-400" />
+                <span className="text-xs text-zinc-400 truncate">{loc.name}</span>
+              </div>
+              <p className="text-xl font-bold text-white">
+                {formatCurrency(locationValues.get(loc.id) ?? 0)}
+              </p>
+            </div>
+          ))}
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingDown className="h-4 w-4 text-red-400" />
+              <span className="text-xs text-zinc-400">Bajo m&iacute;nimo</span>
+            </div>
+            <p className="text-xl font-bold text-white">{lowStockCount}</p>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o SKU…"
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          <Input
+            placeholder="Buscar art&iacute;culo..."
+            className="pl-9 bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-9 pl-8 pr-3 rounded-lg border border-zinc-700 bg-zinc-800/60 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50"
           />
         </div>
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value as InventoryCategory | "")}
-          className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-800/60 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-amber-500/40 [&>option]:bg-zinc-900"
-        >
-          <option value="">Todas las categorías</option>
-          {(Object.entries(INVENTORY_CATEGORY_LABELS) as [InventoryCategory, string][]).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-        <select
-          value={filterItemType}
-          onChange={(e) => setFilterItemType(e.target.value as InventoryItemType | "")}
-          className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-800/60 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-amber-500/40 [&>option]:bg-zinc-900"
-        >
-          <option value="">Todos los tipos</option>
-          {(Object.entries(INVENTORY_ITEM_TYPE_LABELS) as [InventoryItemType, string][]).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-        <select
-          value={filterLocation}
-          onChange={(e) => setFilterLocation(e.target.value)}
-          className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-800/60 text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-amber-500/40 [&>option]:bg-zinc-900"
-        >
-          <option value="">Todas las ubicaciones</option>
-          {locations.map((l) => (
-            <option key={l.id} value={l.id}>{l.name}</option>
-          ))}
-        </select>
-        <button
-          onClick={(e) => { e.stopPropagation(); setFilterLowStock(!filterLowStock); }}
-          className={`h-9 px-3 rounded-lg border text-sm font-medium transition-colors ${
-            filterLowStock
-              ? "bg-red-500/10 border-red-500/30 text-red-400"
-              : "border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
-          }`}
-        >
-          <AlertTriangle size={13} className="inline mr-1.5" />
-          Bajo mínimo
-        </button>
+        <Select value={filterLocation} onValueChange={setFilterLocation}>
+          <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-700 text-zinc-300">
+            <MapPin className="h-4 w-4 mr-1" />
+            <SelectValue placeholder="Ubicaci&oacute;n" />
+          </SelectTrigger>
+          <SelectContent className="bg-zinc-900 border-zinc-700">
+            <SelectItem value="all">Todas las ubicaciones</SelectItem>
+            {locations.map((l) => (
+              <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-700 text-zinc-300">
+            <Filter className="h-4 w-4 mr-1" />
+            <SelectValue placeholder="Categor&iacute;a" />
+          </SelectTrigger>
+          <SelectContent className="bg-zinc-900 border-zinc-700">
+            <SelectItem value="all">Todas las categor&iacute;as</SelectItem>
+            {Object.entries(INVENTORY_CATEGORY_LABELS).map(([k, v]) => (
+              <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[140px] bg-zinc-900 border-zinc-700 text-zinc-300">
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent className="bg-zinc-900 border-zinc-700">
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="ok">OK</SelectItem>
+            <SelectItem value="bajo_minimo">Bajo m&iacute;nimo</SelectItem>
+            <SelectItem value="sin_stock">Sin stock</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="size-5 border-2 border-zinc-600 border-t-amber-500 rounded-full animate-spin" />
-        </div>
+        <div className="flex items-center justify-center h-48 text-zinc-500">Cargando...</div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-2 text-zinc-600">
-          <Package size={32} />
-          <p className="text-sm">No hay artículos</p>
-          {(search || filterCategory || filterItemType || filterLocation || filterLowStock) ? (
-            <button
-              onClick={() => { setSearch(""); setFilterCategory(""); setFilterItemType(""); setFilterLocation(""); setFilterLowStock(false); }}
-              className="text-xs text-amber-500 hover:text-amber-400"
-            >
-              Limpiar filtros
-            </button>
-          ) : (
-            <Link href="/inventario/nuevo" className="text-xs text-amber-500 hover:text-amber-400">
-              Agregar primer artículo
-            </Link>
-          )}
+        <div className="flex flex-col items-center justify-center h-48 gap-2 text-zinc-500">
+          <Package className="h-10 w-10" />
+          <p className="text-sm">No se encontraron art&iacute;culos</p>
+          <Link href="/inventario/nuevo">
+            <Button size="sm" variant="outline" className="border-zinc-700 text-zinc-300">
+              Agregar art&iacute;culo
+            </Button>
+          </Link>
         </div>
       ) : (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="rounded-lg border border-zinc-800 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Artículo</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden sm:table-cell">Categoría</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">Tipo</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Stock</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">Costo prom.</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">Valor total</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">Ubicación</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Estado</th>
-                  <th className="px-4 py-3 w-10" />
+              <thead className="bg-zinc-900 border-b border-zinc-800">
+                <tr>
+                  <th className="text-left py-3 px-4 font-medium text-zinc-400">Art&iacute;culo</th>
+                  <th className="text-left py-3 px-4 font-medium text-zinc-400 hidden sm:table-cell">Tipo / Unidad</th>
+                  <th className="text-right py-3 px-4 font-medium text-zinc-400">Stock total</th>
+                  <th className="text-left py-3 px-4 font-medium text-zinc-400 hidden lg:table-cell">Por ubicaci&oacute;n</th>
+                  <th className="text-right py-3 px-4 font-medium text-zinc-400 hidden md:table-cell">Valor</th>
+                  <th className="text-center py-3 px-4 font-medium text-zinc-400">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/60">
+              <tbody className="divide-y divide-zinc-800">
                 {filtered.map((item) => {
-                  const status = getStockStatus(item);
-                  const loc = locationMap[item.locationId];
-                  const totalValue = item.currentStock * item.averageCost;
+                  const entries = stockByItem.get(item.id) ?? [];
+                  const totalStock = entries.reduce((s, e) => s + e.currentStock, 0);
+                  const totalVal = entries.reduce((s, e) => s + e.totalValue, 0);
+                  const status = getAggregateStockStatus(entries);
+                  const displayEntries = filterLocation !== "all"
+                    ? entries.filter((e) => e.locationId === filterLocation)
+                    : entries;
+
                   return (
-                    <tr
-                      key={item.id}
-                      onClick={() => router.push(`/inventario/${item.id}`)}
-                      className="hover:bg-zinc-800/40 cursor-pointer transition-colors group"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-zinc-100 group-hover:text-amber-400 transition-colors">{item.name}</p>
-                        {item.sku && <p className="text-xs text-zinc-500 mt-0.5">{item.sku}</p>}
+                    <tr key={item.id} className="hover:bg-zinc-900/50 transition-colors">
+                      <td className="py-3 px-4">
+                        <Link href={`/inventario/${item.id}`} className="hover:text-amber-400 transition-colors">
+                          <p className="font-medium text-white">{item.name}</p>
+                          {item.sku && <p className="text-xs text-zinc-500">{item.sku}</p>}
+                          <p className="text-xs text-zinc-500 sm:hidden">
+                            {INVENTORY_ITEM_TYPE_LABELS[item.itemType]}
+                          </p>
+                        </Link>
                       </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <Badge variant={CATEGORY_VARIANT[item.category]}>
-                          {INVENTORY_CATEGORY_LABELS[item.category]}
-                        </Badge>
+                      <td className="py-3 px-4 hidden sm:table-cell">
+                        <p className="text-zinc-300">{INVENTORY_ITEM_TYPE_LABELS[item.itemType]}</p>
+                        <p className="text-xs text-zinc-500">{INVENTORY_UNIT_LABELS[item.unit]}</p>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-zinc-400">
-                        {INVENTORY_ITEM_TYPE_LABELS[item.itemType]}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={`font-medium ${item.currentStock <= 0 ? "text-red-400" : item.currentStock <= item.minimumStock ? "text-amber-400" : "text-zinc-200"}`}>
-                          {item.currentStock}
+                      <td className="py-3 px-4 text-right">
+                        <span className="font-semibold text-white">
+                          {totalStock.toLocaleString("es-PA")}
                         </span>
-                        <span className="text-xs text-zinc-600 ml-1">{INVENTORY_UNIT_LABELS[item.unit]}</span>
-                        {item.minimumStock > 0 && (
-                          <p className="text-xs text-zinc-600">mín. {item.minimumStock}</p>
-                        )}
+                        <span className="text-xs text-zinc-500 ml-1">
+                          {INVENTORY_UNIT_LABELS[item.unit]}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-right hidden lg:table-cell text-zinc-400">
-                        {formatCurrency(item.averageCost)}
-                      </td>
-                      <td className="px-4 py-3 text-right hidden lg:table-cell text-zinc-300 font-medium">
-                        {formatCurrency(totalValue)}
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
-                        {loc ? (
-                          <span className="text-xs text-zinc-400">{loc.name}</span>
-                        ) : (
-                          <span className="text-xs text-zinc-600">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant={STOCK_STATUS_VARIANT[status]}>
-                          {STOCK_STATUS_LABELS[status]}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="relative">
-                          <button
-                            onClick={() => setOpenMenu(openMenu === item.id ? null : item.id)}
-                            className="size-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 transition-colors"
-                          >
-                            <MoreVertical size={14} />
-                          </button>
-                          {openMenu === item.id && (
-                            <div className="absolute right-0 top-8 z-10 w-40 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
-                              <button
-                                onClick={() => { setOpenMenu(null); router.push(`/inventario/${item.id}`); }}
-                                className="w-full text-left px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+                      <td className="py-3 px-4 hidden lg:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {displayEntries.map((e) => {
+                            const loc = locations.find((l) => l.id === e.locationId);
+                            const s = getStockStatusForEntry(e);
+                            return (
+                              <span
+                                key={e.locationId}
+                                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs border ${stockBadgeClass(s)}`}
                               >
-                                Ver detalle
-                              </button>
-                              <button
-                                onClick={() => { setOpenMenu(null); router.push(`/inventario/${item.id}/editar`); }}
-                                className="w-full text-left px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
-                              >
-                                Editar
-                              </button>
-                            </div>
+                                {loc?.name ?? e.locationId}: {e.currentStock}
+                              </span>
+                            );
+                          })}
+                          {displayEntries.length === 0 && (
+                            <span className="text-xs text-zinc-600">Sin stock registrado</span>
                           )}
                         </div>
+                      </td>
+                      <td className="py-3 px-4 text-right hidden md:table-cell">
+                        <span className="text-zinc-300">{formatCurrency(totalVal)}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium border ${stockBadgeClass(status)}`}>
+                          {STOCK_STATUS_LABELS[status]}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -355,50 +330,12 @@ export default function InventarioPage() {
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-2.5 border-t border-zinc-800 flex items-center justify-between">
-            <p className="text-xs text-zinc-600">
-              {filtered.length} de {items.length} artículos
-            </p>
-            <p className="text-xs text-zinc-600">
-              Valor filtrado: <span className="text-zinc-400 font-medium">{formatCurrency(filtered.reduce((s, i) => s + i.currentStock * i.averageCost, 0))}</span>
-            </p>
+          <div className="px-4 py-2 bg-zinc-900 border-t border-zinc-800 text-xs text-zinc-500">
+            {filtered.length} art&iacute;culo{filtered.length !== 1 ? "s" : ""}
+            {filtered.length !== items.length && ` (de ${items.length})`}
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Summary Card ─────────────────────────────────────────
-
-function SummaryCard({
-  label,
-  value,
-  icon,
-  accent,
-  sub,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  accent: "amber" | "red" | "green" | "blue" | "purple";
-  sub?: string;
-}) {
-  const ringMap: Record<string, string> = {
-    amber: "ring-amber-500/20",
-    red: "ring-red-500/20",
-    green: "ring-emerald-500/20",
-    blue: "ring-blue-500/20",
-    purple: "ring-purple-500/20",
-  };
-  return (
-    <div className={`rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 flex flex-col gap-2 ring-1 ${ringMap[accent]}`}>
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-zinc-500">{label}</p>
-        {icon}
-      </div>
-      <p className="text-xl font-bold text-zinc-100">{value}</p>
-      {sub && <p className="text-xs text-zinc-600 -mt-1">{sub}</p>}
     </div>
   );
 }

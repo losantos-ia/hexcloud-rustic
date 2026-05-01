@@ -1,269 +1,329 @@
 "use client";
-
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Package, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { ArrowLeft, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createInventoryItem } from "@/lib/firestore/inventory";
 import { inventoryItemSchema, type InventoryItemFormValues } from "@/lib/schemas/inventory";
-import { createInventoryItem, listInventoryLocations } from "@/lib/firestore/inventory";
 import {
   INVENTORY_CATEGORY_LABELS,
   INVENTORY_ITEM_TYPE_LABELS,
   INVENTORY_UNIT_LABELS,
 } from "@/types/inventory";
-import type { InventoryLocation, InventoryCategory, InventoryItemType, InventoryUnit } from "@/types/inventory";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
-      <h2 className="text-sm font-semibold text-zinc-300">{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-  className,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
-      <Label className="text-zinc-400">{label}</Label>
-      {children}
-      {error && <p className="text-xs text-red-400">{error}</p>}
-    </div>
-  );
-}
 
 export default function NuevoInventarioPage() {
   const router = useRouter();
-  const [locations, setLocations] = useState<InventoryLocation[]>([]);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<InventoryItemFormValues>({
+  const form = useForm<InventoryItemFormValues>({
     resolver: zodResolver(inventoryItemSchema),
     defaultValues: {
-      currentStock: 0,
-      minimumStock: 0,
+      sku: "",
+      name: "",
+      description: "",
       averageCost: 0,
+      notes: "",
     },
   });
 
-  useEffect(() => {
-    listInventoryLocations().then(setLocations).catch(() => {});
-  }, []);
-
   async function onSubmit(values: InventoryItemFormValues) {
-    setServerError(null);
+    setSubmitting(true);
+    setError(null);
     try {
       const id = await createInventoryItem(values);
       router.push(`/inventario/${id}`);
-    } catch {
-      setServerError("Error al crear el artículo. Intenta de nuevo.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al crear el art\u00edculo");
+    } finally {
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6 md:px-6 lg:px-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link
-          href="/inventario"
-          className="flex items-center justify-center size-8 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors shrink-0"
-        >
-          <ArrowLeft size={15} />
+        <Link href="/inventario">
+          <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
         </Link>
-        <div className="flex items-center gap-2">
-          <Package size={18} className="text-amber-400" />
-          <div>
-            <h1 className="text-xl font-bold text-zinc-100" style={{ fontFamily: "var(--font-heading)" }}>
-              Nuevo artículo
-            </h1>
-            <p className="text-xs text-zinc-500">Registrar material, herramienta o producto terminado</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Nuevo art&iacute;culo</h1>
+          <p className="text-sm text-zinc-400">Agregar art&iacute;culo al cat&aacute;logo</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        {/* Identification */}
-        <Section title="Identificación">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Nombre *" error={errors.name?.message}>
-              <Input
-                {...register("name")}
-                placeholder="Ej: Viga de pino 2x4"
-              />
-            </Field>
-            <Field label="SKU / Código" error={errors.sku?.message}>
-              <Input
-                {...register("sku")}
-                placeholder="Ej: MAD-PINO-2X4"
-              />
-            </Field>
-          </div>
-          <Field label="Descripción" error={errors.description?.message}>
-            <Textarea
-              {...register("description")}
-              placeholder="Descripción opcional del artículo…"
-              rows={2}
-            />
-          </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Categoría *" error={errors.category?.message}>
-              <Select {...register("category")}>
-                <option value="">Seleccionar…</option>
-                {(Object.entries(INVENTORY_CATEGORY_LABELS) as [InventoryCategory, string][]).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Tipo *" error={errors.itemType?.message}>
-              <Select {...register("itemType")}>
-                <option value="">Seleccionar…</option>
-                {(Object.entries(INVENTORY_ITEM_TYPE_LABELS) as [InventoryItemType, string][]).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Unidad *" error={errors.unit?.message}>
-              <Select {...register("unit")}>
-                <option value="">Seleccionar…</option>
-                {(Object.entries(INVENTORY_UNIT_LABELS) as [InventoryUnit, string][]).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-        </Section>
-
-        {/* Stock */}
-        <Section title="Stock y costos">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Stock inicial" error={errors.currentStock?.message}>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("currentStock", { valueAsNumber: true })}
-                placeholder="0"
-              />
-            </Field>
-            <Field label="Stock mínimo" error={errors.minimumStock?.message}>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("minimumStock", { valueAsNumber: true })}
-                placeholder="0"
-              />
-            </Field>
-            <Field label="Costo promedio" error={errors.averageCost?.message}>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("averageCost", { valueAsNumber: true })}
-                placeholder="0.00"
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Último costo de compra" error={errors.lastPurchaseCost?.message}>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("lastPurchaseCost", { valueAsNumber: true, setValueAs: (v) => (v === "" || isNaN(v) ? undefined : Number(v)) })}
-                placeholder="Opcional"
-              />
-            </Field>
-            <Field label="Precio de venta" error={errors.salePrice?.message}>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("salePrice", { valueAsNumber: true, setValueAs: (v) => (v === "" || isNaN(v) ? undefined : Number(v)) })}
-                placeholder="Opcional"
-              />
-            </Field>
-          </div>
-        </Section>
-
-        {/* Location */}
-        <Section title="Ubicación">
-          <Field label="Ubicación *" error={errors.locationId?.message}>
-            <Select {...register("locationId")}>
-              <option value="">Seleccionar ubicación…</option>
-              {locations.map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
-              ))}
-            </Select>
-          </Field>
-          {locations.length === 0 && (
-            <p className="text-xs text-amber-400">
-              No hay ubicaciones registradas.{" "}
-              <Link href="/inventario/ubicaciones" className="underline hover:text-amber-300">
-                Crear ubicaciones
-              </Link>
-            </p>
-          )}
-        </Section>
-
-        {/* Notes */}
-        <Section title="Notas">
-          <Field label="Notas internas" error={errors.notes?.message}>
-            <Textarea
-              {...register("notes")}
-              placeholder="Observaciones, proveedor habitual, especificaciones técnicas…"
-              rows={3}
-            />
-          </Field>
-        </Section>
-
-        {/* Error */}
-        {serverError && (
-          <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3">
-            <p className="text-sm text-red-400">{serverError}</p>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <Link
-            href="/inventario"
-            className="h-10 px-4 rounded-lg border border-zinc-700 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors flex items-center"
-          >
-            Cancelar
-          </Link>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="h-10 px-5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-zinc-950 text-sm font-semibold transition-colors flex items-center gap-2"
-          >
-            {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-            {isSubmitting ? "Guardando…" : "Crear artículo"}
-          </button>
+      {error && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/30 px-4 py-3 text-red-400 text-sm">
+          {error}
         </div>
-      </form>
+      )}
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Identificacion */}
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">
+              Identificaci&oacute;n
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="sku"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">SKU / C&oacute;digo</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="MAD-001"
+                        className="bg-zinc-800 border-zinc-700 text-white"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">Nombre *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Tabla de pino 1x4"
+                        className="bg-zinc-800 border-zinc-700 text-white"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-zinc-300">Descripci&oacute;n</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      rows={2}
+                      placeholder="Descripci\u00f3n opcional..."
+                      className="bg-zinc-800 border-zinc-700 text-white resize-none"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">Categor&iacute;a *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                          <SelectValue placeholder="Seleccionar..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        {Object.entries(INVENTORY_CATEGORY_LABELS).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="itemType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">Tipo *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                          <SelectValue placeholder="Seleccionar..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        {Object.entries(INVENTORY_ITEM_TYPE_LABELS).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">Unidad *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                          <SelectValue placeholder="Seleccionar..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        {Object.entries(INVENTORY_UNIT_LABELS).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Costos */}
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">
+              Costos y precios
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <FormField
+                control={form.control}
+                name="averageCost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">Costo promedio *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        className="bg-zinc-800 border-zinc-700 text-white"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lastPurchaseCost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">\u00daltimo costo de compra</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        className="bg-zinc-800 border-zinc-700 text-white"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="salePrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-zinc-300">Precio de venta</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        className="bg-zinc-800 border-zinc-700 text-white"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Notas */}
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">Notas</h2>
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      rows={3}
+                      placeholder="Observaciones adicionales..."
+                      className="bg-zinc-800 border-zinc-700 text-white resize-none"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Link href="/inventario">
+              <Button type="button" variant="outline" className="border-zinc-700 text-zinc-300">
+                Cancelar
+              </Button>
+            </Link>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              {submitting ? "Creando..." : "Crear art\u00edculo"}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }

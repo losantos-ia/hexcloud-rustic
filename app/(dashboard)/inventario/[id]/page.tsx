@@ -1,693 +1,536 @@
 "use client";
-
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  ArrowLeft, Edit, Loader2, AlertTriangle, Package, TrendingUp,
-  TrendingDown, Plus, Minus, ArrowRightLeft, X, CheckCircle2,
+  ArrowLeft, Edit, ArrowLeftRight, Plus, Minus, MapPin,
 } from "lucide-react";
-import {
-  getInventoryItemById,
-  createInventoryItem,
-  updateInventoryItem,
-  listInventoryMovementsByItem,
-  listInventoryLocations,
-  listInventoryItems,
-  adjustInventoryStock,
-  transferInventoryStock,
-} from "@/lib/firestore/inventory";
-import type { InventoryItem, InventoryLocation, InventoryMovement } from "@/types/inventory";
-import {
-  INVENTORY_CATEGORY_LABELS,
-  INVENTORY_ITEM_TYPE_LABELS,
-  INVENTORY_UNIT_LABELS,
-  INVENTORY_MOVEMENT_TYPE_LABELS,
-  STOCK_STATUS_LABELS,
-  getStockStatus,
-} from "@/types/inventory";
-import { adjustStockSchema, transferByLocationSchema } from "@/lib/schemas/inventory";
-import type { AdjustStockFormValues, TransferByLocationFormValues } from "@/lib/schemas/inventory";
-import { Badge } from "@/components/ui/badge";
-import type { BadgeProps } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { useCurrency } from "@/context/currency-context";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
+} from "@/components/ui/form";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  getInventoryItemById, getStockByItem, listInventoryLocations,
+  listInventoryMovementsByItem, adjustInventoryStock, transferInventoryStock,
+  upsertStockEntry,
+} from "@/lib/firestore/inventory";
+import {
+  adjustStockSchema, transferByLocationSchema, stockByLocationSchema,
+  type AdjustStockFormValues, type TransferByLocationFormValues,
+  type StockByLocationFormValues,
+} from "@/lib/schemas/inventory";
+import type {
+  InventoryItem, InventoryStockByLocation, InventoryLocation, InventoryMovement,
+} from "@/types/inventory";
+import {
+  INVENTORY_CATEGORY_LABELS, INVENTORY_ITEM_TYPE_LABELS, INVENTORY_UNIT_LABELS,
+  INVENTORY_MOVEMENT_TYPE_LABELS, INVENTORY_LOCATION_TYPE_LABELS,
+  STOCK_STATUS_LABELS, getStockStatusForEntry, getAggregateStockStatus,
+  IN_MOVEMENT_TYPES,
+} from "@/types/inventory";
 
-type BadgeVariant = BadgeProps["variant"];
-
-const STOCK_STATUS_VARIANT: Record<string, BadgeVariant> = {
-  ok: "green",
-  bajo_minimo: "amber",
-  sin_stock: "red",
-};
-
-function formatDate(d: Date): string {
-  return d.toLocaleDateString("es-CR", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
+}
+function formatDate(d: Date) {
+  return new Intl.DateTimeFormat("es-PA", { dateStyle: "medium", timeStyle: "short" }).format(d);
+}
+function stockBadgeClass(status: "ok" | "bajo_minimo" | "sin_stock") {
+  if (status === "ok") return "bg-green-500/20 text-green-400 border-green-500/30";
+  if (status === "bajo_minimo") return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+  return "bg-red-500/20 text-red-400 border-red-500/30";
+}
+function movementBadgeClass(type: string) {
+  return IN_MOVEMENT_TYPES.includes(type as never) ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400";
 }
 
-// ── Movement badge ────────────────────────────────────────
-const MOVEMENT_VARIANT: Record<string, BadgeVariant> = {
-  purchase_in: "green",
-  production_out: "purple",
-  transfer_in: "blue",
-  transfer_out: "blue",
-  adjustment_in: "amber",
-  adjustment_out: "amber",
-  sale_out: "default",
-  return_in: "green",
-};
-
-// ── Modals ────────────────────────────────────────────────
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener("mousedown", fn);
-    return () => document.removeEventListener("mousedown", fn);
-  }, [onClose]);
-
+// ── Add Stock Modal ──────────────────────────────────────
+function AddStockModal({ item, locations, open, onClose, onDone }: {
+  item: InventoryItem; locations: InventoryLocation[];
+  open: boolean; onClose: () => void; onDone: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const form = useForm<StockByLocationFormValues>({
+    resolver: zodResolver(stockByLocationSchema),
+    defaultValues: { currentStock: 0, minimumStock: 0 },
+  });
+  async function onSubmit(values: StockByLocationFormValues) {
+    setSubmitting(true); setError(null);
+    try {
+      await upsertStockEntry(item.id, values.locationId, values.currentStock, values.minimumStock, item.averageCost, values.averageCost);
+      onDone();
+    } catch (e) { setError(e instanceof Error ? e.message : "Error"); }
+    finally { setSubmitting(false); }
+  }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div ref={ref} className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 p-5 flex flex-col gap-4 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-zinc-200">{title}</h3>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle>Agregar stock en ubicacion</DialogTitle>
+          <DialogDescription className="text-zinc-400">
+            {item.name}
+          </DialogDescription>
+        </DialogHeader>
+        {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-2">{error}</div>}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField control={form.control} name="locationId" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Ubicacion</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField control={form.control} name="currentStock" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-zinc-300">Stock inicial</FormLabel>
+                  <FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} className="bg-zinc-800 border-zinc-700 text-white" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="minimumStock" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-zinc-300">Stock minimo</FormLabel>
+                  <FormControl><Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} className="bg-zinc-800 border-zinc-700 text-white" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={onClose} className="border-zinc-700 text-zinc-300">Cancelar</Button>
+              <Button type="submit" disabled={submitting} className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold">{submitting ? "Guardando..." : "Guardar"}</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────
-
-export default function InventarioDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = params.id;
-  const { formatCurrency } = useCurrency();
-
-  const [item, setItem] = useState<InventoryItem | null>(null);
-  const [location, setLocation] = useState<InventoryLocation | null>(null);
-  const [movements, setMovements] = useState<InventoryMovement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  // All items for transfer target selection
-  const [allItems, setAllItems] = useState<InventoryItem[]>([]);
-  const [allLocations, setAllLocations] = useState<InventoryLocation[]>([]);
-  const [locMap, setLocMap] = useState<Record<string, InventoryLocation>>({});
-  const [transferTargetLocationId, setTransferTargetLocationId] = useState<string>("");
-
-  // Modal state
-  type ModalType = "adjust" | "transfer" | null;
-  const [modal, setModal] = useState<ModalType>(null);
-  const [modalError, setModalError] = useState<string | null>(null);
-  const [modalSuccess, setModalSuccess] = useState<string | null>(null);
-
-  // ── Load data ─────────────────────────────────────────
-  async function load() {
-    try {
-      const [it, mvs, locs, its] = await Promise.all([
-        getInventoryItemById(id),
-        listInventoryMovementsByItem(id),
-        listInventoryLocations(),
-        listInventoryItems(),
-      ]);
-      setItem(it);
-      setMovements(mvs);
-      const lm = Object.fromEntries(locs.map((l) => [l.id, l]));
-      if (it) setLocation(lm[it.locationId] ?? null);
-      setAllItems(its.filter((i) => i.id !== id));
-      setAllLocations(locs);
-      setLocMap(lm);
-    } catch {
-      setLoadError("Error al cargar el artículo.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Adjust form ───────────────────────────────────────
-  const adjustForm = useForm<AdjustStockFormValues>({
+// ── Adjust Stock Modal ───────────────────────────────────
+function AdjustStockModal({ item, stockEntries, locations, open, onClose, onDone }: {
+  item: InventoryItem; stockEntries: InventoryStockByLocation[]; locations: InventoryLocation[];
+  open: boolean; onClose: () => void; onDone: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const form = useForm<AdjustStockFormValues>({
     resolver: zodResolver(adjustStockSchema),
     defaultValues: { type: "adjustment_in", quantity: 1 },
   });
-
-  async function onAdjust(values: AdjustStockFormValues) {
-    setModalError(null);
+  const ADJUST_TYPES = [
+    { value: "adjustment_in", label: "Ajuste entrada" },
+    { value: "adjustment_out", label: "Ajuste salida" },
+    { value: "purchase_in", label: "Compra (entrada)" },
+    { value: "sale_out", label: "Venta (salida)" },
+    { value: "return_in", label: "Devolucion (entrada)" },
+  ];
+  async function onSubmit(values: AdjustStockFormValues) {
+    setSubmitting(true); setError(null);
     try {
-      await adjustInventoryStock(id, values.type, values.quantity, {
-        unitCost: values.unitCost,
-        notes: values.notes,
-        referenceType: "manual_adjustment",
+      await adjustInventoryStock(item.id, values.locationId, values.type, values.quantity, {
+        unitCost: values.unitCost, notes: values.notes,
+        minimumStock: stockEntries.find((e) => e.locationId === values.locationId)?.minimumStock ?? 0,
       });
-      const newItem = await getInventoryItemById(id);
-      const newMovs = await listInventoryMovementsByItem(id);
-      setItem(newItem);
-      setMovements(newMovs);
-      setModalSuccess("Stock actualizado correctamente.");
-      adjustForm.reset({ type: "adjustment_in", quantity: 1 });
-      setTimeout(() => { setModal(null); setModalSuccess(null); }, 1500);
-    } catch (err) {
-      setModalError(err instanceof Error ? err.message : "Error al ajustar stock.");
-    }
+      onDone();
+    } catch (e) { setError(e instanceof Error ? e.message : "Error al ajustar stock"); }
+    finally { setSubmitting(false); }
   }
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle>Ajustar stock</DialogTitle>
+          <DialogDescription className="text-zinc-400">{item.name}</DialogDescription>
+        </DialogHeader>
+        {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-2">{error}</div>}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField control={form.control} name="locationId" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Ubicacion</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue placeholder="Seleccionar..." /></SelectTrigger></FormControl>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {(stockEntries.length > 0 ? stockEntries.map((e) => { const loc = locations.find((l) => l.id === e.locationId); return <SelectItem key={e.locationId} value={e.locationId}>{loc?.name ?? e.locationId} ({e.currentStock})</SelectItem>; }) : locations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="type" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Tipo de movimiento</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">{ADJUST_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField control={form.control} name="quantity" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-zinc-300">Cantidad</FormLabel>
+                  <FormControl><Input type="number" step="0.01" min={0.01} {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} className="bg-zinc-800 border-zinc-700 text-white" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="unitCost" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-zinc-300">Costo unitario</FormLabel>
+                  <FormControl><Input type="number" step="0.01" min={0} {...field} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)} className="bg-zinc-800 border-zinc-700 text-white" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <FormField control={form.control} name="notes" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Notas</FormLabel>
+                <FormControl><Textarea {...field} rows={2} className="bg-zinc-800 border-zinc-700 text-white resize-none" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={onClose} className="border-zinc-700 text-zinc-300">Cancelar</Button>
+              <Button type="submit" disabled={submitting} className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold">{submitting ? "Guardando..." : "Aplicar"}</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-  // ── Transfer form ─────────────────────────────────────
-  const transferForm = useForm<TransferByLocationFormValues>({
+// ── Transfer Modal ───────────────────────────────────────
+function TransferModal({ item, stockEntries, locations, open, onClose, onDone }: {
+  item: InventoryItem; stockEntries: InventoryStockByLocation[]; locations: InventoryLocation[];
+  open: boolean; onClose: () => void; onDone: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const form = useForm<TransferByLocationFormValues>({
     resolver: zodResolver(transferByLocationSchema),
     defaultValues: { quantity: 1 },
   });
-
-  async function onTransfer(values: TransferByLocationFormValues) {
-    setModalError(null);
-    try {
-      if (!item) return;
-      if (!transferTargetLocationId) {
-        setModalError("Selecciona una ubicación destino.");
-        return;
-      }
-      // Resolve target item: same name in destination location
-      const itemsInLoc = allItems.filter((i) => i.locationId === transferTargetLocationId);
-      let targetItem =
-        itemsInLoc.find((i) => i.name.toLowerCase() === item.name.toLowerCase()) ?? null;
-
-      // If not found, auto-create it in the destination location with same data
-      if (!targetItem) {
-        const newId = await createInventoryItem({
-          sku: item.sku,
-          name: item.name,
-          description: item.description,
-          category: item.category,
-          itemType: item.itemType,
-          unit: item.unit,
-          currentStock: 0,
-          minimumStock: item.minimumStock,
-          averageCost: item.averageCost,
-          lastPurchaseCost: item.lastPurchaseCost,
-          salePrice: item.salePrice,
-          locationId: transferTargetLocationId,
-          supplierId: item.supplierId,
-          notes: item.notes,
-        });
-        targetItem = await getInventoryItemById(newId);
-        if (!targetItem) throw new Error("Error al crear el artículo en destino.");
-        // Refresh allItems so subsequent transfers work
-        const updatedItems = await listInventoryItems();
-        setAllItems(updatedItems.filter((i) => i.id !== id));
-      }
-
-      const targetLocationName = locMap[targetItem.locationId]?.name;
-      await transferInventoryStock(id, targetItem.id, values.quantity, {
-        notes: values.notes,
-        sourceLocationName: location?.name,
-        targetLocationName,
-      });
-      const newItem = await getInventoryItemById(id);
-      const newMovs = await listInventoryMovementsByItem(id);
-      setItem(newItem);
-      setMovements(newMovs);
-      setModalSuccess("Transferencia realizada.");
-      transferForm.reset({ quantity: 1 });
-      setTransferTargetLocationId("");
-      setTimeout(() => { setModal(null); setModalSuccess(null); }, 1500);
-    } catch (err) {
-      setModalError(err instanceof Error ? err.message : "Error al transferir.");
+  const fromId = form.watch("fromLocationId");
+  const sourceEntry = stockEntries.find((e) => e.locationId === fromId);
+  async function onSubmit(values: TransferByLocationFormValues) {
+    if (values.fromLocationId === values.toLocationId) {
+      form.setError("toLocationId", { message: "La ubicacion destino debe ser diferente a la origen" });
+      return;
     }
+    setSubmitting(true); setError(null);
+    try {
+      const fromLoc = locations.find((l) => l.id === values.fromLocationId);
+      const toLoc = locations.find((l) => l.id === values.toLocationId);
+      await transferInventoryStock(item.id, values.fromLocationId, values.toLocationId, values.quantity, {
+        notes: values.notes, fromLocationName: fromLoc?.name, toLocationName: toLoc?.name,
+      });
+      onDone();
+    } catch (e) { setError(e instanceof Error ? e.message : "Error al transferir stock"); }
+    finally { setSubmitting(false); }
   }
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-zinc-900 border-zinc-700 text-white max-w-md">
+        <DialogHeader>
+          <DialogTitle>Transferir stock</DialogTitle>
+          <DialogDescription className="text-zinc-400">{item.name}</DialogDescription>
+        </DialogHeader>
+        {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-2">{error}</div>}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField control={form.control} name="fromLocationId" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Desde</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue placeholder="Ubicacion origen..." /></SelectTrigger></FormControl>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {stockEntries.filter((e) => e.currentStock > 0).map((e) => {
+                      const loc = locations.find((l) => l.id === e.locationId);
+                      return <SelectItem key={e.locationId} value={e.locationId}>{loc?.name ?? e.locationId} ({e.currentStock} disp.)</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            {sourceEntry && <p className="text-xs text-zinc-500">Disponible: <span className="text-white font-medium">{sourceEntry.currentStock}</span> {INVENTORY_UNIT_LABELS[item.unit]}</p>}
+            <FormField control={form.control} name="toLocationId" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Hacia</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue placeholder="Ubicacion destino..." /></SelectTrigger></FormControl>
+                  <SelectContent className="bg-zinc-900 border-zinc-700">
+                    {locations.filter((l) => l.id !== fromId).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="quantity" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Cantidad</FormLabel>
+                <FormControl><Input type="number" step="0.01" min={0.01} max={sourceEntry?.currentStock} {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} className="bg-zinc-800 border-zinc-700 text-white" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="notes" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-zinc-300">Notas</FormLabel>
+                <FormControl><Textarea {...field} rows={2} className="bg-zinc-800 border-zinc-700 text-white resize-none" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={onClose} className="border-zinc-700 text-zinc-300">Cancelar</Button>
+              <Button type="submit" disabled={submitting} className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold gap-1.5">
+                <ArrowLeftRight className="h-4 w-4" />
+                {submitting ? "Transfiriendo..." : "Transferir"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-  // ── Quick operations (entrada / salida) ───────────────
-  const [quickType, setQuickType] = useState<"purchase_in" | "sale_out">("purchase_in");
+// ── Page ─────────────────────────────────────────────────
+export default function InventarioDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params.id as string;
+  const [item, setItem] = useState<InventoryItem | null>(null);
+  const [stockEntries, setStockEntries] = useState<InventoryStockByLocation[]>([]);
+  const [locations, setLocations] = useState<InventoryLocation[]>([]);
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState<"add" | "adjust" | "transfer" | null>(null);
 
-  function openAdjust(type: AdjustStockFormValues["type"]) {
-    adjustForm.reset({ type, quantity: 1 });
-    setModalError(null);
-    setModalSuccess(null);
-    setModal("adjust");
-  }
+  const load = useCallback(async () => {
+    const [itemData, stock, locs, movs] = await Promise.all([
+      getInventoryItemById(id), getStockByItem(id), listInventoryLocations(), listInventoryMovementsByItem(id),
+    ]);
+    if (!itemData) { router.push("/inventario"); return; }
+    setItem(itemData); setStockEntries(stock); setLocations(locs); setMovements(movs);
+    setLoading(false);
+  }, [id, router]);
 
-  // ── Render ────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 size={20} className="animate-spin text-zinc-500" />
-      </div>
-    );
-  }
+  useEffect(() => { load(); }, [load]);
 
-  if (loadError || !item) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <AlertTriangle size={24} className="text-red-400" />
-        <p className="text-zinc-400">{loadError ?? "Artículo no encontrado"}</p>
-        <Link href="/inventario" className="text-sm text-amber-500 hover:text-amber-400">
-          Volver al inventario
-        </Link>
-      </div>
-    );
-  }
+  async function handleModalDone() { setModal(null); setLoading(true); await load(); }
 
-  const status = getStockStatus(item);
-  const inventoryValue = item.currentStock * item.averageCost;
+  if (loading) return <div className="flex items-center justify-center h-64 text-zinc-500">Cargando...</div>;
+  if (!item) return null;
+
+  const totalStock = stockEntries.reduce((s, e) => s + e.currentStock, 0);
+  const totalValue = stockEntries.reduce((s, e) => s + e.totalValue, 0);
+  const overallStatus = getAggregateStockStatus(stockEntries);
 
   return (
-    <>
-      <div className="flex flex-col gap-6">
-        {/* Header */}
+    <div className="w-full max-w-full px-4 py-6 space-y-6 md:px-6 lg:px-8">
+      {modal === "add" && <AddStockModal item={item} locations={locations} open onClose={() => setModal(null)} onDone={handleModalDone} />}
+      {modal === "adjust" && <AdjustStockModal item={item} stockEntries={stockEntries} locations={locations} open onClose={() => setModal(null)} onDone={handleModalDone} />}
+      {modal === "transfer" && <TransferModal item={item} stockEntries={stockEntries} locations={locations} open onClose={() => setModal(null)} onDone={handleModalDone} />}
+
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <Link
-            href="/inventario"
-            className="flex items-center justify-center size-8 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors shrink-0 mt-0.5"
-          >
-            <ArrowLeft size={15} />
+          <Link href="/inventario">
+            <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white mt-0.5"><ArrowLeft className="h-5 w-5" /></Button>
           </Link>
-          <div className="flex-1 min-w-0">
+          <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-zinc-100 truncate" style={{ fontFamily: "var(--font-heading)" }}>
-                {item.name}
-              </h1>
-              <Badge variant={STOCK_STATUS_VARIANT[status]}>{STOCK_STATUS_LABELS[status]}</Badge>
-              {status !== "ok" && (
-                <Badge variant="red">
-                  <AlertTriangle size={10} className="mr-1" />
-                  {status === "sin_stock" ? "Sin stock" : "Bajo mínimo"}
-                </Badge>
-              )}
+              <h1 className="text-2xl font-bold text-white">{item.name}</h1>
+              {item.sku && <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">{item.sku}</span>}
+              <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium border ${stockBadgeClass(overallStatus)}`}>{STOCK_STATUS_LABELS[overallStatus]}</span>
             </div>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {item.sku && <span className="text-xs text-zinc-500 font-mono">{item.sku}</span>}
-              <span className="text-xs text-zinc-500">{INVENTORY_CATEGORY_LABELS[item.category]}</span>
-              <span className="text-xs text-zinc-500">{INVENTORY_ITEM_TYPE_LABELS[item.itemType]}</span>
-            </div>
+            <p className="text-sm text-zinc-400 mt-0.5">
+              {INVENTORY_CATEGORY_LABELS[item.category]} &bull; {INVENTORY_ITEM_TYPE_LABELS[item.itemType]} &bull; {INVENTORY_UNIT_LABELS[item.unit]}
+            </p>
           </div>
-          <Link
-            href={`/inventario/${id}/editar`}
-            className="flex items-center gap-2 h-9 px-3 rounded-lg border border-zinc-700 text-sm text-zinc-400 hover:text-zinc-100 hover:border-zinc-600 transition-colors shrink-0"
-          >
-            <Edit size={14} />
-            Editar
+        </div>
+        <div className="flex items-center gap-2 flex-wrap ml-12 sm:ml-0">
+          <Button size="sm" variant="outline" onClick={() => setModal("add")} className="border-zinc-700 text-zinc-300 hover:text-white gap-1.5"><Plus className="h-4 w-4" />Agregar stock</Button>
+          <Button size="sm" variant="outline" onClick={() => setModal("adjust")} className="border-zinc-700 text-zinc-300 hover:text-white gap-1.5"><Minus className="h-4 w-4" />Ajustar</Button>
+          <Button size="sm" variant="outline" onClick={() => setModal("transfer")} disabled={stockEntries.filter((e) => e.currentStock > 0).length === 0} className="border-zinc-700 text-zinc-300 hover:text-white gap-1.5"><ArrowLeftRight className="h-4 w-4" />Transferir</Button>
+          <Link href={"/inventario/" + id + "/editar"}>
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold gap-1.5"><Edit className="h-4 w-4" />Editar</Button>
           </Link>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {/* ── Left column ── */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            {/* Item info */}
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
-              <h2 className="text-sm font-semibold text-zinc-300">Información general</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <InfoCell label="Categoría" value={INVENTORY_CATEGORY_LABELS[item.category]} />
-                <InfoCell label="Tipo" value={INVENTORY_ITEM_TYPE_LABELS[item.itemType]} />
-                <InfoCell label="Unidad" value={INVENTORY_UNIT_LABELS[item.unit]} />
-                <InfoCell label="Ubicación" value={location?.name ?? item.locationId} />
-                {item.sku && <InfoCell label="SKU" value={item.sku} mono />}
-              </div>
-              {item.description && (
-                <div className="rounded-lg bg-zinc-800/50 px-3 py-2.5">
-                  <p className="text-xs text-zinc-500 mb-1">Descripción</p>
-                  <p className="text-sm text-zinc-300 whitespace-pre-wrap">{item.description}</p>
-                </div>
-              )}
-              {item.notes && (
-                <div className="rounded-lg bg-zinc-800/50 px-3 py-2.5">
-                  <p className="text-xs text-zinc-500 mb-1">Notas</p>
-                  <p className="text-sm text-zinc-300 whitespace-pre-wrap">{item.notes}</p>
-                </div>
-              )}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5">
+          {/* Summary */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+              <p className="text-xs text-zinc-400 mb-1">Stock total</p>
+              <p className="text-2xl font-bold text-white">{totalStock.toLocaleString("es-PA")}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">{INVENTORY_UNIT_LABELS[item.unit]}</p>
             </div>
-
-            {/* Movement history */}
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
-              <div className="px-5 py-4 border-b border-zinc-800">
-                <h2 className="text-sm font-semibold text-zinc-300">Historial de movimientos</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">{movements.length} movimientos</p>
-              </div>
-              {movements.length === 0 ? (
-                <div className="px-5 py-8 text-center text-zinc-600 text-sm">
-                  Sin movimientos registrados
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-800">
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-zinc-500 uppercase tracking-wider">Tipo</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-zinc-500 uppercase tracking-wider">Cantidad</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden sm:table-cell">Costo unit.</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden sm:table-cell">Total</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">Referencia</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-zinc-500 uppercase tracking-wider">Fecha</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/60">
-                      {movements.map((mv) => {
-                        const isIn = ["purchase_in", "transfer_in", "adjustment_in", "return_in"].includes(mv.type);
-                        return (
-                          <tr key={mv.id} className="hover:bg-zinc-800/30">
-                            <td className="px-4 py-2.5">
-                              <Badge variant={MOVEMENT_VARIANT[mv.type] ?? "default"}>
-                                {INVENTORY_MOVEMENT_TYPE_LABELS[mv.type]}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-2.5 text-right">
-                              <span className={`font-medium ${isIn ? "text-emerald-400" : "text-red-400"}`}>
-                                {isIn ? "+" : "-"}{mv.quantity} {INVENTORY_UNIT_LABELS[item.unit]}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-right hidden sm:table-cell text-zinc-400">
-                              {mv.unitCost !== undefined ? formatCurrency(mv.unitCost) : "—"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right hidden sm:table-cell text-zinc-300">
-                              {mv.totalCost !== undefined ? formatCurrency(mv.totalCost) : "—"}
-                            </td>
-                            <td className="px-4 py-2.5 hidden md:table-cell">
-                              {mv.notes ? (
-                                <span className="text-xs text-zinc-500 truncate max-w-32 block">{mv.notes}</span>
-                              ) : mv.referenceId ? (
-                                <span className="text-xs text-zinc-600 font-mono truncate max-w-32 block">{mv.referenceId}</span>
-                              ) : (
-                                <span className="text-xs text-zinc-700">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-xs text-zinc-500 whitespace-nowrap">
-                              {formatDate(mv.createdAt)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+            <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+              <p className="text-xs text-zinc-400 mb-1">Valor total</p>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totalValue)}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">en {stockEntries.length} ubic.</p>
+            </div>
+            <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+              <p className="text-xs text-zinc-400 mb-1">Costo promedio</p>
+              <p className="text-2xl font-bold text-white">{formatCurrency(item.averageCost)}</p>
+              {item.salePrice && <p className="text-xs text-zinc-500 mt-0.5">Venta: {formatCurrency(item.salePrice)}</p>}
             </div>
           </div>
 
-          {/* ── Right column ── */}
-          <div className="flex flex-col gap-4">
-            {/* Stock summary */}
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
-              <h2 className="text-sm font-semibold text-zinc-300">Stock</h2>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-xs text-zinc-500">Stock actual</p>
-                    <p className={`text-3xl font-bold mt-0.5 ${item.currentStock <= 0 ? "text-red-400" : item.currentStock <= item.minimumStock ? "text-amber-400" : "text-zinc-100"}`}>
-                      {item.currentStock}
-                      <span className="text-base font-normal text-zinc-500 ml-1.5">{INVENTORY_UNIT_LABELS[item.unit]}</span>
-                    </p>
-                  </div>
+          {/* Stock by location */}
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+              <h2 className="font-semibold text-white text-sm">Stock por ubicacion</h2>
+              <Button size="sm" variant="ghost" onClick={() => setModal("add")} className="text-zinc-400 hover:text-white h-7 gap-1"><Plus className="h-3.5 w-3.5" />Agregar</Button>
+            </div>
+            {stockEntries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2 text-zinc-500">
+                <MapPin className="h-8 w-8" />
+                <p className="text-sm">No hay stock registrado en ninguna ubicacion</p>
+                <Button size="sm" variant="outline" onClick={() => setModal("add")} className="border-zinc-700 text-zinc-300 mt-1">Agregar stock</Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-zinc-800">
+                    <tr>
+                      <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Ubicacion</th>
+                      <th className="text-right py-2.5 px-4 font-medium text-zinc-400">Stock</th>
+                      <th className="text-right py-2.5 px-4 font-medium text-zinc-400 hidden sm:table-cell">Minimo</th>
+                      <th className="text-right py-2.5 px-4 font-medium text-zinc-400 hidden sm:table-cell">Valor</th>
+                      <th className="text-center py-2.5 px-4 font-medium text-zinc-400">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {stockEntries.map((entry) => {
+                      const loc = locations.find((l) => l.id === entry.locationId);
+                      const status = getStockStatusForEntry(entry);
+                      return (
+                        <tr key={entry.id}>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                              <div>
+                                <p className="text-white">{loc?.name ?? entry.locationId}</p>
+                                {loc && <p className="text-xs text-zinc-500">{INVENTORY_LOCATION_TYPE_LABELS[loc.type]}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right font-semibold text-white">{entry.currentStock.toLocaleString("es-PA")}</td>
+                          <td className="py-3 px-4 text-right text-zinc-400 hidden sm:table-cell">{entry.minimumStock.toLocaleString("es-PA")}</td>
+                          <td className="py-3 px-4 text-right text-zinc-300 hidden sm:table-cell">{formatCurrency(entry.totalValue)}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium border ${stockBadgeClass(status)}`}>{STOCK_STATUS_LABELS[status]}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: catalog details */}
+        <div className="space-y-5">
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-5 space-y-3">
+            <h2 className="font-semibold text-white text-sm">Detalles del articulo</h2>
+            {item.description && <p className="text-sm text-zinc-400">{item.description}</p>}
+            <div className="space-y-2 text-sm">
+              {([
+                ["Categoria", INVENTORY_CATEGORY_LABELS[item.category]],
+                ["Tipo", INVENTORY_ITEM_TYPE_LABELS[item.itemType]],
+                ["Unidad", INVENTORY_UNIT_LABELS[item.unit]],
+                ["Costo promedio", formatCurrency(item.averageCost)],
+                ...(item.lastPurchaseCost !== undefined ? [["Ult. costo compra", formatCurrency(item.lastPurchaseCost)]] : []),
+                ...(item.salePrice !== undefined ? [["Precio venta", formatCurrency(item.salePrice)]] : []),
+              ] as [string, string][]).map(([label, value]) => (
+                <div key={label} className="flex justify-between">
+                  <span className="text-zinc-500">{label}</span>
+                  <span className="text-zinc-200">{value}</span>
                 </div>
-                {item.minimumStock > 0 && (
-                  <div className="flex items-center justify-between rounded-lg bg-zinc-800/50 px-3 py-2">
-                    <span className="text-xs text-zinc-500">Stock mínimo</span>
-                    <span className="text-sm font-medium text-zinc-300">{item.minimumStock} {INVENTORY_UNIT_LABELS[item.unit]}</span>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
-
-            {/* Value summary */}
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-3">
-              <h2 className="text-sm font-semibold text-zinc-300">Valor en inventario</h2>
-              <ValueRow label="Costo promedio" value={formatCurrency(item.averageCost)} />
-              {item.lastPurchaseCost !== undefined && (
-                <ValueRow label="Último costo compra" value={formatCurrency(item.lastPurchaseCost)} />
-              )}
-              {item.salePrice !== undefined && (
-                <ValueRow label="Precio de venta" value={formatCurrency(item.salePrice)} highlight />
-              )}
-              <div className="border-t border-zinc-800 pt-3 mt-1">
-                <ValueRow
-                  label="Valor total inventario"
-                  value={formatCurrency(inventoryValue)}
-                  large
-                  highlight
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-2">
-              <h2 className="text-sm font-semibold text-zinc-300 mb-1">Acciones</h2>
-              <ActionBtn
-                icon={<Plus size={14} />}
-                label="Registrar entrada"
-                color="green"
-                onClick={() => openAdjust("purchase_in")}
-              />
-              <ActionBtn
-                icon={<Minus size={14} />}
-                label="Registrar salida"
-                color="red"
-                onClick={() => openAdjust("sale_out")}
-              />
-              <ActionBtn
-                icon={<TrendingUp size={14} />}
-                label="Ajuste (entrada)"
-                color="amber"
-                onClick={() => openAdjust("adjustment_in")}
-              />
-              <ActionBtn
-                icon={<TrendingDown size={14} />}
-                label="Ajuste (salida)"
-                color="amber"
-                onClick={() => openAdjust("adjustment_out")}
-              />
-              <ActionBtn
-                icon={<ArrowRightLeft size={14} />}
-                label="Transferir stock"
-                color="blue"
-                onClick={() => { transferForm.reset({ quantity: 1 }); setTransferTargetLocationId(""); setModalError(null); setModalSuccess(null); setModal("transfer"); }}
-              />
-            </div>
+            {item.notes && <p className="text-xs text-zinc-500 border-t border-zinc-800 pt-3">{item.notes}</p>}
           </div>
         </div>
       </div>
 
-      {/* ── Adjust modal ── */}
-      {modal === "adjust" && (
-        <Modal title="Ajustar stock" onClose={() => setModal(null)}>
-          <form onSubmit={adjustForm.handleSubmit(onAdjust)} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-zinc-400 text-xs">Tipo de movimiento</Label>
-              <Select {...adjustForm.register("type")}>
-                <option value="purchase_in">Compra (entrada)</option>
-                <option value="adjustment_in">Ajuste (entrada)</option>
-                <option value="adjustment_out">Ajuste (salida)</option>
-                <option value="sale_out">Venta (salida)</option>
-                <option value="return_in">Devolución (entrada)</option>
-              </Select>
-              {adjustForm.formState.errors.type && (
-                <p className="text-xs text-red-400">{adjustForm.formState.errors.type.message}</p>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-zinc-400 text-xs">Cantidad *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  {...adjustForm.register("quantity", { valueAsNumber: true })}
-                  placeholder="0"
-                />
-                {adjustForm.formState.errors.quantity && (
-                  <p className="text-xs text-red-400">{adjustForm.formState.errors.quantity.message}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-zinc-400 text-xs">Costo unitario</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...adjustForm.register("unitCost", { valueAsNumber: true, setValueAs: (v) => (v === "" || isNaN(Number(v)) ? undefined : Number(v)) })}
-                  placeholder="Opcional"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-zinc-400 text-xs">Notas</Label>
-              <Input {...adjustForm.register("notes")} placeholder="Motivo del ajuste…" />
-            </div>
-            {modalError && (
-              <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
-                {modalError}
-              </p>
-            )}
-            {modalSuccess && (
-              <p className="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
-                <CheckCircle2 size={12} /> {modalSuccess}
-              </p>
-            )}
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="flex-1 h-9 rounded-lg border border-zinc-700 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={adjustForm.formState.isSubmitting}
-                className="flex-1 h-9 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-zinc-950 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-              >
-                {adjustForm.formState.isSubmitting && <Loader2 size={13} className="animate-spin" />}
-                Guardar
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* ── Transfer modal ── */}
-      {modal === "transfer" && (
-        <Modal title="Transferir stock" onClose={() => { setModal(null); setTransferTargetLocationId(""); }}>
-          <form onSubmit={transferForm.handleSubmit(onTransfer)} className="flex flex-col gap-3">
-            <p className="text-xs text-zinc-500">
-              Transfiere <span className="text-zinc-300 font-medium">{item.name}</span>{" "}
-              desde <span className="text-amber-400 font-medium">{location?.name ?? "esta ubicación"}</span>.
-            </p>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-zinc-400 text-xs">Ubicación destino *</Label>
-              <Select
-                value={transferTargetLocationId}
-                onChange={(e) => setTransferTargetLocationId(e.target.value)}
-              >
-                <option value="">Seleccionar ubicación…</option>
-                {allLocations
-                  .filter((l) => l.id !== item.locationId)
-                  .map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-zinc-400 text-xs">Cantidad a transferir *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                {...transferForm.register("quantity", { valueAsNumber: true })}
-                placeholder="0"
-              />
-              {transferForm.formState.errors.quantity && (
-                <p className="text-xs text-red-400">{transferForm.formState.errors.quantity.message}</p>
-              )}
-              <p className="text-xs text-zinc-600">Disponible: {item.currentStock} {INVENTORY_UNIT_LABELS[item.unit]}</p>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-zinc-400 text-xs">Notas</Label>
-              <Input {...transferForm.register("notes")} placeholder="Motivo de la transferencia…" />
-            </div>
-            {modalError && (
-              <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
-                {modalError}
-              </p>
-            )}
-            {modalSuccess && (
-              <p className="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20 flex items-center gap-1.5">
-                <CheckCircle2 size={12} /> {modalSuccess}
-              </p>
-            )}
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="flex-1 h-9 rounded-lg border border-zinc-700 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={transferForm.formState.isSubmitting}
-                className="flex-1 h-9 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-zinc-950 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-              >
-                {transferForm.formState.isSubmitting && <Loader2 size={13} className="animate-spin" />}
-                Transferir
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
-    </>
-  );
-}
-
-// ── Sub-components ────────────────────────────────────────
-
-function InfoCell({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
-  if (!value) return null;
-  return (
-    <div className="flex flex-col gap-0.5">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className={`text-sm font-medium text-zinc-200 ${mono ? "font-mono" : ""}`}>{value}</p>
+      {/* Movement history */}
+      <div className="rounded-lg bg-zinc-900 border border-zinc-800">
+        <div className="px-4 py-3 border-b border-zinc-800">
+          <h2 className="font-semibold text-white text-sm">Historial de movimientos</h2>
+        </div>
+        {movements.length === 0 ? (
+          <div className="flex items-center justify-center py-10 text-zinc-500 text-sm">Sin movimientos registrados</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-zinc-800">
+                <tr>
+                  <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Tipo</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-zinc-400 hidden sm:table-cell">Ubicacion</th>
+                  <th className="text-right py-2.5 px-4 font-medium text-zinc-400">Cantidad</th>
+                  <th className="text-right py-2.5 px-4 font-medium text-zinc-400 hidden md:table-cell">Costo</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-zinc-400 hidden lg:table-cell">Notas</th>
+                  <th className="text-right py-2.5 px-4 font-medium text-zinc-400">Fecha</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800">
+                {movements.map((m) => {
+                  const isIn = IN_MOVEMENT_TYPES.includes(m.type);
+                  const locationId = m.locationId ?? m.fromLocationId ?? m.toLocationId;
+                  const loc = locations.find((l) => l.id === locationId);
+                  return (
+                    <tr key={m.id}>
+                      <td className="py-2.5 px-4">
+                        <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${movementBadgeClass(m.type)}`}>{INVENTORY_MOVEMENT_TYPE_LABELS[m.type]}</span>
+                      </td>
+                      <td className="py-2.5 px-4 text-zinc-400 hidden sm:table-cell text-xs">
+                        {m.fromLocationId && m.toLocationId
+                          ? `${locations.find((l) => l.id === m.fromLocationId)?.name ?? m.fromLocationId} -> ${locations.find((l) => l.id === m.toLocationId)?.name ?? m.toLocationId}`
+                          : loc?.name ?? locationId ?? "-"}
+                      </td>
+                      <td className={`py-2.5 px-4 text-right font-semibold ${isIn ? "text-green-400" : "text-red-400"}`}>
+                        {isIn ? "+" : "-"}{m.quantity.toLocaleString("es-PA")}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-zinc-400 hidden md:table-cell">{m.unitCost !== undefined ? formatCurrency(m.unitCost) : "-"}</td>
+                      <td className="py-2.5 px-4 text-zinc-500 text-xs hidden lg:table-cell max-w-[200px] truncate">{m.notes ?? "-"}</td>
+                      <td className="py-2.5 px-4 text-right text-zinc-500 text-xs whitespace-nowrap">{formatDate(m.createdAt)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
-  );
-}
-
-function ValueRow({
-  label,
-  value,
-  large,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  large?: boolean;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-zinc-500">{label}</span>
-      <span className={`font-medium ${large ? "text-base" : "text-sm"} ${highlight ? "text-amber-400" : "text-zinc-300"}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function ActionBtn({
-  icon,
-  label,
-  color,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  color: "green" | "red" | "amber" | "blue";
-  onClick: () => void;
-}) {
-  const colorMap: Record<string, string> = {
-    green: "border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10",
-    red: "border-red-500/20 text-red-400 hover:bg-red-500/10",
-    amber: "border-amber-500/20 text-amber-400 hover:bg-amber-500/10",
-    blue: "border-blue-500/20 text-blue-400 hover:bg-blue-500/10",
-  };
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full h-9 px-3 rounded-lg border text-sm font-medium flex items-center gap-2 transition-colors ${colorMap[color]}`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }

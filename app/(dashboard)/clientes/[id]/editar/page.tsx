@@ -12,7 +12,7 @@ import { clientSchema, type ClientFormValues } from "@/lib/schemas/client";
 import { getClientById, updateClient } from "@/lib/firestore/clients";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
+
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
@@ -155,17 +155,17 @@ export default function EditarClientePage() {
                 <Label htmlFor="clientType">
                   Tipo de cliente <span className="text-amber-500">*</span>
                 </Label>
-                <Select id="clientType" {...register("clientType")}>
+                <select id="clientType" className="flex h-10 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-zinc-900" {...register("clientType")}>
                   <option value="individual">Persona natural</option>
                   <option value="company">Empresa</option>
-                </Select>
+                </select>
                 <FieldError message={errors.clientType?.message} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="source">
                   Origen <span className="text-amber-500">*</span>
                 </Label>
-                <Select id="source" {...register("source")}>
+                <select id="source" className="flex h-10 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-zinc-900" {...register("source")}>
                   <option value="store">Tienda</option>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="instagram">Instagram</option>
@@ -173,7 +173,7 @@ export default function EditarClientePage() {
                   <option value="tiktok">TikTok</option>
                   <option value="referral">Referido</option>
                   <option value="other">Otro</option>
-                </Select>
+                </select>
                 <FieldError message={errors.source?.message} />
               </div>
             </div>

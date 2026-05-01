@@ -43,7 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
+
 import { Label } from "@/components/ui/label";
 
 function FieldError({ message }: { message?: string }) {
@@ -333,7 +333,7 @@ export default function ClientDetailPage() {
                   <Label htmlFor="str-type">
                     Tipo <span className="text-amber-500">*</span>
                   </Label>
-                  <Select id="str-type" {...register("type")}>
+                  <select id="str-type" className="flex h-10 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-zinc-900" {...register("type")}>
                     <option value="cabin">Cabaña</option>
                     <option value="pergola">Pérgola</option>
                     <option value="kiosk">Kiosco</option>
@@ -341,7 +341,7 @@ export default function ClientDetailPage() {
                     <option value="playground">Parque infantil</option>
                     <option value="rustic_cafe">Cafetería rústica</option>
                     <option value="custom">Personalizada</option>
-                  </Select>
+                  </select>
                   <FieldError message={errors.type?.message} />
                 </div>
 

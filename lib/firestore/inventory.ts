@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   addDoc,
+  setDoc,
   updateDoc,
   getDoc,
   getDocs,
@@ -15,6 +16,7 @@ import {
 import { db } from "@/lib/firebase";
 import type {
   InventoryItem,
+  InventoryStockByLocation,
   InventoryLocation,
   InventoryMovement,
   InventoryMovementType,
@@ -27,6 +29,7 @@ import type {
 } from "@/lib/schemas/inventory";
 
 const ITEMS_COL = "inventoryItems";
+const STOCK_COL = "inventoryStock";
 const LOCATIONS_COL = "inventoryLocations";
 const MOVEMENTS_COL = "inventoryMovements";
 
@@ -55,16 +58,27 @@ function docToItem(id: string, data: Record<string, any>): InventoryItem {
     category: data.category,
     itemType: data.itemType,
     unit: data.unit,
-    currentStock: data.currentStock ?? 0,
-    minimumStock: data.minimumStock ?? 0,
     averageCost: data.averageCost ?? 0,
     lastPurchaseCost: data.lastPurchaseCost ?? undefined,
     salePrice: data.salePrice ?? undefined,
-    locationId: data.locationId,
     supplierId: data.supplierId ?? undefined,
     isActive: data.isActive ?? true,
     notes: data.notes ?? undefined,
     createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function docToStock(id: string, data: Record<string, any>): InventoryStockByLocation {
+  return {
+    id,
+    itemId: data.itemId,
+    locationId: data.locationId,
+    currentStock: data.currentStock ?? 0,
+    minimumStock: data.minimumStock ?? 0,
+    averageCost: data.averageCost ?? undefined,
+    totalValue: data.totalValue ?? 0,
     updatedAt: toDate(data.updatedAt),
   };
 }
@@ -87,7 +101,9 @@ function docToMovement(id: string, data: Record<string, any>): InventoryMovement
   return {
     id,
     itemId: data.itemId,
-    locationId: data.locationId,
+    locationId: data.locationId ?? undefined,
+    fromLocationId: data.fromLocationId ?? undefined,
+    toLocationId: data.toLocationId ?? undefined,
     type: data.type,
     quantity: data.quantity,
     unitCost: data.unitCost ?? undefined,
@@ -100,13 +116,17 @@ function docToMovement(id: string, data: Record<string, any>): InventoryMovement
   };
 }
 
+/** Composite key for (itemId, locationId) stock documents */
+function stockDocId(itemId: string, locationId: string): string {
+  return `${itemId}_${locationId}`;
+}
+
 // ── Inventory Items ──────────────────────────────────────
 
 export async function createInventoryItem(
   payload: InventoryItemFormValues
 ): Promise<string> {
-  const colRef = collection(db, ITEMS_COL);
-  const ref = await addDoc(colRef, {
+  const ref = await addDoc(collection(db, ITEMS_COL), {
     ...stripUndefined(payload),
     isActive: true,
     createdAt: serverTimestamp(),
@@ -119,8 +139,7 @@ export async function updateInventoryItem(
   id: string,
   payload: Partial<InventoryItemFormValues>
 ): Promise<void> {
-  const ref = doc(db, ITEMS_COL, id);
-  await updateDoc(ref, {
+  await updateDoc(doc(db, ITEMS_COL, id), {
     ...stripUndefined(payload),
     updatedAt: serverTimestamp(),
   });
@@ -129,8 +148,7 @@ export async function updateInventoryItem(
 export async function getInventoryItemById(
   id: string
 ): Promise<InventoryItem | null> {
-  const ref = doc(db, ITEMS_COL, id);
-  const snap = await getDoc(ref);
+  const snap = await getDoc(doc(db, ITEMS_COL, id));
   if (!snap.exists()) return null;
   return docToItem(snap.id, snap.data());
 }
@@ -145,17 +163,80 @@ export async function listInventoryItems(): Promise<InventoryItem[]> {
   return snap.docs.map((d) => docToItem(d.id, d.data()));
 }
 
-export async function listInventoryItemsByLocation(
+// ── Inventory Stock by Location ──────────────────────────
+
+/**
+ * Get stock entry for a specific (item, location) pair.
+ * Returns null if no stock entry exists yet.
+ */
+export async function getStockEntry(
+  itemId: string,
   locationId: string
-): Promise<InventoryItem[]> {
+): Promise<InventoryStockByLocation | null> {
+  const id = stockDocId(itemId, locationId);
+  const snap = await getDoc(doc(db, STOCK_COL, id));
+  if (!snap.exists()) return null;
+  return docToStock(snap.id, snap.data());
+}
+
+/** All stock entries for a given item across all locations */
+export async function getStockByItem(
+  itemId: string
+): Promise<InventoryStockByLocation[]> {
   const q = query(
-    collection(db, ITEMS_COL),
-    where("locationId", "==", locationId),
-    where("isActive", "==", true),
-    orderBy("name", "asc")
+    collection(db, STOCK_COL),
+    where("itemId", "==", itemId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => docToItem(d.id, d.data()));
+  return snap.docs.map((d) => docToStock(d.id, d.data()));
+}
+
+/** All stock entries for a given location */
+export async function getStockByLocation(
+  locationId: string
+): Promise<InventoryStockByLocation[]> {
+  const q = query(
+    collection(db, STOCK_COL),
+    where("locationId", "==", locationId)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => docToStock(d.id, d.data()));
+}
+
+/** All stock entries across all items/locations */
+export async function listAllStock(): Promise<InventoryStockByLocation[]> {
+  const snap = await getDocs(collection(db, STOCK_COL));
+  return snap.docs.map((d) => docToStock(d.id, d.data()));
+}
+
+/**
+ * Upsert a stock entry for (item, location).
+ * Creates the document if it does not exist.
+ */
+export async function upsertStockEntry(
+  itemId: string,
+  locationId: string,
+  currentStock: number,
+  minimumStock: number,
+  itemAverageCost: number,
+  overrideAverageCost?: number
+): Promise<void> {
+  const effectiveCost = overrideAverageCost ?? itemAverageCost;
+  const totalValue = currentStock * effectiveCost;
+  const id = stockDocId(itemId, locationId);
+  await setDoc(
+    doc(db, STOCK_COL, id),
+    {
+      itemId,
+      locationId,
+      currentStock,
+      minimumStock,
+      ...(overrideAverageCost !== undefined ? { averageCost: overrideAverageCost } : {}),
+      totalValue,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 // ── Inventory Locations ──────────────────────────────────
@@ -163,8 +244,7 @@ export async function listInventoryItemsByLocation(
 export async function createInventoryLocation(
   payload: InventoryLocationFormValues
 ): Promise<string> {
-  const colRef = collection(db, LOCATIONS_COL);
-  const ref = await addDoc(colRef, {
+  const ref = await addDoc(collection(db, LOCATIONS_COL), {
     ...stripUndefined(payload),
     isActive: true,
     createdAt: serverTimestamp(),
@@ -177,54 +257,19 @@ export async function updateInventoryLocation(
   id: string,
   payload: Partial<InventoryLocationFormValues & { isActive?: boolean }>
 ): Promise<void> {
-  const ref = doc(db, LOCATIONS_COL, id);
-  await updateDoc(ref, {
+  await updateDoc(doc(db, LOCATIONS_COL, id), {
     ...stripUndefined(payload),
     updatedAt: serverTimestamp(),
   });
 }
 
 export async function listInventoryLocations(): Promise<InventoryLocation[]> {
-  const q = query(
-    collection(db, LOCATIONS_COL),
-    orderBy("name", "asc")
-  );
+  const q = query(collection(db, LOCATIONS_COL), orderBy("name", "asc"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => docToLocation(d.id, d.data()));
 }
 
 // ── Inventory Movements ──────────────────────────────────
-
-export async function createInventoryMovement(
-  itemId: string,
-  locationId: string,
-  payload: {
-    type: InventoryMovementType;
-    quantity: number;
-    unitCost?: number;
-    referenceType?: InventoryReferenceType;
-    referenceId?: string;
-    notes?: string;
-    createdBy?: string;
-  }
-): Promise<string> {
-  const totalCost =
-    payload.unitCost !== undefined
-      ? payload.quantity * payload.unitCost
-      : undefined;
-
-  const colRef = collection(db, MOVEMENTS_COL);
-  const ref = await addDoc(colRef, {
-    itemId,
-    locationId,
-    ...stripUndefined({
-      ...payload,
-      totalCost,
-    }),
-    createdAt: serverTimestamp(),
-  });
-  return ref.id;
-}
 
 export async function listInventoryMovementsByItem(
   itemId: string
@@ -241,12 +286,12 @@ export async function listInventoryMovementsByItem(
 // ── Stock Operations ─────────────────────────────────────
 
 /**
- * Adjust stock for a single item.
- * Handles weighted average cost update for purchase_in.
- * Prevents going below 0 for non-adjustment-out operations.
+ * Register a stock entry (purchase, return, sale, adjustment) for a specific location.
+ * Updates the stock entry and creates a movement record in a transaction.
  */
 export async function adjustInventoryStock(
   itemId: string,
+  locationId: string,
   type: InventoryMovementType,
   quantity: number,
   opts?: {
@@ -256,54 +301,79 @@ export async function adjustInventoryStock(
     notes?: string;
     createdBy?: string;
     allowNegative?: boolean;
+    minimumStock?: number;
   }
 ): Promise<void> {
+  const stockId = stockDocId(itemId, locationId);
+  const stockRef = doc(db, STOCK_COL, stockId);
   const itemRef = doc(db, ITEMS_COL, itemId);
   const movementsCol = collection(db, MOVEMENTS_COL);
 
   await runTransaction(db, async (tx) => {
-    const snap = await tx.get(itemRef);
-    if (!snap.exists()) throw new Error("Artículo no encontrado");
+    const [stockSnap, itemSnap] = await Promise.all([
+      tx.get(stockRef),
+      tx.get(itemRef),
+    ]);
 
-    const item = docToItem(snap.id, snap.data());
+    if (!itemSnap.exists()) throw new Error("Art\u00edculo no encontrado");
+
+    const item = docToItem(itemSnap.id, itemSnap.data());
+    const existing = stockSnap.exists() ? docToStock(stockSnap.id, stockSnap.data()) : null;
+    const prevStock = existing?.currentStock ?? 0;
+    const prevMinStock = existing?.minimumStock ?? opts?.minimumStock ?? 0;
+
     const isIn = IN_MOVEMENT_TYPES.includes(type);
     const delta = isIn ? quantity : -quantity;
-    const newStock = item.currentStock + delta;
+    const newStock = prevStock + delta;
 
-    // Guard: prevent going below 0 unless it's adjustment_out with explicit allowNegative
     if (newStock < 0 && type !== "adjustment_out" && !opts?.allowNegative) {
       throw new Error(
-        `Stock insuficiente. Stock actual: ${item.currentStock}, cantidad solicitada: ${quantity}`
+        `Stock insuficiente. Disponible: ${prevStock}, solicitado: ${quantity}`
       );
     }
 
-    // Compute new average cost for purchase_in
-    let newAverageCost = item.averageCost;
+    // Compute new weighted average cost for purchase_in
+    let newAverageCost = existing?.averageCost ?? item.averageCost;
     if (type === "purchase_in" && opts?.unitCost !== undefined && opts.unitCost > 0) {
-      const prevTotal = item.currentStock * item.averageCost;
+      const prevTotal = prevStock * newAverageCost;
       const inTotal = quantity * opts.unitCost;
-      const newTotal = item.currentStock + quantity;
+      const newTotal = prevStock + quantity;
       newAverageCost = newTotal > 0 ? (prevTotal + inTotal) / newTotal : opts.unitCost;
     }
 
-    const totalCost =
-      opts?.unitCost !== undefined ? quantity * opts.unitCost : undefined;
+    const safeStock = Math.max(0, newStock);
+    const effectiveCost = newAverageCost;
+    const totalValue = safeStock * effectiveCost;
 
-    // Update item
-    tx.update(itemRef, {
-      currentStock: Math.max(0, newStock),
-      averageCost: newAverageCost,
-      ...(type === "purchase_in" && opts?.unitCost !== undefined
-        ? { lastPurchaseCost: opts.unitCost }
-        : {}),
-      updatedAt: serverTimestamp(),
-    });
+    tx.set(
+      stockRef,
+      {
+        itemId,
+        locationId,
+        currentStock: safeStock,
+        minimumStock: prevMinStock,
+        averageCost: effectiveCost,
+        totalValue,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
-    // Create movement
+    // Update item-level averageCost and lastPurchaseCost for purchase_in
+    if (type === "purchase_in" && opts?.unitCost !== undefined) {
+      tx.update(itemRef, {
+        averageCost: newAverageCost,
+        lastPurchaseCost: opts.unitCost,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    const totalCost = opts?.unitCost !== undefined ? quantity * opts.unitCost : undefined;
+
     const movRef = doc(movementsCol);
     tx.set(movRef, {
       itemId,
-      locationId: item.locationId,
+      locationId,
       type,
       quantity,
       ...(opts?.unitCost !== undefined ? { unitCost: opts.unitCost } : {}),
@@ -318,64 +388,103 @@ export async function adjustInventoryStock(
 }
 
 /**
- * Transfer stock from one item (source location) to another item (target location).
- * Both items must already exist. Creates transfer_out + transfer_in movements.
+ * Transfer stock from one location to another for the same item.
+ * Decreases stock in source, increases in destination.
+ * Creates transfer_out + transfer_in movement records.
+ * Auto-creates destination stock entry if it does not exist.
  */
 export async function transferInventoryStock(
-  sourceItemId: string,
-  targetItemId: string,
+  itemId: string,
+  fromLocationId: string,
+  toLocationId: string,
   quantity: number,
   opts?: {
     notes?: string;
     createdBy?: string;
-    sourceLocationName?: string;
-    targetLocationName?: string;
+    fromLocationName?: string;
+    toLocationName?: string;
   }
 ): Promise<void> {
-  const sourceRef = doc(db, ITEMS_COL, sourceItemId);
-  const targetRef = doc(db, ITEMS_COL, targetItemId);
+  const sourceId = stockDocId(itemId, fromLocationId);
+  const destId = stockDocId(itemId, toLocationId);
+  const sourceRef = doc(db, STOCK_COL, sourceId);
+  const destRef = doc(db, STOCK_COL, destId);
+  const itemRef = doc(db, ITEMS_COL, itemId);
   const movementsCol = collection(db, MOVEMENTS_COL);
 
   await runTransaction(db, async (tx) => {
-    const [sourceSnap, targetSnap] = await Promise.all([
+    const [sourceSnap, destSnap, itemSnap] = await Promise.all([
       tx.get(sourceRef),
-      tx.get(targetRef),
+      tx.get(destRef),
+      tx.get(itemRef),
     ]);
 
-    if (!sourceSnap.exists()) throw new Error("Artículo origen no encontrado");
-    if (!targetSnap.exists()) throw new Error("Artículo destino no encontrado");
+    if (!itemSnap.exists()) throw new Error("Art\u00edculo no encontrado");
+    if (!sourceSnap.exists()) throw new Error("No hay stock registrado en la ubicaci\u00f3n origen.");
 
-    const source = docToItem(sourceSnap.id, sourceSnap.data());
-    const target = docToItem(targetSnap.id, targetSnap.data());
+    const item = docToItem(itemSnap.id, itemSnap.data());
+    const source = docToStock(sourceSnap.id, sourceSnap.data());
+    const dest = destSnap.exists()
+      ? docToStock(destSnap.id, destSnap.data())
+      : null;
 
     if (source.currentStock < quantity) {
       throw new Error(
-        `Stock insuficiente en origen. Disponible: ${source.currentStock}, solicitado: ${quantity}`
+        `Stock insuficiente. Disponible: ${source.currentStock}, solicitado: ${quantity}`
       );
     }
 
-    const transferRef = doc(collection(db, MOVEMENTS_COL)); // shared reference ID
-    const transferRefId = transferRef.id;
+    const cost = source.averageCost ?? item.averageCost;
+    const newSourceStock = source.currentStock - quantity;
+    const destPrevStock = dest?.currentStock ?? 0;
+    const destCost = dest?.averageCost ?? item.averageCost;
+    const newDestStock = destPrevStock + quantity;
 
-    // Update source
-    tx.update(sourceRef, {
-      currentStock: source.currentStock - quantity,
-      updatedAt: serverTimestamp(),
-    });
+    // Weighted avg cost for destination
+    const newDestCost =
+      destPrevStock === 0
+        ? cost
+        : (destPrevStock * destCost + quantity * cost) / newDestStock;
 
-    // Update target
-    tx.update(targetRef, {
-      currentStock: target.currentStock + quantity,
-      updatedAt: serverTimestamp(),
-    });
+    tx.set(
+      sourceRef,
+      {
+        itemId,
+        locationId: fromLocationId,
+        currentStock: newSourceStock,
+        minimumStock: source.minimumStock,
+        averageCost: cost,
+        totalValue: newSourceStock * cost,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
-    // Movement: transfer_out from source
-    const outNotes = opts?.notes
-      ?? (opts?.targetLocationName ? `→ ${opts.targetLocationName}` : undefined);
+    tx.set(
+      destRef,
+      {
+        itemId,
+        locationId: toLocationId,
+        currentStock: newDestStock,
+        minimumStock: dest?.minimumStock ?? 0,
+        averageCost: newDestCost,
+        totalValue: newDestStock * newDestCost,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    const transferRefId = doc(movementsCol).id;
+
+    const outNotes = opts?.notes ?? (opts?.toLocationName ? `\u2192 ${opts.toLocationName}` : undefined);
+    const inNotes = opts?.notes ?? (opts?.fromLocationName ? `\u2190 ${opts.fromLocationName}` : undefined);
+
     const outRef = doc(movementsCol);
     tx.set(outRef, {
-      itemId: sourceItemId,
-      locationId: source.locationId,
+      itemId,
+      fromLocationId,
+      toLocationId,
+      locationId: fromLocationId,
       type: "transfer_out" as InventoryMovementType,
       quantity,
       referenceType: "transfer" as InventoryReferenceType,
@@ -385,13 +494,12 @@ export async function transferInventoryStock(
       createdAt: serverTimestamp(),
     });
 
-    // Movement: transfer_in to target
-    const inNotes = opts?.notes
-      ?? (opts?.sourceLocationName ? `← ${opts.sourceLocationName}` : undefined);
     const inRef = doc(movementsCol);
     tx.set(inRef, {
-      itemId: targetItemId,
-      locationId: target.locationId,
+      itemId,
+      fromLocationId,
+      toLocationId,
+      locationId: toLocationId,
       type: "transfer_in" as InventoryMovementType,
       quantity,
       referenceType: "transfer" as InventoryReferenceType,

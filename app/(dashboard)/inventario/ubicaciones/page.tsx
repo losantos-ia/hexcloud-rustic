@@ -20,7 +20,6 @@ import type { InventoryLocation, InventoryLocationType } from "@/types/inventory
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 
@@ -141,11 +140,11 @@ export default function UbicacionesPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label className="text-zinc-400">Tipo *</Label>
-                <Select {...createForm.register("type")}>
+                <select className="flex h-10 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-zinc-900" {...createForm.register("type")}>
                   {(Object.entries(INVENTORY_LOCATION_TYPE_LABELS) as [InventoryLocationType, string][]).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
                   ))}
-                </Select>
+                </select>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -214,11 +213,11 @@ export default function UbicacionesPage() {
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <Label className="text-zinc-400 text-xs">Tipo *</Label>
-                      <Select {...editForm.register("type")}>
+                      <select className="flex h-10 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-zinc-900" {...editForm.register("type")}>
                         {(Object.entries(INVENTORY_LOCATION_TYPE_LABELS) as [InventoryLocationType, string][]).map(([k, v]) => (
                           <option key={k} value={k}>{v}</option>
                         ))}
-                      </Select>
+                      </select>
                     </div>
                   </div>
                   <div className="flex flex-col gap-1.5">
