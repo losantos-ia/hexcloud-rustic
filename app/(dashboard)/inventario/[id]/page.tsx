@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useCallback } from "react";
+import { useCurrency } from "@/context/currency-context";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -41,9 +42,7 @@ import {
   IN_MOVEMENT_TYPES,
 } from "@/types/inventory";
 
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
-}
+
 function formatDate(d: Date) {
   return new Intl.DateTimeFormat("es-PA", { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
@@ -318,6 +317,7 @@ function TransferModal({ item, stockEntries, locations, open, onClose, onDone }:
 
 // ── Page ─────────────────────────────────────────────────
 export default function InventarioDetailPage() {
+  const { formatCurrency } = useCurrency();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;

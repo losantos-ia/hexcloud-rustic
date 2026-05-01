@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
+import { useCurrency } from "@/context/currency-context";
 import Link from "next/link";
 import {
   Package,
@@ -39,14 +40,6 @@ import {
 
 // ── Helpers ──────────────────────────────────────────────
 
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("es-PA", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(n);
-}
-
 function stockBadgeClass(status: "ok" | "bajo_minimo" | "sin_stock") {
   if (status === "ok") return "bg-green-500/20 text-green-400 border-green-500/30";
   if (status === "bajo_minimo") return "bg-amber-500/20 text-amber-400 border-amber-500/30";
@@ -56,6 +49,7 @@ function stockBadgeClass(status: "ok" | "bajo_minimo" | "sin_stock") {
 // ── Page ─────────────────────────────────────────────────
 
 export default function InventarioPage() {
+  const { formatCurrency } = useCurrency();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [allStock, setAllStock] = useState<InventoryStockByLocation[]>([]);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
