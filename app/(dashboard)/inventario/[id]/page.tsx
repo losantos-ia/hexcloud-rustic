@@ -536,8 +536,14 @@ export default function InventarioDetailPage() {
               <Select
                 value={transferTargetLocationId}
                 onChange={(e) => {
-                  setTransferTargetLocationId(e.target.value);
-                  transferForm.setValue("targetItemId", "");
+                  const locId = e.target.value;
+                  setTransferTargetLocationId(locId);
+                  // Auto-select matching item in destination location (same name)
+                  const itemsInLoc = allItems.filter((i) => i.locationId === locId);
+                  const match = itemsInLoc.find(
+                    (i) => i.name.toLowerCase() === item.name.toLowerCase()
+                  ) ?? (itemsInLoc.length === 1 ? itemsInLoc[0] : null);
+                  transferForm.setValue("targetItemId", match?.id ?? "");
                 }}
               >
                 <option value="">Seleccionar ubicación…</option>
