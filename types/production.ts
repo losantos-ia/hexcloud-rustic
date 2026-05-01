@@ -1,11 +1,11 @@
 export type ProductionProjectType =
   | "cabin"
   | "pergola"
-  | "kiosk"
   | "deck"
+  | "kiosk"
   | "playground"
-  | "rustic_cafe"
   | "maintenance"
+  | "standard_product"
   | "custom";
 
 export type ProductionType = "order_based" | "stock";
@@ -30,11 +30,11 @@ export type ProductionTaskStatus = "pending" | "in_progress" | "completed" | "bl
 export const PRODUCTION_PROJECT_TYPE_LABELS: Record<ProductionProjectType, string> = {
   cabin: "Cabaña",
   pergola: "Pérgola",
-  kiosk: "Kiosco",
   deck: "Deck",
-  playground: "Parque infantil",
-  rustic_cafe: "Café rústico",
+  kiosk: "Kiosco",
+  playground: "Juego infantil",
   maintenance: "Mantenimiento",
+  standard_product: "Producto estándar",
   custom: "Proyecto personalizado",
 };
 

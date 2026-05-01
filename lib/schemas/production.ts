@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const PRODUCTION_PROJECT_TYPES = [
-  "cabin", "pergola", "kiosk", "deck", "playground", "rustic_cafe", "maintenance", "custom",
+  "cabin", "pergola", "deck", "kiosk", "playground", "maintenance", "standard_product", "custom",
 ] as const;
 
 const PRODUCTION_STATUSES = [
