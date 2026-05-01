@@ -4,6 +4,7 @@ import {
   addDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -143,6 +144,10 @@ export async function updateInventoryItem(
     ...stripUndefined(payload),
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function deleteInventoryItem(id: string): Promise<void> {
+  await deleteDoc(doc(db, ITEMS_COL, id));
 }
 
 export async function getInventoryItemById(

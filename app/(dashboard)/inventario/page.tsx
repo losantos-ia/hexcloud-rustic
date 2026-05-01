@@ -1,8 +1,9 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useCurrency } from "@/context/currency-context";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Package,
@@ -12,6 +13,9 @@ import {
   DollarSign,
   Search,
   Filter,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +31,7 @@ import {
   listInventoryItems,
   listAllStock,
   listInventoryLocations,
+  deleteInventoryItem,
 } from "@/lib/firestore/inventory";
 import type { InventoryItem, InventoryStockByLocation, InventoryLocation } from "@/types/inventory";
 import {
@@ -50,6 +55,7 @@ function stockBadgeClass(status: "ok" | "bajo_minimo" | "sin_stock") {
 
 export default function InventarioPage() {
   const { formatCurrency } = useCurrency();
+  const router = useRouter();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [allStock, setAllStock] = useState<InventoryStockByLocation[]>([]);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
@@ -61,6 +67,13 @@ export default function InventarioPage() {
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // Row menu
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     Promise.all([listInventoryItems(), listAllStock(), listInventoryLocations()])
       .then(([i, s, l]) => {
@@ -70,6 +83,46 @@ export default function InventarioPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+        setMenuPos(null);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  function openMenu(e: React.MouseEvent<HTMLButtonElement>, id: string) {
+    e.stopPropagation();
+    if (openMenuId === id) {
+      setOpenMenuId(null);
+      setMenuPos(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      setOpenMenuId(id);
+    }
+  }
+
+  function closeMenu() {
+    setOpenMenuId(null);
+    setMenuPos(null);
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteInventoryItem(deleteTarget.id);
+      setItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   // Stock map: itemId -> InventoryStockByLocation[]
   const stockByItem = useMemo(() => {
@@ -256,6 +309,7 @@ export default function InventarioPage() {
                   <th className="text-left py-3 px-4 font-medium text-zinc-400 hidden lg:table-cell">Por ubicaci&oacute;n</th>
                   <th className="text-right py-3 px-4 font-medium text-zinc-400 hidden md:table-cell">Valor</th>
                   <th className="text-center py-3 px-4 font-medium text-zinc-400">Estado</th>
+                  <th className="py-3 px-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -318,6 +372,14 @@ export default function InventarioPage() {
                           {STOCK_STATUS_LABELS[status]}
                         </span>
                       </td>
+                      <td className="py-3 px-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => openMenu(e, item.id)}
+                          className="flex items-center justify-center size-7 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 transition-colors"
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -327,6 +389,71 @@ export default function InventarioPage() {
           <div className="px-4 py-2 bg-zinc-900 border-t border-zinc-800 text-xs text-zinc-500">
             {filtered.length} art&iacute;culo{filtered.length !== 1 ? "s" : ""}
             {filtered.length !== items.length && ` (de ${items.length})`}
+          </div>
+        </div>
+      )}
+
+      {/* Floating row menu */}
+      {openMenuId && menuPos && (() => {
+        const item = filtered.find((it) => it.id === openMenuId);
+        if (!item) return null;
+        return (
+          <div
+            ref={menuRef}
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="w-44 rounded-lg border border-zinc-700 bg-zinc-800 shadow-xl py-1"
+          >
+            <button
+              onClick={() => { closeMenu(); router.push(`/inventario/${item.id}/editar`); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-700 transition-colors"
+            >
+              <Pencil size={13} className="text-zinc-400" />
+              Editar artículo
+            </button>
+            <button
+              onClick={() => { closeMenu(); setDeleteTarget(item); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-700 transition-colors"
+            >
+              <Trash2 size={13} />
+              Eliminar
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-center size-12 rounded-full bg-red-500/10 border border-red-500/20 mx-auto">
+              <Trash2 className="size-5 text-red-400" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-semibold text-white">¿Eliminar artículo?</h3>
+              <p className="text-sm text-zinc-400">
+                Se eliminará permanentemente{" "}
+                <span className="text-white font-medium">{deleteTarget.name}</span>.
+                Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="ghost"
+                className="flex-1"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Cancelar
+              </Button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-medium h-9 px-4 transition-colors"
+              >
+                {deleting && <span className="size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                {deleting ? "Eliminando…" : "Sí, eliminar"}
+              </button>
+            </div>
           </div>
         </div>
       )}
