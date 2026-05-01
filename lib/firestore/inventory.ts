@@ -274,6 +274,12 @@ export async function listInventoryLocations(): Promise<InventoryLocation[]> {
   return snap.docs.map((d) => docToLocation(d.id, d.data()));
 }
 
+export async function getInventoryLocationById(id: string): Promise<InventoryLocation | null> {
+  const snap = await getDoc(doc(db, LOCATIONS_COL, id));
+  if (!snap.exists()) return null;
+  return docToLocation(snap.id, snap.data());
+}
+
 // ── Inventory Movements ──────────────────────────────────
 
 export async function listInventoryMovementsByItem(

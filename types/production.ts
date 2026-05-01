@@ -8,6 +8,8 @@ export type ProductionProjectType =
   | "maintenance"
   | "custom";
 
+export type ProductionType = "order_based" | "stock";
+
 export type ProductionStatus =
   | "pending"
   | "design_measurements"
@@ -74,6 +76,11 @@ export const PRODUCTION_TASK_STATUS_LABELS: Record<ProductionTaskStatus, string>
   blocked: "Bloqueada",
 };
 
+export const PRODUCTION_TYPE_LABELS: Record<ProductionType, string> = {
+  order_based: "Pedido de cliente",
+  stock: "Para stock",
+};
+
 export const ACTIVE_PRODUCTION_STATUSES: ProductionStatus[] = [
   "pending",
   "design_measurements",
@@ -118,9 +125,23 @@ export const KANBAN_COLUMNS: { status: ProductionStatus; label: string }[] = [
 export interface ProductionOrder {
   id: string;
   productionNumber: string;
+  productionType: ProductionType;
   orderId?: string;
-  clientName: string;
+  clientName?: string;
   clientPhone?: string;
+  /** stock production: inventory item to produce */
+  inventoryItemId?: string;
+  /** stock production: quantity to produce */
+  quantityToProduce?: number;
+  /** stock production: destination location */
+  destinationLocationId?: string;
+  /** stock production: cost per unit */
+  unitCost?: number;
+  /** stock production: total production cost */
+  totalProductionCost?: number;
+  /** whether finished goods have been posted to inventory */
+  inventoryPosted?: boolean;
+  inventoryPostedAt?: Date;
   projectType: ProductionProjectType;
   title: string;
   description?: string;

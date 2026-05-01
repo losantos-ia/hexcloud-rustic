@@ -17,13 +17,16 @@ import {
   listProductionTasksByProductionOrder,
   createProductionTask,
   updateProductionTask,
+  postProductionToInventory,
 } from "@/lib/firestore/production";
 import { getOrderById } from "@/lib/firestore/orders";
+import { getInventoryItemById, getInventoryLocationById } from "@/lib/firestore/inventory";
 import type { ProductionOrder, ProductionTask, ProductionStatus } from "@/types/production";
 import {
   PRODUCTION_STATUS_LABELS,
   PRODUCTION_PRIORITY_LABELS,
   PRODUCTION_PROJECT_TYPE_LABELS,
+  PRODUCTION_TYPE_LABELS,
 } from "@/types/production";
 import { productionTaskSchema, type ProductionTaskFormValues } from "@/lib/schemas/production";
 import { Badge } from "@/components/ui/badge";
@@ -105,6 +108,8 @@ export default function ProductionOrderDetailPage() {
   const [order, setOrder] = useState<ProductionOrder | null>(null);
   const [tasks, setTasks] = useState<ProductionTask[]>([]);
   const [linkedOrderNumber, setLinkedOrderNumber] = useState<string | null>(null);
+  const [inventoryItemName, setInventoryItemName] = useState<string | null>(null);
+  const [destinationLocationName, setDestinationLocationName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -112,6 +117,8 @@ export default function ProductionOrderDetailPage() {
   const [taskError, setTaskError] = useState<string | null>(null);
   const [hoursInput, setHoursInput] = useState("");
   const [savingHours, setSavingHours] = useState(false);
+  const [postingInventory, setPostingInventory] = useState(false);
+  const [postInventoryError, setPostInventoryError] = useState<string | null>(null);
 
   const {
     register,
@@ -134,6 +141,18 @@ export default function ProductionOrderDetailPage() {
           getOrderById(o.orderId).then((linked) => {
             if (linked) setLinkedOrderNumber(linked.orderNumber);
           }).catch(() => {});
+        }
+        if (o?.productionType === "stock") {
+          if (o.inventoryItemId) {
+            getInventoryItemById(o.inventoryItemId).then((item) => {
+              if (item) setInventoryItemName(item.name);
+            }).catch(() => {});
+          }
+          if (o.destinationLocationId) {
+            getInventoryLocationById(o.destinationLocationId).then((loc) => {
+              if (loc) setDestinationLocationName(loc.name);
+            }).catch(() => {});
+          }
         }
         setTasks(t);
         if (o) setHoursInput(o.actualLaborHours?.toString() ?? "");
@@ -191,6 +210,20 @@ export default function ProductionOrderDetailPage() {
     setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: nextStatus, completedAt: completedAt ?? undefined } : t));
   }
 
+  async function handlePostInventory() {
+    if (!order) return;
+    setPostingInventory(true);
+    setPostInventoryError(null);
+    try {
+      await postProductionToInventory(order.id);
+      setOrder((prev) => prev ? { ...prev, inventoryPosted: true, inventoryPostedAt: new Date() } : prev);
+    } catch (err) {
+      setPostInventoryError(err instanceof Error ? err.message : "Error al registrar el inventario.");
+    } finally {
+      setPostingInventory(false);
+    }
+  }
+
   async function saveActualHours() {
     const hours = parseFloat(hoursInput);
     if (isNaN(hours) || hours < 0) return;
@@ -241,6 +274,9 @@ export default function ProductionOrderDetailPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-mono text-amber-400">{order.productionNumber}</span>
               <Badge variant={STATUS_VARIANT[order.status]}>{PRODUCTION_STATUS_LABELS[order.status]}</Badge>
+              <Badge variant={order.productionType === "stock" ? "green" : "blue"} className="text-[10px]">
+                {PRODUCTION_TYPE_LABELS[order.productionType ?? "order_based"]}
+              </Badge>
               {(order.priority === "high" || order.priority === "urgent") && (
                 <Badge variant={order.priority === "urgent" ? "red" : "amber"}>
                   {PRODUCTION_PRIORITY_LABELS[order.priority]}
@@ -294,8 +330,12 @@ export default function ProductionOrderDetailPage() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
             <h2 className="text-sm font-semibold text-zinc-300">Información general</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <InfoRow label="Cliente" value={order.clientName} />
-              <InfoRow label="Teléfono" value={order.clientPhone} />
+              {order.productionType !== "stock" && (
+                <InfoRow label="Cliente" value={order.clientName} />
+              )}
+              {order.productionType !== "stock" && (
+                <InfoRow label="Teléfono" value={order.clientPhone} />
+              )}
               <InfoRow label="Tipo de proyecto" value={PRODUCTION_PROJECT_TYPE_LABELS[order.projectType]} />
               <InfoRow label="Prioridad" value={PRODUCTION_PRIORITY_LABELS[order.priority]} />
               <InfoRow label="Responsable" value={order.responsiblePerson} />
@@ -419,6 +459,65 @@ export default function ProductionOrderDetailPage() {
             <p className="text-sm text-zinc-500">Sección de fotos de progreso</p>
             <p className="text-xs text-zinc-700 mt-1">Próximamente: subida de fotos por fase del proceso</p>
           </div>
+
+          {/* Stock production: inventory posting panel */}
+          {order.productionType === "stock" && (
+            <div className="rounded-xl border border-green-800/40 bg-green-950/20 p-5 flex flex-col gap-4">
+              <h2 className="text-sm font-semibold text-green-300">Producción para stock</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {inventoryItemName && (
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-xs text-zinc-500">Artículo</p>
+                    <p className="text-sm font-medium text-zinc-200">{inventoryItemName}</p>
+                  </div>
+                )}
+                {order.quantityToProduce !== undefined && (
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-xs text-zinc-500">Cantidad a producir</p>
+                    <p className="text-sm font-medium text-zinc-200">{order.quantityToProduce}</p>
+                  </div>
+                )}
+                {destinationLocationName && (
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-xs text-zinc-500">Destino</p>
+                    <p className="text-sm font-medium text-zinc-200">{destinationLocationName}</p>
+                  </div>
+                )}
+                {order.unitCost !== undefined && (
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-xs text-zinc-500">Costo por unidad</p>
+                    <p className="text-sm font-medium text-zinc-200">{formatCurrency(order.unitCost)}</p>
+                  </div>
+                )}
+              </div>
+              {destinationLocationName && order.quantityToProduce && (
+                <p className="text-xs text-zinc-400">
+                  Al registrar, entrarán <strong className="text-green-300">{order.quantityToProduce} unidades</strong> de <strong className="text-green-300">{inventoryItemName}</strong> en <strong className="text-zinc-300">{destinationLocationName}</strong>.
+                </p>
+              )}
+              {order.inventoryPosted ? (
+                <div className="flex items-center gap-2 rounded-lg border border-green-700/40 bg-green-900/30 px-3 py-2 text-xs text-green-300">
+                  <CheckCircle2 size={14} />
+                  Inventario registrado{order.inventoryPostedAt ? ` · ${order.inventoryPostedAt.toLocaleDateString("es-ES")}` : ""}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {postInventoryError && (
+                    <p className="text-xs text-red-400">{postInventoryError}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handlePostInventory}
+                    disabled={postingInventory || order.status === "cancelled"}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {postingInventory ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                    {postingInventory ? "Registrando…" : "Registrar entrada a inventario"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Notes */}
           {(order.notes || order.internalNotes) && (

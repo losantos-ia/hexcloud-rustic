@@ -39,6 +39,7 @@ export type InventoryLocationType =
 
 export type InventoryMovementType =
   | "purchase_in"
+  | "production_in"
   | "production_out"
   | "transfer_in"
   | "transfer_out"
@@ -101,7 +102,8 @@ export const INVENTORY_LOCATION_TYPE_LABELS: Record<InventoryLocationType, strin
 
 export const INVENTORY_MOVEMENT_TYPE_LABELS: Record<InventoryMovementType, string> = {
   purchase_in: "Compra (entrada)",
-  production_out: "Uso en producci\u00f3n",
+  production_in: "Producción (entrada)",
+  production_out: "Uso en producción",
   transfer_in: "Transferencia (entrada)",
   transfer_out: "Transferencia (salida)",
   adjustment_in: "Ajuste (entrada)",
@@ -208,7 +210,7 @@ export function getAggregateStockStatus(entries: InventoryStockByLocation[]): St
 
 /** IN movement types (positive stock change) */
 export const IN_MOVEMENT_TYPES: InventoryMovementType[] = [
-  "purchase_in", "transfer_in", "adjustment_in", "return_in",
+  "purchase_in", "production_in", "transfer_in", "adjustment_in", "return_in",
 ];
 
 /** OUT movement types (negative stock change) */

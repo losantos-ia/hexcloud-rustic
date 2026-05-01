@@ -16,9 +16,15 @@ const PRODUCTION_PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 const TASK_STATUSES = ["pending", "in_progress", "completed", "blocked"] as const;
 
 export const productionOrderSchema = z.object({
+  productionType: z.enum(["order_based", "stock"] as const),
   orderId: z.string().optional(),
-  clientName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  clientName: z.string().optional(),
   clientPhone: z.string().optional(),
+  inventoryItemId: z.string().optional(),
+  quantityToProduce: z.number().min(0.01).optional(),
+  destinationLocationId: z.string().optional(),
+  unitCost: z.number().min(0).optional(),
+  totalProductionCost: z.number().min(0).optional(),
   projectType: z.enum(PRODUCTION_PROJECT_TYPES),
   title: z.string().min(3, "El título debe tener al menos 3 caracteres"),
   description: z.string().optional(),
@@ -35,6 +41,39 @@ export const productionOrderSchema = z.object({
   responsiblePerson: z.string().optional(),
   notes: z.string().optional(),
   internalNotes: z.string().optional(),
+}).superRefine((val, ctx) => {
+  if (val.productionType === "order_based") {
+    if (!val.clientName || val.clientName.trim().length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El nombre del cliente es obligatorio",
+        path: ["clientName"],
+      });
+    }
+  }
+  if (val.productionType === "stock") {
+    if (!val.inventoryItemId || val.inventoryItemId.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Selecciona un artículo del catálogo",
+        path: ["inventoryItemId"],
+      });
+    }
+    if (!val.quantityToProduce || val.quantityToProduce <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La cantidad debe ser mayor a 0",
+        path: ["quantityToProduce"],
+      });
+    }
+    if (!val.destinationLocationId || val.destinationLocationId.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Selecciona la ubicación de destino",
+        path: ["destinationLocationId"],
+      });
+    }
+  }
 });
 
 export const updateProductionOrderSchema = productionOrderSchema.partial();

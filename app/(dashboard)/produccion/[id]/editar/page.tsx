@@ -10,12 +10,14 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { productionOrderSchema, type ProductionOrderFormValues } from "@/lib/schemas/production";
 import { getProductionOrderById, updateProductionOrder } from "@/lib/firestore/production";
+import { listInventoryItems, listInventoryLocations } from "@/lib/firestore/inventory";
 import {
   PRODUCTION_PROJECT_TYPE_LABELS,
   PRODUCTION_STATUS_LABELS,
   PRODUCTION_PRIORITY_LABELS,
 } from "@/types/production";
 import type { ProductionProjectType, ProductionStatus, ProductionPriority } from "@/types/production";
+import type { InventoryItem, InventoryLocation } from "@/types/inventory";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -52,6 +54,9 @@ export default function EditarOrdenProduccionPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [productionTypeVal, setProductionTypeVal] = useState<"order_based" | "stock" | null>(null);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [locations, setLocations] = useState<InventoryLocation[]>([]);
 
   const {
     register,
@@ -69,10 +74,20 @@ export default function EditarOrdenProduccionPage() {
           setLoadError("Orden no encontrada.");
           return;
         }
+        setProductionTypeVal(order.productionType ?? "order_based");
+        if ((order.productionType ?? "order_based") === "stock") {
+          listInventoryItems().then((items) => setInventoryItems(items.filter((i) => i.isActive)));
+          listInventoryLocations().then((locs) => setLocations(locs.filter((l) => l.isActive)));
+        }
         reset({
+          productionType: order.productionType ?? "order_based",
           orderId: order.orderId ?? "",
-          clientName: order.clientName,
+          clientName: order.clientName ?? "",
           clientPhone: order.clientPhone ?? "",
+          inventoryItemId: order.inventoryItemId ?? "",
+          quantityToProduce: order.quantityToProduce,
+          destinationLocationId: order.destinationLocationId ?? "",
+          unitCost: order.unitCost,
           projectType: order.projectType,
           title: order.title,
           description: order.description ?? "",
@@ -136,7 +151,8 @@ export default function EditarOrdenProduccionPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        {/* Client */}
+        {/* Client - only for order_based */}
+        {productionTypeVal !== "stock" && (
         <Section title="Cliente y proyecto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Nombre del cliente *" error={errors.clientName?.message} className="sm:col-span-2">
@@ -150,6 +166,57 @@ export default function EditarOrdenProduccionPage() {
             </Field>
           </div>
         </Section>
+        )}
+
+        {/* Stock-specific fields */}
+        {productionTypeVal === "stock" && (
+          <Section title="Artículo para producir">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Artículo del catálogo *" error={errors.inventoryItemId?.message} className="sm:col-span-2">
+                <select
+                  {...register("inventoryItemId")}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+                >
+                  <option value="">— Selecciona un artículo —</option>
+                  {inventoryItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}{item.sku ? ` (${item.sku})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Cantidad a producir *" error={errors.quantityToProduce?.message}>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step="0.01"
+                  {...register("quantityToProduce", { valueAsNumber: true })}
+                  placeholder="0"
+                />
+              </Field>
+              <Field label="Ubicación de destino *" error={errors.destinationLocationId?.message}>
+                <select
+                  {...register("destinationLocationId")}
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+                >
+                  <option value="">— Selecciona ubicación —</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Costo por unidad (opcional)">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  {...register("unitCost", { valueAsNumber: true })}
+                  placeholder="0.00"
+                />
+              </Field>
+            </div>
+          </Section>
+        )}
 
         {/* Production details */}
         <Section title="Detalles de la orden">

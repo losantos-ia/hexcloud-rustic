@@ -9,11 +9,12 @@ import {
   Plus, Search, Factory, AlertTriangle, Clock, CheckCircle2, Hammer, MoreVertical,
 } from "lucide-react";
 import { listProductionOrders, updateProductionOrder } from "@/lib/firestore/production";
-import type { ProductionOrder, ProductionStatus, ProductionPriority, ProductionProjectType } from "@/types/production";
+import type { ProductionOrder, ProductionStatus, ProductionPriority, ProductionProjectType, ProductionType } from "@/types/production";
 import {
   PRODUCTION_STATUS_LABELS,
   PRODUCTION_PRIORITY_LABELS,
   PRODUCTION_PROJECT_TYPE_LABELS,
+  PRODUCTION_TYPE_LABELS,
   KANBAN_COLUMNS,
 } from "@/types/production";
 import { Badge } from "@/components/ui/badge";
@@ -120,8 +121,15 @@ function ProductionCard({
         </button>
       </div>
       <p className="text-sm font-semibold text-zinc-100 leading-snug mb-1 line-clamp-2">{order.title}</p>
-      <p className="text-xs text-zinc-500 mb-2">{order.clientName}</p>
+      <p className="text-xs text-zinc-500 mb-2">{order.clientName ?? (order.productionType === "stock" ? "Para stock" : "—")}</p>
       <div className="flex items-center gap-1 flex-wrap mb-2">
+        {/* Production type badge */}
+        <Badge
+          variant={order.productionType === "stock" ? "green" : "blue"}
+          className="text-[10px]"
+        >
+          {PRODUCTION_TYPE_LABELS[order.productionType ?? "order_based"]}
+        </Badge>
         {(order.priority === "high" || order.priority === "urgent") && (
           <Badge variant={PRIORITY_VARIANT[order.priority]} className="text-[10px]">
             {PRODUCTION_PRIORITY_LABELS[order.priority]}
@@ -160,6 +168,7 @@ export default function ProduccionPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<ProductionProjectType | "">("");
   const [filterPriority, setFilterPriority] = useState<ProductionPriority | "">("");
+  const [filterProdType, setFilterProdType] = useState<ProductionType | "">("");
   const [filterPerson, setFilterPerson] = useState("");
   const [showClosed, setShowClosed] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -209,14 +218,15 @@ export default function ProduccionPage() {
       if (!showClosed && (o.status === "closed" || o.status === "cancelled")) return false;
       if (filterType && o.projectType !== filterType) return false;
       if (filterPriority && o.priority !== filterPriority) return false;
+      if (filterProdType && (o.productionType ?? "order_based") !== filterProdType) return false;
       if (filterPerson && !o.responsiblePerson?.toLowerCase().includes(filterPerson.toLowerCase())) return false;
       if (search) {
         const q = search.toLowerCase();
-        return o.productionNumber.toLowerCase().includes(q) || o.clientName.toLowerCase().includes(q) || o.title.toLowerCase().includes(q);
+        return o.productionNumber.toLowerCase().includes(q) || (o.clientName?.toLowerCase().includes(q) ?? false) || o.title.toLowerCase().includes(q);
       }
       return true;
     });
-  }, [orders, search, filterType, filterPriority, filterPerson, showClosed]);
+  }, [orders, search, filterType, filterPriority, filterProdType, filterPerson, showClosed]);
 
   const stats = useMemo(() => {
     const active = orders.filter((o) => o.status !== "closed" && o.status !== "cancelled");
@@ -278,6 +288,16 @@ export default function ProduccionPage() {
             className="w-full rounded-lg border border-zinc-700 bg-zinc-800 pl-8 pr-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-amber-500"
           />
         </div>
+        <select
+          value={filterProdType}
+          onChange={(e) => setFilterProdType(e.target.value as ProductionType | "")}
+          className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+        >
+          <option value="">Todos (pedidos + stock)</option>
+          {(Object.keys(PRODUCTION_TYPE_LABELS) as ProductionType[]).map((t) => (
+            <option key={t} value={t}>{PRODUCTION_TYPE_LABELS[t]}</option>
+          ))}
+        </select>
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value as ProductionProjectType | "")}

@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { adjustInventoryStock } from "@/lib/firestore/inventory";
 import type {
   ProductionOrder,
   ProductionTask,
@@ -47,9 +48,17 @@ function docToProductionOrder(id: string, data: Record<string, any>): Production
   return {
     id,
     productionNumber: data.productionNumber,
+    productionType: data.productionType ?? "order_based",
     orderId: data.orderId ?? undefined,
-    clientName: data.clientName,
+    clientName: data.clientName ?? undefined,
     clientPhone: data.clientPhone ?? undefined,
+    inventoryItemId: data.inventoryItemId ?? undefined,
+    quantityToProduce: data.quantityToProduce ?? undefined,
+    destinationLocationId: data.destinationLocationId ?? undefined,
+    unitCost: data.unitCost ?? undefined,
+    totalProductionCost: data.totalProductionCost ?? undefined,
+    inventoryPosted: data.inventoryPosted ?? false,
+    inventoryPostedAt: toDate(data.inventoryPostedAt),
     projectType: data.projectType,
     title: data.title,
     description: data.description ?? undefined,
@@ -125,7 +134,13 @@ export async function createProductionOrder(
   const data = {
     ...stripUndefined({
       orderId: payload.orderId,
+      clientName: payload.clientName,
       clientPhone: payload.clientPhone,
+      inventoryItemId: payload.inventoryItemId,
+      quantityToProduce: payload.quantityToProduce,
+      destinationLocationId: payload.destinationLocationId,
+      unitCost: payload.unitCost,
+      totalProductionCost: payload.totalProductionCost,
       description: payload.description,
       workshopInternalPrice: payload.workshopInternalPrice,
       estimatedMaterialCost: payload.estimatedMaterialCost,
@@ -140,11 +155,12 @@ export async function createProductionOrder(
       internalNotes: payload.internalNotes,
     }),
     productionNumber,
-    clientName: payload.clientName,
+    productionType: payload.productionType,
     projectType: payload.projectType,
     title: payload.title,
     status: payload.status,
     priority: payload.priority,
+    inventoryPosted: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -155,13 +171,25 @@ export async function createProductionOrder(
 
 export async function updateProductionOrder(
   id: string,
-  payload: Partial<ProductionOrderFormValues>
+  payload: Partial<ProductionOrderFormValues> & {
+    actualFinishDate?: string | null;
+    inventoryPosted?: boolean;
+    inventoryPostedAt?: Date | null;
+  }
 ): Promise<void> {
   const updates: Record<string, unknown> = { updatedAt: serverTimestamp() };
 
+  if (payload.productionType !== undefined) updates.productionType = payload.productionType;
   if (payload.clientName !== undefined) updates.clientName = payload.clientName;
   if (payload.clientPhone !== undefined) updates.clientPhone = payload.clientPhone;
   if (payload.orderId !== undefined) updates.orderId = payload.orderId;
+  if (payload.inventoryItemId !== undefined) updates.inventoryItemId = payload.inventoryItemId;
+  if (payload.quantityToProduce !== undefined) updates.quantityToProduce = payload.quantityToProduce;
+  if (payload.destinationLocationId !== undefined) updates.destinationLocationId = payload.destinationLocationId;
+  if (payload.unitCost !== undefined) updates.unitCost = payload.unitCost;
+  if (payload.totalProductionCost !== undefined) updates.totalProductionCost = payload.totalProductionCost;
+  if (payload.inventoryPosted !== undefined) updates.inventoryPosted = payload.inventoryPosted;
+  if (payload.inventoryPostedAt !== undefined) updates.inventoryPostedAt = payload.inventoryPostedAt;
   if (payload.projectType !== undefined) updates.projectType = payload.projectType;
   if (payload.title !== undefined) updates.title = payload.title;
   if (payload.description !== undefined) updates.description = payload.description;
@@ -292,4 +320,39 @@ export async function listProductionPhotosByProductionOrder(
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => docToProductionPhoto(d.id, d.data()));
+}
+
+// ── Inventory posting (stock production) ─────────────────
+
+/**
+ * Posts finished goods from a stock production order into inventory.
+ * Can only be called once per order (guards on inventoryPosted flag).
+ */
+export async function postProductionToInventory(productionOrderId: string): Promise<void> {
+  const order = await getProductionOrderById(productionOrderId);
+  if (!order) throw new Error("Orden de producción no encontrada.");
+  if (order.productionType !== "stock") throw new Error("Solo se puede registrar inventario en órdenes de tipo 'Para stock'.");
+  if (order.inventoryPosted) throw new Error("El inventario ya fue registrado para esta orden.");
+  if (!order.inventoryItemId) throw new Error("La orden no tiene un artículo de inventario asignado.");
+  if (!order.destinationLocationId) throw new Error("La orden no tiene una ubicación de destino asignada.");
+  const qty = order.quantityToProduce ?? 1;
+
+  await adjustInventoryStock(
+    order.inventoryItemId,
+    order.destinationLocationId,
+    "production_in",
+    qty,
+    {
+      unitCost: order.unitCost,
+      referenceType: "production_order",
+      referenceId: productionOrderId,
+      notes: `Producción ${order.productionNumber}: ${order.title}`,
+    }
+  );
+
+  await updateDoc(doc(db, ORDERS_COL, productionOrderId), {
+    inventoryPosted: true,
+    inventoryPostedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
