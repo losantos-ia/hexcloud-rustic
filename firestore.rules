@@ -2,89 +2,127 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdminOrVendedor() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+    }
+
+    function isTaller() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'taller';
+    }
+
     // Users can only read/write their own profile
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Admins can read all profiles
-      allow read: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isAdminOrVendedor();
     }
 
-    // Clients collection — any authenticated user can read; only admin/vendedor can write
+    // Clients collection
     match /clients/{clientId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
 
-      // Structures subcollection — same rules as parent
       match /structures/{structureId} {
         allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor', 'tecnico'];
+        allow create, update, delete: if isAdminOrVendedor() || isTaller();
       }
 
-      // Addresses subcollection
       match /addresses/{addressId} {
         allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+        allow create, update, delete: if isAdminOrVendedor();
       }
     }
 
-    // Leads collection — any authenticated user can read; admin/vendedor can write
+    // Leads collection
     match /leads/{leadId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
     }
 
-    // Lead activities — any authenticated user can read/write
+    // Lead activities
     match /leadActivities/{activityId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
     }
 
-    // Quotations — any authenticated user can read; admin/vendedor can write
+    // Quotations
     match /quotations/{quotationId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
     }
 
     // Quotation items
     match /quotationItems/{itemId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
     }
 
-    // Orders — any authenticated user can read; admin/vendedor can write
+    // Orders
     match /orders/{orderId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
     }
 
     // Order items
     match /orderItems/{itemId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
     }
 
     // Order payments
     match /orderPayments/{paymentId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow create, update, delete: if isAdminOrVendedor();
     }
 
-    // Company settings — any auth user can read; admin or vendedor can write
+    // Company settings
     match /settings/{docId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'vendedor'];
+      allow write: if isAdminOrVendedor();
+    }
+
+    // Production orders
+    match /productionOrders/{orderId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Production tasks
+    match /productionTasks/{taskId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Production photos
+    match /productionPhotos/{photoId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Inventory items
+    match /inventoryItems/{itemId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Inventory locations
+    match /inventoryLocations/{locationId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor();
+    }
+
+    // Inventory movements
+    match /inventoryMovements/{movementId} {
+      allow read: if request.auth != null;
+      allow create: if isAdminOrVendedor() || isTaller();
+      allow update, delete: if isAdminOrVendedor();
+    }
+
+    // Inventory stock by location
+    match /inventoryStock/{stockId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
     }
   }
 }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const SOURCES = ["crm", "store", "direct", "other"] as const;
-const PROJECT_TYPES = ["cabin", "pergola", "kiosk", "deck", "playground", "rustic_cafe", "maintenance", "custom"] as const;
+const PROJECT_TYPES = ["cabin", "pergola", "deck", "kiosk", "playground", "maintenance", "standard_product", "custom"] as const;
 const STATUSES = ["draft", "sent", "accepted", "rejected", "expired", "converted_to_order"] as const;
 const ITEM_CATEGORIES = ["materials", "labor", "transport", "installation", "finish", "other"] as const;
 

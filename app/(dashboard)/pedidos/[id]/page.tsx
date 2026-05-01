@@ -262,13 +262,21 @@ export default function OrderDetailPage() {
           >
             <Download size={12} /> Ver PDF
           </Link>
-          <button
-            disabled
-            title="Próximamente"
-            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 cursor-not-allowed opacity-50"
-          >
-            <Factory size={12} /> Crear orden de producción
-          </button>
+          {["closed", "cancelled", "delivered", "installed", "paid"].includes(order.status) ? (
+            <button
+              disabled
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 cursor-not-allowed opacity-40"
+            >
+              <Factory size={12} /> Crear orden de producción
+            </button>
+          ) : (
+            <Link
+              href={`/produccion/nueva?fromOrder=${orderId}`}
+              className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-1.5 text-xs text-amber-400 hover:text-amber-300 hover:border-amber-500 hover:bg-amber-500/10 transition-colors"
+            >
+              <Factory size={12} /> Crear orden de producción
+            </Link>
+          )}
         </div>
       </div>
 
