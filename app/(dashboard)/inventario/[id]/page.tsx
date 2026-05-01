@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   getInventoryItemById,
+  createInventoryItem,
   updateInventoryItem,
   listInventoryMovementsByItem,
   listInventoryLocations,
@@ -184,13 +185,34 @@ export default function InventarioDetailPage() {
       }
       // Resolve target item: same name in destination location
       const itemsInLoc = allItems.filter((i) => i.locationId === transferTargetLocationId);
-      const targetItem =
-        itemsInLoc.find((i) => i.name.toLowerCase() === item.name.toLowerCase()) ??
-        (itemsInLoc.length === 1 ? itemsInLoc[0] : null);
+      let targetItem =
+        itemsInLoc.find((i) => i.name.toLowerCase() === item.name.toLowerCase()) ?? null;
+
+      // If not found, auto-create it in the destination location with same data
       if (!targetItem) {
-        setModalError("No se encontró el artículo en la ubicación destino. Créalo primero.");
-        return;
+        const newId = await createInventoryItem({
+          sku: item.sku,
+          name: item.name,
+          description: item.description,
+          category: item.category,
+          itemType: item.itemType,
+          unit: item.unit,
+          currentStock: 0,
+          minimumStock: item.minimumStock,
+          averageCost: item.averageCost,
+          lastPurchaseCost: item.lastPurchaseCost,
+          salePrice: item.salePrice,
+          locationId: transferTargetLocationId,
+          supplierId: item.supplierId,
+          notes: item.notes,
+        });
+        targetItem = await getInventoryItemById(newId);
+        if (!targetItem) throw new Error("Error al crear el artículo en destino.");
+        // Refresh allItems so subsequent transfers work
+        const updatedItems = await listInventoryItems();
+        setAllItems(updatedItems.filter((i) => i.id !== id));
       }
+
       const targetLocationName = locMap[targetItem.locationId]?.name;
       await transferInventoryStock(id, targetItem.id, values.quantity, {
         notes: values.notes,
