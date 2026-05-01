@@ -68,8 +68,8 @@ export const purchaseOrderSchema = z.object({
   supplierName: z.string().optional(),
   destinationLocationId: z.string().min(1, "Selecciona una ubicación destino"),
   expectedDeliveryDate: z.string().optional(),
-  discountAmount: z.coerce.number().min(0).default(0),
-  taxAmount: z.coerce.number().min(0).default(0),
+  discountAmount: z.number().min(0).default(0),
+  taxAmount: z.number().min(0).default(0),
   notes: z.string().optional(),
   internalNotes: z.string().optional(),
 });
@@ -100,6 +100,6 @@ export const receiveItemsSchema = z.object({
 export type SupplierFormValues = z.infer<typeof supplierSchema>;
 export type PurchaseRequestFormValues = z.infer<typeof purchaseRequestSchema>;
 export type PurchaseRequestItemFormValues = z.infer<typeof purchaseRequestItemSchema>;
-export type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
+export type PurchaseOrderFormValues = z.input<typeof purchaseOrderSchema>;
 export type PurchaseOrderItemFormValues = z.infer<typeof purchaseOrderItemSchema>;
 export type ReceiveItemsFormValues = z.infer<typeof receiveItemsSchema>;
