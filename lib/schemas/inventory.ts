@@ -84,6 +84,12 @@ export const transferStockSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Transfer by location (no targetItemId — resolved automatically)
+export const transferByLocationSchema = z.object({
+  quantity: z.number().min(0.01, "La cantidad debe ser mayor a 0"),
+  notes: z.string().optional(),
+});
+
 // ── Types ────────────────────────────────────────────────
 
 export type InventoryItemFormValues = z.infer<typeof inventoryItemSchema>;
@@ -92,3 +98,4 @@ export type InventoryLocationFormValues = z.infer<typeof inventoryLocationSchema
 export type InventoryMovementFormValues = z.infer<typeof inventoryMovementSchema>;
 export type AdjustStockFormValues = z.infer<typeof adjustStockSchema>;
 export type TransferStockFormValues = z.infer<typeof transferStockSchema>;
+export type TransferByLocationFormValues = z.infer<typeof transferByLocationSchema>;

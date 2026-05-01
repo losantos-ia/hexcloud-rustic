@@ -29,8 +29,8 @@ import {
   STOCK_STATUS_LABELS,
   getStockStatus,
 } from "@/types/inventory";
-import { adjustStockSchema, transferStockSchema } from "@/lib/schemas/inventory";
-import type { AdjustStockFormValues, TransferStockFormValues } from "@/lib/schemas/inventory";
+import { adjustStockSchema, transferByLocationSchema } from "@/lib/schemas/inventory";
+import type { AdjustStockFormValues, TransferByLocationFormValues } from "@/lib/schemas/inventory";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -169,15 +169,19 @@ export default function InventarioDetailPage() {
   }
 
   // ── Transfer form ─────────────────────────────────────
-  const transferForm = useForm<TransferStockFormValues>({
-    resolver: zodResolver(transferStockSchema),
+  const transferForm = useForm<TransferByLocationFormValues>({
+    resolver: zodResolver(transferByLocationSchema),
     defaultValues: { quantity: 1 },
   });
 
-  async function onTransfer(values: TransferStockFormValues) {
+  async function onTransfer(values: TransferByLocationFormValues) {
     setModalError(null);
     try {
       if (!item) return;
+      if (!transferTargetLocationId) {
+        setModalError("Selecciona una ubicación destino.");
+        return;
+      }
       // Resolve target item: same name in destination location
       const itemsInLoc = allItems.filter((i) => i.locationId === transferTargetLocationId);
       const targetItem =
