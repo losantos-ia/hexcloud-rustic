@@ -81,13 +81,6 @@
       ]
     },
     {
-      "collectionGroup": "purchaseRequestItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "purchaseRequestId", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "purchaseOrders",
       "queryScope": "COLLECTION",
       "fields": [
@@ -101,13 +94,6 @@
       "fields": [
         { "fieldPath": "paymentStatus", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "purchaseOrderItems",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "purchaseOrderId", "order": "ASCENDING" }
       ]
     },
     {
