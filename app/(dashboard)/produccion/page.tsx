@@ -25,16 +25,10 @@ type BadgeVariant = BadgeProps["variant"];
 const STATUS_VARIANT: Record<ProductionStatus, BadgeVariant> = {
   pending: "default",
   design_measurements: "blue",
-  materials_pending: "amber",
-  materials_ready: "green",
-  cutting: "purple",
-  assembly: "purple",
-  sanding: "purple",
-  painting_sealing: "purple",
-  roofing_details: "purple",
+  materials: "amber",
+  in_production: "purple",
   quality_control: "blue",
   ready_for_delivery: "green",
-  delivered_to_store: "green",
   installed: "green",
   closed: "default",
   cancelled: "red",
@@ -49,7 +43,7 @@ const PRIORITY_VARIANT: Record<ProductionPriority, BadgeVariant> = {
 
 function isOverdue(date?: Date, status?: ProductionStatus): boolean {
   if (!date || !status) return false;
-  const terminal: ProductionStatus[] = ["closed", "cancelled", "installed", "delivered_to_store"];
+  const terminal: ProductionStatus[] = ["closed", "cancelled", "installed"];
   if (terminal.includes(status)) return false;
   return date < new Date();
 }
@@ -231,8 +225,8 @@ export default function ProduccionPage() {
   const stats = useMemo(() => {
     const active = orders.filter((o) => o.status !== "closed" && o.status !== "cancelled");
     return {
-      inProduction: active.filter((o) => ["cutting", "assembly", "sanding", "painting_sealing", "roofing_details"].includes(o.status)).length,
-      materialsPending: active.filter((o) => o.status === "materials_pending").length,
+      inProduction: active.filter((o) => o.status === "in_production").length,
+      materialsPending: active.filter((o) => o.status === "materials").length,
       qualityControl: active.filter((o) => o.status === "quality_control").length,
       overdue: active.filter((o) => isOverdue(o.promisedDeliveryDate, o.status)).length,
     };

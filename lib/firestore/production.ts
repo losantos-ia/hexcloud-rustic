@@ -20,6 +20,7 @@ import type {
   ProductionStatus,
   ProductionTaskStatus,
 } from "@/types/production";
+import { DEFAULT_FABRICATION_TASKS } from "@/types/production";
 import type {
   ProductionOrderFormValues,
   ProductionTaskFormValues,
@@ -166,6 +167,9 @@ export async function createProductionOrder(
   };
 
   const ref = await addDoc(collection(db, ORDERS_COL), data);
+  if (data.status === "in_production") {
+    await createDefaultFabricationTasks(ref.id);
+  }
   return ref.id;
 }
 
@@ -240,6 +244,24 @@ export async function listProductionOrdersByStatus(
 }
 
 // ── Production Tasks ─────────────────────────────────────
+
+/**
+ * Seeds the default fabrication checklist tasks for a production order.
+ * Should be called when an order enters or is created with status "in_production".
+ */
+export async function createDefaultFabricationTasks(productionOrderId: string): Promise<void> {
+  await Promise.all(
+    DEFAULT_FABRICATION_TASKS.map((title) =>
+      addDoc(collection(db, TASKS_COL), {
+        productionOrderId,
+        title,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+    )
+  );
+}
 
 export async function createProductionTask(
   productionOrderId: string,

@@ -5,9 +5,8 @@ const PRODUCTION_PROJECT_TYPES = [
 ] as const;
 
 const PRODUCTION_STATUSES = [
-  "pending", "design_measurements", "materials_pending", "materials_ready",
-  "cutting", "assembly", "sanding", "painting_sealing", "roofing_details",
-  "quality_control", "ready_for_delivery", "delivered_to_store", "installed",
+  "pending", "design_measurements", "materials", "in_production",
+  "quality_control", "ready_for_delivery", "installed",
   "closed", "cancelled",
 ] as const;
 

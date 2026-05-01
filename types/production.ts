@@ -13,16 +13,10 @@ export type ProductionType = "order_based" | "stock";
 export type ProductionStatus =
   | "pending"
   | "design_measurements"
-  | "materials_pending"
-  | "materials_ready"
-  | "cutting"
-  | "assembly"
-  | "sanding"
-  | "painting_sealing"
-  | "roofing_details"
+  | "materials"
+  | "in_production"
   | "quality_control"
   | "ready_for_delivery"
-  | "delivered_to_store"
   | "installed"
   | "closed"
   | "cancelled";
@@ -47,16 +41,10 @@ export const PRODUCTION_PROJECT_TYPE_LABELS: Record<ProductionProjectType, strin
 export const PRODUCTION_STATUS_LABELS: Record<ProductionStatus, string> = {
   pending: "Pendiente",
   design_measurements: "Diseño / medidas",
-  materials_pending: "Materiales pendientes",
-  materials_ready: "Materiales listos",
-  cutting: "Corte",
-  assembly: "Ensamblaje",
-  sanding: "Lijado",
-  painting_sealing: "Pintura / sellador",
-  roofing_details: "Techo / detalles",
+  materials: "Materiales",
+  in_production: "En fabricación",
   quality_control: "Control calidad",
-  ready_for_delivery: "Listo para entrega",
-  delivered_to_store: "Entregado a tienda",
+  ready_for_delivery: "Listo entrega",
   installed: "Instalado",
   closed: "Cerrado",
   cancelled: "Cancelado",
@@ -84,16 +72,10 @@ export const PRODUCTION_TYPE_LABELS: Record<ProductionType, string> = {
 export const ACTIVE_PRODUCTION_STATUSES: ProductionStatus[] = [
   "pending",
   "design_measurements",
-  "materials_pending",
-  "materials_ready",
-  "cutting",
-  "assembly",
-  "sanding",
-  "painting_sealing",
-  "roofing_details",
+  "materials",
+  "in_production",
   "quality_control",
   "ready_for_delivery",
-  "delivered_to_store",
   "installed",
 ];
 
@@ -103,17 +85,21 @@ export const TERMINAL_PRODUCTION_STATUSES: ProductionStatus[] = [
   "installed",
 ];
 
+export const DEFAULT_FABRICATION_TASKS = [
+  "Corte",
+  "Ensamblaje",
+  "Lijado",
+  "Pintura / sellador",
+  "Techo / detalles",
+] as const;
+
 // ── Kanban columns ────────────────────────────────────────
 
 export const KANBAN_COLUMNS: { status: ProductionStatus; label: string }[] = [
   { status: "pending", label: "Pendiente" },
   { status: "design_measurements", label: "Diseño / medidas" },
-  { status: "materials_pending", label: "Materiales" },
-  { status: "cutting", label: "Corte" },
-  { status: "assembly", label: "Ensamblaje" },
-  { status: "sanding", label: "Lijado" },
-  { status: "painting_sealing", label: "Pintura / sellador" },
-  { status: "roofing_details", label: "Techo / detalles" },
+  { status: "materials", label: "Materiales" },
+  { status: "in_production", label: "En fabricación" },
   { status: "quality_control", label: "Control calidad" },
   { status: "ready_for_delivery", label: "Listo entrega" },
   { status: "installed", label: "Instalado" },

@@ -16,6 +16,7 @@ import {
   updateProductionOrder,
   listProductionTasksByProductionOrder,
   createProductionTask,
+  createDefaultFabricationTasks,
   updateProductionTask,
   postProductionToInventory,
 } from "@/lib/firestore/production";
@@ -40,16 +41,10 @@ type BadgeVariant = BadgeProps["variant"];
 const STATUS_VARIANT: Record<ProductionStatus, BadgeVariant> = {
   pending: "default",
   design_measurements: "blue",
-  materials_pending: "amber",
-  materials_ready: "green",
-  cutting: "purple",
-  assembly: "purple",
-  sanding: "purple",
-  painting_sealing: "purple",
-  roofing_details: "purple",
+  materials: "amber",
+  in_production: "purple",
   quality_control: "blue",
   ready_for_delivery: "green",
-  delivered_to_store: "green",
   installed: "green",
   closed: "default",
   cancelled: "red",
@@ -57,13 +52,8 @@ const STATUS_VARIANT: Record<ProductionStatus, BadgeVariant> = {
 
 const STATUS_FLOW: { status: ProductionStatus; label: string }[] = [
   { status: "design_measurements", label: "Diseño / medidas" },
-  { status: "materials_pending", label: "Mat. pendientes" },
-  { status: "materials_ready", label: "Materiales listos" },
-  { status: "cutting", label: "Marcar corte" },
-  { status: "assembly", label: "Ensamblaje" },
-  { status: "sanding", label: "Lijado" },
-  { status: "painting_sealing", label: "Pintura / sellador" },
-  { status: "roofing_details", label: "Techo / detalles" },
+  { status: "materials", label: "Materiales" },
+  { status: "in_production", label: "En fabricación" },
   { status: "quality_control", label: "Control calidad" },
   { status: "ready_for_delivery", label: "Listo para entrega" },
   { status: "installed", label: "Marcar instalado" },
@@ -73,7 +63,7 @@ const STATUS_FLOW: { status: ProductionStatus; label: string }[] = [
 
 function isOverdue(date?: Date, status?: ProductionStatus): boolean {
   if (!date || !status) return false;
-  const terminal: ProductionStatus[] = ["closed", "cancelled", "installed", "delivered_to_store"];
+  const terminal: ProductionStatus[] = ["closed", "cancelled", "installed"];
   if (terminal.includes(status)) return false;
   return date < new Date();
 }
@@ -174,6 +164,12 @@ export default function ProductionOrderDetailPage() {
         ...prev, status: newStatus,
         actualFinishDate: extra.actualFinishDate ? new Date(extra.actualFinishDate) : prev.actualFinishDate,
       } : prev);
+      // Seed default fabrication tasks when entering in_production for the first time
+      if (newStatus === "in_production" && tasks.length === 0) {
+        await createDefaultFabricationTasks(id);
+        const refreshed = await listProductionTasksByProductionOrder(id);
+        setTasks(refreshed);
+      }
     } finally {
       setSavingStatus(false);
     }
@@ -363,12 +359,25 @@ export default function ProductionOrderDetailPage() {
           {/* Tasks */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
             <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-zinc-300">Tareas</h2>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold text-zinc-300">
+                  {["in_production", "quality_control", "ready_for_delivery", "installed"].includes(order.status)
+                    ? "Checklist de fabricación"
+                    : "Tareas"}
+                </h2>
                 {tasks.length > 0 && (
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    {completedTasks}/{tasks.length} completadas
-                  </p>
+                  <div className="mt-1.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-zinc-500">{completedTasks}/{tasks.length} completadas</p>
+                      <p className="text-xs text-zinc-500 tabular-nums">{Math.round((completedTasks / tasks.length) * 100)}%</p>
+                    </div>
+                    <div className="h-1 bg-zinc-800 rounded-full overflow-hidden w-48">
+                      <div
+                        className="h-full bg-emerald-500 transition-all duration-300"
+                        style={{ width: `${(completedTasks / tasks.length) * 100}%` }}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
               <button
