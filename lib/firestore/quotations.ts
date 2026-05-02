@@ -197,12 +197,14 @@ export async function listQuotationItems(quotationId: string): Promise<Quotation
 
 export async function addQuotationItem(
   quotationId: string,
-  item: QuotationItemFormValues
+  item: QuotationItemFormValues,
+  order?: number
 ): Promise<string> {
   const ref = await addDoc(collection(db, ITEMS_COL), {
     ...stripUndefined(item),
     quotationId,
     total: item.quantity * item.unitPrice,
+    ...(order !== undefined ? { order } : {}),
   });
   return ref.id;
 }

@@ -115,7 +115,8 @@ export default function EditQuotationPage() {
       for (const item of existingItems) {
         await deleteQuotationItem(item.id);
       }
-      for (const item of values.items) {
+      for (let i = 0; i < values.items.length; i++) {
+        const item = values.items[i];
         await addQuotationItem(id, {
           description: item.description,
           quantity: Number(item.quantity),
@@ -123,7 +124,7 @@ export default function EditQuotationPage() {
           unitPrice: Number(item.unitPrice),
           category: item.category,
           notes: clean(item.notes),
-        });
+        }, i);
       }
 
       await updateQuotation(id, {
