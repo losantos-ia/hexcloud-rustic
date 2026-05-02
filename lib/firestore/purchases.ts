@@ -263,13 +263,14 @@ export async function createPurchaseRequest(
   });
 
   for (const item of items) {
+    const estimatedTotalCost =
+      item.estimatedUnitCost != null
+        ? item.estimatedUnitCost * item.quantity
+        : null;
     await addDoc(collection(db, PURCHASE_REQUEST_ITEMS_COL), {
       ...stripUndefined(item as object),
       purchaseRequestId: ref.id,
-      estimatedTotalCost:
-        item.estimatedUnitCost != null
-          ? item.estimatedUnitCost * item.quantity
-          : undefined,
+      ...(estimatedTotalCost != null ? { estimatedTotalCost } : {}),
     });
   }
 
