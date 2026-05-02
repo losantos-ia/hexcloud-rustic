@@ -119,8 +119,12 @@ export interface Order {
   quotationId?: string;
   leadId?: string;
   clientId?: string;
+  clientDocumentId?: string;
   clientName: string;
   clientPhone: string;
+  clientAddress?: string;
+  clientCity?: string;
+  clientDepartment?: string;
   source: OrderSource;
   storeId?: string;
   projectType: OrderProjectType;

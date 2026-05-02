@@ -41,8 +41,12 @@ function docToOrder(id: string, data: Record<string, any>): Order {
     quotationId: data.quotationId ?? undefined,
     leadId: data.leadId ?? undefined,
     clientId: data.clientId ?? undefined,
+    clientDocumentId: data.clientDocumentId ?? undefined,
     clientName: data.clientName,
     clientPhone: data.clientPhone,
+    clientAddress: data.clientAddress ?? undefined,
+    clientCity: data.clientCity ?? undefined,
+    clientDepartment: data.clientDepartment ?? undefined,
     source: data.source,
     storeId: data.storeId ?? undefined,
     projectType: data.projectType,
@@ -115,6 +119,10 @@ export interface CreateOrderPayload {
   quotationId?: string;
   leadId?: string;
   clientId?: string;
+  clientDocumentId?: string;
+  clientAddress?: string;
+  clientCity?: string;
+  clientDepartment?: string;
   source: Order["source"];
   storeId?: string;
   projectType: Order["projectType"];
@@ -143,6 +151,10 @@ export async function createOrder(payload: CreateOrderPayload): Promise<string> 
       quotationId: payload.quotationId,
       leadId: payload.leadId,
       clientId: payload.clientId,
+      clientDocumentId: payload.clientDocumentId,
+      clientAddress: payload.clientAddress,
+      clientCity: payload.clientCity,
+      clientDepartment: payload.clientDepartment,
       storeId: payload.storeId,
       description: payload.description,
       promisedDeliveryDate: payload.promisedDeliveryDate ?? null,
@@ -205,6 +217,10 @@ export async function updateOrder(
   if (payload.quotationId !== undefined) updates.quotationId = payload.quotationId;
   if (payload.leadId !== undefined) updates.leadId = payload.leadId;
   if (payload.clientId !== undefined) updates.clientId = payload.clientId;
+  if (payload.clientDocumentId !== undefined) updates.clientDocumentId = payload.clientDocumentId;
+  if (payload.clientAddress !== undefined) updates.clientAddress = payload.clientAddress;
+  if (payload.clientCity !== undefined) updates.clientCity = payload.clientCity;
+  if (payload.clientDepartment !== undefined) updates.clientDepartment = payload.clientDepartment;
   if (payload.storeId !== undefined) updates.storeId = payload.storeId;
   if (payload.deliveryAddress !== undefined) updates.deliveryAddress = payload.deliveryAddress;
   if (payload.googleMapsUrl !== undefined) updates.googleMapsUrl = payload.googleMapsUrl;

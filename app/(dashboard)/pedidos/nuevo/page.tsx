@@ -134,6 +134,10 @@ export default function NewOrderPage() {
           clientName: q.clientName,
           clientPhone: q.clientPhone,
           clientId: q.clientId ?? "",
+          clientDocumentId: q.clientDocumentId ?? "",
+          clientAddress: q.clientAddress ?? "",
+          clientCity: q.clientCity ?? "",
+          clientDepartment: q.clientDepartment ?? "",
           quotationId: q.quotationNumber,
           source: "quotation",
           projectType: q.projectType as OrderFormValues["projectType"],
@@ -178,6 +182,11 @@ export default function NewOrderPage() {
     setShowDropdown(false);
     setValue("clientName", c.fullName);
     setValue("clientPhone", c.phone);
+    setValue("clientId", c.id);
+    setValue("clientDocumentId", c.documentId ?? "");
+    setValue("clientAddress", c.address ?? "");
+    setValue("clientCity", c.city ?? "");
+    setValue("clientDepartment", c.department ?? "");
   }
 
   function clearClient() {
@@ -185,6 +194,11 @@ export default function NewOrderPage() {
     setClientSearch("");
     setValue("clientName", "");
     setValue("clientPhone", "");
+    setValue("clientId", "");
+    setValue("clientDocumentId", "");
+    setValue("clientAddress", "");
+    setValue("clientCity", "");
+    setValue("clientDepartment", "");
   }
 
   async function onSubmit(values: OrderFormValues) {
@@ -194,7 +208,11 @@ export default function NewOrderPage() {
         clientName: values.clientName.trim(),
         clientPhone: values.clientPhone.trim(),
         quotationId: clean(values.quotationId),
-        clientId: selectedClient?.id,
+        clientId: selectedClient?.id ?? clean(values.clientId),
+        clientDocumentId: clean(values.clientDocumentId),
+        clientAddress: clean(values.clientAddress),
+        clientCity: clean(values.clientCity),
+        clientDepartment: clean(values.clientDepartment),
         source: values.source,
         storeId: clean(values.storeId),
         projectType: values.projectType,

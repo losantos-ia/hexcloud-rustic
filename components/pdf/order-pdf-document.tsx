@@ -217,10 +217,16 @@ export function OrderPDFDocument({
           <View style={s.clientBlock}>
             <Text style={s.clientLabel}>Cliente</Text>
             <Text style={s.clientName}>{order.clientName}</Text>
-            {(client?.documentId) && <Text style={s.clientDetail}>RTN: {client.documentId}</Text>}
-            {client?.address && <Text style={s.clientDetail}>{client.address}</Text>}
-            {(client?.city || client?.department) && (
-              <Text style={s.clientDetail}>{[client.city, client.department].filter(Boolean).join(", ")}</Text>
+            {(order.clientDocumentId || client?.documentId) && (
+              <Text style={s.clientDetail}>RTN: {order.clientDocumentId ?? client?.documentId}</Text>
+            )}
+            {(order.clientAddress || client?.address) && (
+              <Text style={s.clientDetail}>{order.clientAddress ?? client?.address}</Text>
+            )}
+            {(order.clientCity || order.clientDepartment || client?.city || client?.department) && (
+              <Text style={s.clientDetail}>
+                {[order.clientCity ?? client?.city, order.clientDepartment ?? client?.department].filter(Boolean).join(", ")}
+              </Text>
             )}
             {order.clientPhone && <Text style={s.clientDetail}>{order.clientPhone}</Text>}
           </View>
