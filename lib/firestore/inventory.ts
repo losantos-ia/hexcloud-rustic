@@ -124,6 +124,18 @@ function stockDocId(itemId: string, locationId: string): string {
 
 // ── Inventory Items ──────────────────────────────────────
 
+export async function checkSkuExists(
+  sku: string,
+  excludeId?: string
+): Promise<boolean> {
+  if (!sku.trim()) return false;
+  const q = query(collection(db, ITEMS_COL), where("sku", "==", sku.trim()));
+  const snap = await getDocs(q);
+  if (snap.empty) return false;
+  if (excludeId) return snap.docs.some((d) => d.id !== excludeId);
+  return true;
+}
+
 export async function createInventoryItem(
   payload: InventoryItemFormValues
 ): Promise<string> {

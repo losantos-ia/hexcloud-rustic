@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createInventoryItem } from "@/lib/firestore/inventory";
+import { createInventoryItem, checkSkuExists } from "@/lib/firestore/inventory";
 import { inventoryItemSchema, type InventoryItemFormValues } from "@/lib/schemas/inventory";
 import {
   INVENTORY_CATEGORY_LABELS,
@@ -37,6 +37,8 @@ export default function NuevoInventarioPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [skuStatus, setSkuStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const skuDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const form = useForm<InventoryItemFormValues>({
     resolver: zodResolver(inventoryItemSchema),
@@ -49,7 +51,28 @@ export default function NuevoInventarioPage() {
     },
   });
 
+  function handleSkuChange(value: string) {
+    if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current);
+    if (!value.trim()) {
+      setSkuStatus("idle");
+      return;
+    }
+    setSkuStatus("checking");
+    skuDebounceRef.current = setTimeout(async () => {
+      const exists = await checkSkuExists(value.trim());
+      setSkuStatus(exists ? "taken" : "available");
+    }, 500);
+  }
+
+  useEffect(() => () => {
+    if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current);
+  }, []);
+
   async function onSubmit(values: InventoryItemFormValues) {
+    if (skuStatus === "taken") {
+      setError("El código SKU ya está en uso. Elige uno diferente.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -102,8 +125,21 @@ export default function NuevoInventarioPage() {
                         {...field}
                         placeholder="MAD-001"
                         className="bg-zinc-800 border-zinc-700 text-white"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleSkuChange(e.target.value);
+                        }}
                       />
                     </FormControl>
+                    {skuStatus === "checking" && (
+                      <p className="text-xs text-zinc-400">Verificando...</p>
+                    )}
+                    {skuStatus === "available" && (
+                      <p className="text-xs text-green-400">&#10003; C&oacute;digo disponible</p>
+                    )}
+                    {skuStatus === "taken" && (
+                      <p className="text-xs text-red-400">&#10005; Este c&oacute;digo ya existe</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
