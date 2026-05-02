@@ -9,6 +9,7 @@ import {
 } from "@react-pdf/renderer";
 import type { CompanySettings } from "@/lib/firestore/company";
 import type { Order, OrderItem } from "@/types/order";
+import type { Client } from "@/types/client";
 import { ORDER_STATUS_LABELS, ORDER_PROJECT_TYPE_LABELS } from "@/types/order";
 
 // ─── Colors ─────────────────────────────────────────────────────────────────────
@@ -167,6 +168,7 @@ export interface OrderPDFProps {
   order: Order;
   items: OrderItem[];
   company: CompanySettings | null;
+  client?: Client | null;
   formatCurrency: (n: number) => string;
   currencyCode: string;
 }
@@ -176,6 +178,7 @@ export function OrderPDFDocument({
   order,
   items,
   company,
+  client,
   formatCurrency,
   currencyCode,
 }: OrderPDFProps) {
@@ -214,6 +217,11 @@ export function OrderPDFDocument({
           <View style={s.clientBlock}>
             <Text style={s.clientLabel}>Cliente</Text>
             <Text style={s.clientName}>{order.clientName}</Text>
+            {(client?.documentId) && <Text style={s.clientDetail}>RTN: {client.documentId}</Text>}
+            {client?.address && <Text style={s.clientDetail}>{client.address}</Text>}
+            {(client?.city || client?.department) && (
+              <Text style={s.clientDetail}>{[client.city, client.department].filter(Boolean).join(", ")}</Text>
+            )}
             {order.clientPhone && <Text style={s.clientDetail}>{order.clientPhone}</Text>}
           </View>
           <View style={s.orderBlock}>

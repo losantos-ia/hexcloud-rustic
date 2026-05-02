@@ -9,6 +9,8 @@ import Link from "next/link";
 import nextDynamic from "next/dynamic";
 import { getOrderById, listOrderItems } from "@/lib/firestore/orders";
 import { getCompanySettings, type CompanySettings } from "@/lib/firestore/company";
+import { getClientById } from "@/lib/firestore/clients";
+import type { Client } from "@/types/client";
 import type { Order, OrderItem } from "@/types/order";
 import { useCurrency } from "@/context/currency-context";
 import type { OrderPDFProps } from "@/components/pdf/order-pdf-document";
@@ -36,15 +38,20 @@ export default function OrderPdfPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
   const [company, setCompany] = useState<CompanySettings | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     Promise.all([getOrderById(id), listOrderItems(id), getCompanySettings()])
-      .then(([o, i, c]) => {
+      .then(async ([o, i, c]) => {
         setOrder(o);
         setItems(i);
         setCompany(c);
+        if (o?.clientId) {
+          const cl = await getClientById(o.clientId);
+          setClient(cl);
+        }
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -60,6 +67,7 @@ export default function OrderPdfPage() {
         order,
         items,
         company,
+        client,
         formatCurrency,
         currencyCode: currencyConfig.code,
       };
@@ -106,6 +114,7 @@ export default function OrderPdfPage() {
     order,
     items,
     company,
+    client,
     formatCurrency,
     currencyCode: currencyConfig.code,
   };
