@@ -73,7 +73,8 @@ export default function EditOrderPage() {
     control,
     watch,
     reset,
-    formState: { errors, isSubmitting },
+    setValue,
+    formState: { errors, isSubmitting, dirtyFields },
   } = useForm<OrderFormValues>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
@@ -98,6 +99,12 @@ export default function EditOrderPage() {
     return sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
   }, 0);
   const balanceDue = (Number(watchFinalSalePrice) || 0) - (Number(watchDepositPaid) || 0);
+
+  // Auto-sync finalSalePrice with subtotal when items are modified
+  useEffect(() => {
+    if (!dirtyFields.items) return;
+    setValue("finalSalePrice", subtotal, { shouldDirty: false });
+  }, [subtotal, dirtyFields.items, setValue]);
 
   useEffect(() => {
     Promise.all([getOrderById(orderId), listOrderItems(orderId)])
