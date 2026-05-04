@@ -87,6 +87,16 @@ function formatRelative(date: Date): string {
   return formatDateShort(date);
 }
 
+function formatAbsolute(date: Date): string {
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -446,7 +456,10 @@ export default function OrderDetailPage() {
                         <span className="text-sm font-medium text-zinc-200">
                           {ORDER_PAYMENT_TYPE_LABELS[payment.type]} — {formatCurrency(payment.amount)}
                         </span>
-                        <span className="text-xs text-zinc-600 shrink-0">{formatRelative(payment.createdAt)}</span>
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="text-xs text-zinc-500">{formatRelative(payment.createdAt)}</span>
+                          <span className="text-xs text-zinc-600">{formatAbsolute(payment.createdAt)}</span>
+                        </div>
                       </div>
                       <p className="text-xs text-zinc-500">
                         {ORDER_PAYMENT_METHOD_LABELS[payment.method]} · {formatDateShort(payment.paymentDate)}
