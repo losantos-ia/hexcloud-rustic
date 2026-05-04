@@ -2,17 +2,19 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Factory, Loader2, Package, Users } from "lucide-react";
+import { ArrowLeft, Factory, Loader2, Package, Users, Search, X } from "lucide-react";
 import Link from "next/link";
 import { productionOrderSchema, type ProductionOrderFormValues } from "@/lib/schemas/production";
 import { createProductionOrder } from "@/lib/firestore/production";
 import { getOrderById, updateOrder } from "@/lib/firestore/orders";
 import { listInventoryItems } from "@/lib/firestore/inventory";
 import { listInventoryLocations } from "@/lib/firestore/inventory";
+import { listClients } from "@/lib/firestore/clients";
+import type { Client } from "@/types/client";
 import {
   PRODUCTION_PROJECT_TYPE_LABELS,
   PRODUCTION_STATUS_LABELS,
@@ -53,6 +55,29 @@ export default function NuevaOrdenProduccionPage() {
   const [loadingOrder, setLoadingOrder] = useState(!!fromOrderId);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { listClients().then(setClients); }, []);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    function handler(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowDropdown(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showDropdown]);
+
+  const filteredClients = clientSearch.trim().length > 0
+    ? clients.filter((c) =>
+        c.fullName.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        c.phone.includes(clientSearch)
+      ).slice(0, 8)
+    : [];
 
   const {
     register,
@@ -113,6 +138,10 @@ export default function NuevaOrdenProduccionPage() {
 
   async function onSubmit(values: ProductionOrderFormValues) {
     setServerError(null);
+    if (values.productionType === "order_based" && !selectedClient && !fromOrderId) {
+      setServerError("Debes seleccionar un cliente existente.");
+      return;
+    }
     try {
       const id = await createProductionOrder(values);
       if (fromOrderId) {
@@ -218,14 +247,90 @@ export default function NuevaOrdenProduccionPage() {
         {/* ── Order-based fields ── */}
         {productionType === "order_based" && (
           <Section title="Cliente y proyecto">
+            {/* Client picker — not shown when pre-filled from an order */}
+            {!fromOrderId && (
+              <div ref={searchRef} className="relative">
+                <Label>Buscar cliente *</Label>
+                <div className="relative mt-1.5">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={clientSearch}
+                    onChange={(e) => { setClientSearch(e.target.value); setShowDropdown(true); setSelectedClient(null); setValue("clientName", ""); setValue("clientPhone", ""); }}
+                    onFocus={() => setShowDropdown(true)}
+                    placeholder="Buscar por nombre o teléfono…"
+                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 pl-8 pr-8 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  />
+                  {clientSearch && (
+                    <button
+                      type="button"
+                      onClick={() => { setClientSearch(""); setSelectedClient(null); setValue("clientName", ""); setValue("clientPhone", ""); }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                {showDropdown && filteredClients.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl max-h-56 overflow-y-auto">
+                    {filteredClients.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setSelectedClient(c);
+                          setClientSearch(c.fullName);
+                          setShowDropdown(false);
+                          setValue("clientName", c.fullName);
+                          setValue("clientPhone", c.phone ?? "");
+                        }}
+                        className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-0"
+                      >
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium text-zinc-100 truncate">{c.fullName}</span>
+                          <span className="text-xs text-zinc-500">{c.phone}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showDropdown && clientSearch.trim().length > 0 && filteredClients.length === 0 && (
+                  <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-xs text-zinc-500">
+                    No se encontró ningún cliente. <Link href="/clientes/nuevo" className="text-amber-400 hover:underline">Crear cliente</Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedClient && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-400">
+                <span className="font-medium">Cliente seleccionado:</span>
+                <span>{selectedClient.fullName}</span>
+                <span className="text-zinc-500">({selectedClient.phone})</span>
+              </div>
+            )}
+
+            {!selectedClient && !fromOrderId && (
+              <p className="text-xs text-zinc-500">Escribe el nombre o teléfono para buscar un cliente registrado.</p>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Nombre del cliente *" error={errors.clientName?.message} className="sm:col-span-2">
-                <Input {...register("clientName")} placeholder="Nombre completo del cliente" />
-              </Field>
-              <Field label="Teléfono del cliente">
-                <Input {...register("clientPhone")} placeholder="+504 9999-9999" />
-              </Field>
-              <Field label="ID del pedido (opcional)">
+              {/* Hidden inputs carry the values to the form */}
+              <input type="hidden" {...register("clientName")} />
+              <input type="hidden" {...register("clientPhone")} />
+
+              {fromOrderId && (
+                <>
+                  <Field label="Nombre del cliente">
+                    <Input {...register("clientName")} readOnly className="opacity-60 cursor-not-allowed" />
+                  </Field>
+                  <Field label="Teléfono del cliente">
+                    <Input {...register("clientPhone")} readOnly className="opacity-60 cursor-not-allowed" />
+                  </Field>
+                </>
+              )}
+
+              <Field label="ID del pedido (opcional)" className={fromOrderId ? "" : "sm:col-span-2"}>
                 <Input
                   {...register("orderId")}
                   placeholder="ID del pedido relacionado"
