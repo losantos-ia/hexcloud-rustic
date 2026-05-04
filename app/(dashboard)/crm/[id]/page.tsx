@@ -73,6 +73,16 @@ function formatDateTimeRelative(date: Date): string {
   return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
 }
 
+function formatAbsoluteDateTime(date: Date): string {
+  return date.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function LeadDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -328,7 +338,10 @@ export default function LeadDetailPage() {
                     <div className={`pb-4 flex-1 min-w-0 ${idx < activities.length - 1 ? "pb-4" : ""}`}>
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="text-sm font-medium text-zinc-200">{activity.title}</span>
-                        <span className="text-xs text-zinc-600 shrink-0">{formatDateTimeRelative(activity.createdAt)}</span>
+                        <div className="flex flex-col items-end shrink-0">
+                          <span className="text-xs text-zinc-500">{formatDateTimeRelative(activity.createdAt)}</span>
+                          <span className="text-xs text-zinc-600">{formatAbsoluteDateTime(activity.createdAt)}</span>
+                        </div>
                       </div>
                       {activity.description && (
                         <p className="text-xs text-zinc-500 mt-0.5">{activity.description}</p>
