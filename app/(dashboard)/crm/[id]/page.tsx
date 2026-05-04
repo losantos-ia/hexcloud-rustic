@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowLeft, Loader2, Plus, Clock, UserCheck, FileText,
-  Phone, Mail, MapPin, MessageSquare, ChevronDown,
+  Phone, Mail, MapPin, MessageSquare, ChevronDown, Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { getLeadById, updateLead, createLeadActivity, listLeadActivities } from "@/lib/firestore/leads";
@@ -210,6 +210,12 @@ export default function LeadDetailPage() {
           </div>
         </div>
         <div className="flex gap-2 sm:shrink-0">
+          <Link
+            href={`/crm/${lead.id}/editar`}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
+          >
+            <Pencil size={12} /> Editar
+          </Link>
           <button
             disabled
             title="Próximamente"

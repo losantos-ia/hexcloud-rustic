@@ -3,6 +3,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  deleteDoc,
   getDoc,
   getDocs,
   query,
@@ -90,6 +91,10 @@ export async function updateLead(
     ...stripUndefined(data),
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function deleteLead(id: string): Promise<void> {
+  await deleteDoc(doc(db, LEADS_COL, id));
 }
 
 export async function getLeadById(id: string): Promise<Lead | null> {

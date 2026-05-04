@@ -2,10 +2,11 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Plus, Search, TrendingUp, Clock, FileText, Trophy } from "lucide-react";
-import { listLeads } from "@/lib/firestore/leads";
+import { useRouter } from "next/navigation";
+import { Plus, Search, TrendingUp, Clock, FileText, Trophy, MoreHorizontal, Pencil, Trash2, Loader2 } from "lucide-react";
+import { listLeads, deleteLead } from "@/lib/firestore/leads";
 import type { Lead, LeadStatus, LeadSource, LeadInterestedIn } from "@/types/lead";
 import {
   LEAD_SOURCE_LABELS,
@@ -77,18 +78,34 @@ function formatDate(date?: Date): string {
 }
 
 export default function CrmPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<LeadStatus | "all" | "active">("active");
   const [filterSource, setFilterSource] = useState<LeadSource | "all">("all");
   const [filterInterest, setFilterInterest] = useState<LeadInterestedIn | "all">("all");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     listLeads()
       .then(setLeads)
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleDeleteLead() {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
+    try {
+      await deleteLead(deleteConfirmId);
+      setLeads((prev) => prev.filter((l) => l.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const stats = useMemo(() => ({
     newLeads: leads.filter((l) => l.status === "new").length,
@@ -113,6 +130,44 @@ export default function CrmPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Delete confirmation modal */}
+      {deleteConfirmId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={() => setDeleteConfirmId(null)}
+        >
+          <div
+            className="rounded-xl border border-zinc-700 bg-zinc-900 p-6 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-zinc-100 mb-2">Eliminar lead</h3>
+            <p className="text-sm text-zinc-400 mb-5">
+              ¿Estás seguro? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-3 py-1.5 rounded-lg border border-zinc-700 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteLead}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-60 transition-colors"
+              >
+                {deleting && <Loader2 size={11} className="animate-spin" />}
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Close open menu on outside click */}
+      {openMenuId && (
+        <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-100" style={{ fontFamily: "var(--font-heading)" }}>
@@ -231,6 +286,7 @@ export default function CrmPage() {
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Prioridad</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Próx. acción</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Creado</th>
+                  <th className="px-2 py-3 w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -238,7 +294,7 @@ export default function CrmPage() {
                   <tr
                     key={lead.id}
                     className={`hover:bg-zinc-800/50 transition-colors cursor-pointer ${lead.priority === "high" ? "border-l-2 border-l-red-500" : ""}`}
-                    onClick={() => (window.location.href = `/crm/${lead.id}`)}
+                    onClick={() => router.push(`/crm/${lead.id}`)}
                   >
                     <td className="px-4 py-3 font-medium text-zinc-100">{lead.fullName}</td>
                     <td className="px-4 py-3 text-zinc-400">{lead.phone}</td>
@@ -262,32 +318,87 @@ export default function CrmPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-zinc-500">{formatDate(lead.createdAt)}</td>
+                    <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === lead.id ? null : lead.id)}
+                          className="flex items-center justify-center size-7 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 transition-colors"
+                        >
+                          <MoreHorizontal size={14} />
+                        </button>
+                        {openMenuId === lead.id && (
+                          <div className="absolute right-0 top-8 z-50 w-36 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
+                            <Link
+                              href={`/crm/${lead.id}/editar`}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors"
+                              onClick={() => setOpenMenuId(null)}
+                            >
+                              <Pencil size={12} /> Editar
+                            </Link>
+                            <button
+                              onClick={() => { setDeleteConfirmId(lead.id); setOpenMenuId(null); }}
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-zinc-800 transition-colors w-full text-left"
+                            >
+                              <Trash2 size={12} /> Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            {/* Mobile cards */}
             <div className="md:hidden divide-y divide-zinc-800">
               {filtered.map((lead) => (
-                <Link
+                <div
                   key={lead.id}
-                  href={`/crm/${lead.id}`}
-                  className={`block px-4 py-3 hover:bg-zinc-800/50 transition-colors ${lead.priority === "high" ? "border-l-2 border-l-red-500" : ""}`}
+                  className={`flex items-stretch hover:bg-zinc-800/50 transition-colors ${lead.priority === "high" ? "border-l-2 border-l-red-500" : ""}`}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="font-medium text-zinc-100 text-sm">{lead.fullName}</span>
-                    <Badge variant={STATUS_VARIANT[lead.status]}>{LEAD_STATUS_LABELS[lead.status]}</Badge>
-                  </div>
-                  <p className="text-xs text-zinc-400 mb-2">{lead.phone}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    <Badge variant={SOURCE_VARIANT[lead.source]}>{LEAD_SOURCE_LABELS[lead.source]}</Badge>
-                    <Badge variant={PRIORITY_VARIANT[lead.priority]}>{LEAD_PRIORITY_LABELS[lead.priority]}</Badge>
-                    {lead.nextActionDate && isOverdue(lead.nextActionDate) && (
-                      <Badge variant="red">⚠ Vencido</Badge>
+                  <Link
+                    href={`/crm/${lead.id}`}
+                    className="flex-1 block px-4 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="font-medium text-zinc-100 text-sm">{lead.fullName}</span>
+                      <Badge variant={STATUS_VARIANT[lead.status]}>{LEAD_STATUS_LABELS[lead.status]}</Badge>
+                    </div>
+                    <p className="text-xs text-zinc-400 mb-2">{lead.phone}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant={SOURCE_VARIANT[lead.source]}>{LEAD_SOURCE_LABELS[lead.source]}</Badge>
+                      <Badge variant={PRIORITY_VARIANT[lead.priority]}>{LEAD_PRIORITY_LABELS[lead.priority]}</Badge>
+                      {lead.nextActionDate && isOverdue(lead.nextActionDate) && (
+                        <Badge variant="red">⚠ Vencido</Badge>
+                      )}
+                    </div>
+                  </Link>
+                  <div className="relative flex items-center pr-3">
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === lead.id ? null : lead.id)}
+                      className="flex items-center justify-center size-7 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 transition-colors"
+                    >
+                      <MoreHorizontal size={14} />
+                    </button>
+                    {openMenuId === lead.id && (
+                      <div className="absolute right-0 top-9 z-50 w-36 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
+                        <Link
+                          href={`/crm/${lead.id}/editar`}
+                          className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors"
+                          onClick={() => setOpenMenuId(null)}
+                        >
+                          <Pencil size={12} /> Editar
+                        </Link>
+                        <button
+                          onClick={() => { setDeleteConfirmId(lead.id); setOpenMenuId(null); }}
+                          className="flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-zinc-800 transition-colors w-full text-left"
+                        >
+                          <Trash2 size={12} /> Eliminar
+                        </button>
+                      </div>
                     )}
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </>
