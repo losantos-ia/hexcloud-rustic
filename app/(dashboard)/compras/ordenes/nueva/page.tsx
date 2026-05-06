@@ -1,10 +1,10 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+// Select is still used for location, unit, and inventory item dropdowns
 import { createPurchaseOrder } from "@/lib/firestore/purchases";
 import { listInventoryItems, listInventoryLocations } from "@/lib/firestore/inventory";
 import { listSuppliers } from "@/lib/firestore/purchases";
@@ -43,6 +44,26 @@ export default function NuevaOrdenPage() {
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [lineItems, setLineItems] = useState<PurchaseOrderItemFormValues[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const supplierRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSupplierDropdown) return;
+    function handler(e: MouseEvent) {
+      if (supplierRef.current && !supplierRef.current.contains(e.target as Node)) setShowSupplierDropdown(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showSupplierDropdown]);
+
+  const filteredSuppliers = supplierSearch.trim().length > 0
+    ? suppliers.filter((s) =>
+        s.name.toLowerCase().includes(supplierSearch.toLowerCase()) ||
+        (s.contactName ?? "").toLowerCase().includes(supplierSearch.toLowerCase())
+      ).slice(0, 8)
+    : suppliers.slice(0, 8);
 
   const {
     register,
@@ -122,7 +143,7 @@ export default function NuevaOrdenPage() {
     setError(null);
     try {
       const locationName = locations.find((l) => l.id === values.destinationLocationId)?.name;
-      const supplierName = suppliers.find((s) => s.id === values.supplierId)?.name;
+      const supplierName = selectedSupplier?.name;
       const id = await createPurchaseOrder(values, lineItems, locationName, supplierName);
       router.push(`/compras/ordenes/${id}`);
     } catch (e) {
@@ -154,27 +175,72 @@ export default function NuevaOrdenPage() {
           <h2 className="text-sm font-semibold text-zinc-300">Información general</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label>Proveedor</Label>
-              <Select onValueChange={(v) => setValue("supplierId", v)}>
-                <SelectTrigger className="bg-zinc-950 border-zinc-800 text-zinc-200">
-                  <SelectValue placeholder="Seleccionar proveedor (opcional)" />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800">
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            <div className="flex flex-col gap-1.5 sm:col-span-2" ref={supplierRef}>
+              <Label>Proveedor *</Label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                <input
+                  type="text"
+                  value={supplierSearch}
+                  onChange={(e) => {
+                    setSupplierSearch(e.target.value);
+                    setShowSupplierDropdown(true);
+                    if (selectedSupplier) {
+                      setSelectedSupplier(null);
+                      setValue("supplierId", "");
+                    }
+                  }}
+                  onFocus={() => setShowSupplierDropdown(true)}
+                  placeholder="Buscar proveedor por nombre…"
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 pl-8 pr-8 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                />
+                {supplierSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setSupplierSearch(""); setSelectedSupplier(null); setValue("supplierId", ""); }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              {showSupplierDropdown && filteredSuppliers.length > 0 && (
+                <div className="rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl max-h-56 overflow-y-auto">
+                  {filteredSuppliers.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onMouseDown={() => {
+                        setSelectedSupplier(s);
+                        setSupplierSearch(s.name);
+                        setShowSupplierDropdown(false);
+                        setValue("supplierId", s.id, { shouldValidate: true });
+                      }}
+                      className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-0"
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-medium text-zinc-100 truncate">{s.name}</span>
+                        {s.contactName && <span className="text-xs text-zinc-500">{s.contactName}</span>}
+                      </div>
+                    </button>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>Nombre de proveedor (manual)</Label>
-              <Input
-                {...register("supplierName")}
-                placeholder="Si no está en el directorio"
-                className="bg-zinc-950 border-zinc-800 text-zinc-200"
-              />
+                </div>
+              )}
+              {showSupplierDropdown && supplierSearch.trim().length > 0 && filteredSuppliers.length === 0 && (
+                <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-xs text-zinc-500">
+                  No se encontró ningún proveedor. <Link href="/compras/proveedores/nuevo" className="text-amber-400 hover:underline">Crear proveedor</Link>
+                </div>
+              )}
+              {selectedSupplier && (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-400">
+                  <span className="font-medium">Proveedor seleccionado:</span>
+                  <span>{selectedSupplier.name}</span>
+                  {selectedSupplier.contactName && <span className="text-zinc-500">· {selectedSupplier.contactName}</span>}
+                </div>
+              )}
+              {errors.supplierId && (
+                <p className="text-xs text-red-400">{errors.supplierId.message}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">

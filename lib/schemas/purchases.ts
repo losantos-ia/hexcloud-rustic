@@ -64,8 +64,7 @@ const PURCHASE_ASSIGN_TYPES = ["stock", "production_order"] as const;
 
 export const purchaseOrderSchema = z.object({
   purchaseRequestId: z.string().optional(),
-  supplierId: z.string().optional(),
-  supplierName: z.string().optional(),
+  supplierId: z.string().min(1, "Selecciona un proveedor"),
   destinationLocationId: z.string().min(1, "Selecciona una ubicación destino"),
   expectedDeliveryDate: z.string().optional(),
   discountAmount: z.number().min(0).default(0),
