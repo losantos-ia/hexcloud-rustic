@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Search, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Search, X, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,15 +18,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 // Select is still used for location, unit, and inventory item dropdowns
-import { createPurchaseOrder } from "@/lib/firestore/purchases";
+import { createPurchaseOrder, createSupplier, listSuppliers } from "@/lib/firestore/purchases";
 import { listInventoryItems, listInventoryLocations } from "@/lib/firestore/inventory";
-import { listSuppliers } from "@/lib/firestore/purchases";
 import type { PurchaseOrderItemFormValues } from "@/lib/schemas/purchases";
-import { purchaseOrderSchema, type PurchaseOrderFormValues } from "@/lib/schemas/purchases";
+import { purchaseOrderSchema, type PurchaseOrderFormValues, supplierSchema, type SupplierFormValues } from "@/lib/schemas/purchases";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   PURCHASE_ASSIGN_TYPE_LABELS,
+  SUPPLIER_CATEGORY_LABELS,
 } from "@/types/purchases";
 import {
   INVENTORY_UNIT_LABELS,
@@ -49,6 +49,39 @@ export default function NuevaOrdenPage() {
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const supplierRef = useRef<HTMLDivElement>(null);
+
+  // ── Inline create-supplier modal ──
+  const [showCreateSupplier, setShowCreateSupplier] = useState(false);
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const [createSupplierError, setCreateSupplierError] = useState<string | null>(null);
+  const {
+    register: registerSupplier,
+    handleSubmit: handleSubmitSupplier,
+    reset: resetSupplier,
+    formState: { errors: supplierErrors },
+  } = useForm<SupplierFormValues>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: { category: "general" },
+  });
+
+  async function onCreateSupplier(values: SupplierFormValues) {
+    setCreatingSupplier(true);
+    setCreateSupplierError(null);
+    try {
+      const newId = await createSupplier(values);
+      const newSupplier: Supplier = { id: newId, ...values, isActive: true, createdAt: new Date(), updatedAt: new Date() };
+      setSuppliers((prev) => [...prev, newSupplier]);
+      setSelectedSupplier(newSupplier);
+      setSupplierSearch(newSupplier.name);
+      setValue("supplierId", newId, { shouldValidate: true });
+      setShowCreateSupplier(false);
+      resetSupplier();
+    } catch {
+      setCreateSupplierError("Error al crear el proveedor. Inténtalo de nuevo.");
+    } finally {
+      setCreatingSupplier(false);
+    }
+  }
 
   useEffect(() => {
     if (!showSupplierDropdown) return;
@@ -155,7 +188,7 @@ export default function NuevaOrdenPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
@@ -228,8 +261,15 @@ export default function NuevaOrdenPage() {
                 </div>
               )}
               {showSupplierDropdown && supplierSearch.trim().length > 0 && filteredSuppliers.length === 0 && (
-                <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-xs text-zinc-500">
-                  No se encontró ningún proveedor. <Link href="/compras/proveedores/nuevo" className="text-amber-400 hover:underline">Crear proveedor</Link>
+                <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-xs text-zinc-500 flex items-center justify-between gap-2">
+                  <span>No se encontró &quot;{supplierSearch}&quot;</span>
+                  <button
+                    type="button"
+                    onMouseDown={() => { setShowSupplierDropdown(false); setShowCreateSupplier(true); }}
+                    className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-medium whitespace-nowrap transition-colors"
+                  >
+                    <UserPlus size={12} /> Crear proveedor
+                  </button>
                 </div>
               )}
               {selectedSupplier && (
@@ -473,6 +513,81 @@ export default function NuevaOrdenPage() {
           </Button>
         </div>
       </form>
+
+      {/* Inline create-supplier modal */}
+      {showCreateSupplier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl flex flex-col gap-0 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-100">Crear proveedor</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">Se seleccionará automáticamente</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowCreateSupplier(false); setCreateSupplierError(null); resetSupplier(); }}
+                className="size-7 flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <form onSubmit={handleSubmitSupplier(onCreateSupplier)} className="flex flex-col gap-4 p-5">
+              <div className="flex flex-col gap-1.5">
+                <Label>Nombre *</Label>
+                <Input
+                  placeholder="Nombre del proveedor"
+                  defaultValue={supplierSearch}
+                  {...registerSupplier("name")}
+                />
+                {supplierErrors.name && <p className="text-xs text-red-400">{supplierErrors.name.message}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label>Contacto</Label>
+                  <Input placeholder="Nombre del contacto" {...registerSupplier("contactName")} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Teléfono</Label>
+                  <Input placeholder="+504..." {...registerSupplier("phone")} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Categoría *</Label>
+                <select
+                  {...registerSupplier("category")}
+                  className="h-9 rounded-md border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-200 focus:outline-none focus:border-amber-500"
+                >
+                  {Object.entries(SUPPLIER_CATEGORY_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+                {supplierErrors.category && <p className="text-xs text-red-400">{supplierErrors.category.message}</p>}
+              </div>
+              {createSupplierError && (
+                <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  {createSupplierError}
+                </p>
+              )}
+              <div className="flex gap-3 justify-end pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { setShowCreateSupplier(false); setCreateSupplierError(null); resetSupplier(); }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={creatingSupplier}
+                  className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold"
+                >
+                  {creatingSupplier ? "Creando…" : "Crear y seleccionar"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
