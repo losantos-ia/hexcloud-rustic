@@ -15,6 +15,7 @@ import type { LeadSource, LeadInterestedIn, LeadPriority, LeadStatus } from "@/t
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 
 const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
 
@@ -38,6 +39,8 @@ export default function EditLeadPage() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormValues>({
     resolver: zodResolver(leadSchema),
@@ -230,7 +233,7 @@ export default function EditLeadPage() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="expectedPurchaseDate">Fecha estimada de compra</Label>
-              <Input id="expectedPurchaseDate" type="date" {...register("expectedPurchaseDate")} />
+              <DatePicker value={watch("expectedPurchaseDate")} onChange={(v) => setValue("expectedPurchaseDate", v || undefined)} />
             </div>
           </div>
 
@@ -257,7 +260,7 @@ export default function EditLeadPage() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="nextActionDate">Fecha límite</Label>
-              <Input id="nextActionDate" type="date" {...register("nextActionDate")} />
+              <DatePicker value={watch("nextActionDate")} onChange={(v) => setValue("nextActionDate", v || undefined)} />
             </div>
           </div>
         </div>

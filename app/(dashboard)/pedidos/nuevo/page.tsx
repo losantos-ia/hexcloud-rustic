@@ -23,6 +23,7 @@ import type { OrderSource, OrderProjectType, OrderPriority, OrderStatus } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useCurrency } from "@/context/currency-context";
 
 const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
@@ -407,7 +408,7 @@ export default function NewOrderPage() {
         <Section title="Entrega e instalación">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Fecha de entrega prometida">
-              <Input type="date" {...register("promisedDeliveryDate")} />
+              <DatePicker value={watch("promisedDeliveryDate")} onChange={(v) => setValue("promisedDeliveryDate", v || undefined)} />
             </Field>
             <Field label="¿Requiere instalación?">
               <div className="flex items-center gap-2 pt-1">

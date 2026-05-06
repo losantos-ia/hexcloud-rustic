@@ -21,6 +21,7 @@ import type { InventoryItem, InventoryLocation } from "@/types/inventory";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -62,6 +63,8 @@ export default function EditarOrdenProduccionPage() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ProductionOrderFormValues>({
     resolver: zodResolver(productionOrderSchema),
@@ -261,13 +264,13 @@ export default function EditarOrdenProduccionPage() {
         <Section title="Fechas">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Fecha de inicio planificada">
-              <Input type="date" {...register("plannedStartDate")} />
+              <DatePicker value={watch("plannedStartDate")} onChange={(v) => setValue("plannedStartDate", v || undefined)} />
             </Field>
             <Field label="Fecha de entrega prometida">
-              <Input type="date" {...register("promisedDeliveryDate")} />
+              <DatePicker value={watch("promisedDeliveryDate")} onChange={(v) => setValue("promisedDeliveryDate", v || undefined)} />
             </Field>
             <Field label="Fecha de finalización real">
-              <Input type="date" {...register("actualFinishDate")} />
+              <DatePicker value={watch("actualFinishDate")} onChange={(v) => setValue("actualFinishDate", v || undefined)} />
             </Field>
           </div>
         </Section>

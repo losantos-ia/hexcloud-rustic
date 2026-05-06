@@ -25,6 +25,7 @@ import type { InventoryItem, InventoryLocation } from "@/types/inventory";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -84,6 +85,7 @@ export default function NuevaOrdenProduccionPage() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     control,
     formState: { errors, isSubmitting },
   } = useForm<ProductionOrderFormValues>({
@@ -436,10 +438,10 @@ export default function NuevaOrdenProduccionPage() {
             <Section title="Fechas">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Fecha de inicio planificada">
-                  <Input type="date" {...register("plannedStartDate")} />
+                  <DatePicker value={watch("plannedStartDate")} onChange={(v) => setValue("plannedStartDate", v || undefined)} />
                 </Field>
                 <Field label="Fecha de entrega prometida">
-                  <Input type="date" {...register("promisedDeliveryDate")} />
+                  <DatePicker value={watch("promisedDeliveryDate")} onChange={(v) => setValue("promisedDeliveryDate", v || undefined)} />
                 </Field>
               </div>
             </Section>

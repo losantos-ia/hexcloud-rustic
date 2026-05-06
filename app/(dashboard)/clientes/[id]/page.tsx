@@ -43,8 +43,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -100,6 +100,7 @@ export default function ClientDetailPage() {
     register,
     handleSubmit,
     watch,
+    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<StructureFormValues>({
@@ -372,12 +373,7 @@ export default function ClientDetailPage() {
                 {/* Delivery date */}
                 <div className="space-y-1.5">
                   <Label htmlFor="str-delivery">Fecha de entrega</Label>
-                  <Input
-                    id="str-delivery"
-                    type="date"
-                    {...register("deliveryDate")}
-                    className="[color-scheme:dark]"
-                  />
+                  <DatePicker value={watch("deliveryDate")} onChange={(v) => setValue("deliveryDate", v || undefined)} />
                 </div>
 
                 {/* Maintenance frequency */}

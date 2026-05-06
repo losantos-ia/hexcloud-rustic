@@ -31,6 +31,7 @@ import type { BadgeProps } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useCurrency } from "@/context/currency-context";
 
 type BadgeVariant = BadgeProps["variant"];
@@ -117,6 +118,8 @@ export default function OrderDetailPage() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<OrderPaymentFormValues>({
     resolver: zodResolver(orderPaymentSchema),
@@ -410,7 +413,7 @@ export default function OrderDetailPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label>Fecha del pago *</Label>
-                    <Input type="date" {...register("paymentDate")} />
+                    <DatePicker value={watch("paymentDate")} onChange={(v) => setValue("paymentDate", v ?? "")} />
                     {errors.paymentDate && <p className="text-xs text-red-400">{errors.paymentDate.message}</p>}
                   </div>
                   <div className="flex flex-col gap-1.5 sm:col-span-2">

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   getPurchaseOrder,
   listPurchaseOrderItems,
@@ -423,12 +424,7 @@ export default function OrdenDetailPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs">Fecha *</Label>
-              <Input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="bg-zinc-950 border-zinc-800 text-zinc-200"
-              />
+              <DatePicker value={paymentDate} onChange={(v) => setPaymentDate(v)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">

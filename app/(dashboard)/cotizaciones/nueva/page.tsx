@@ -20,6 +20,7 @@ import type { QuotationSource, QuotationProjectType } from "@/types/quotation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useCurrency } from "@/context/currency-context";
 
 const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
@@ -367,7 +368,7 @@ export default function NuevaCotizacionPage() {
         <Section title="Términos y condiciones">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Field label="Válida hasta">
-              <Input type="date" {...register("validUntil")} />
+              <DatePicker value={watch("validUntil")} onChange={(v) => setValue("validUntil", v || undefined)} />
             </Field>
             <Field label="Días de entrega estimados">
               <Input
