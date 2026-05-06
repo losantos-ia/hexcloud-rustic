@@ -161,5 +161,23 @@ service cloud.firestore {
       allow create: if isAdminOrVendedor();
       allow update, delete: if isAdminOrVendedor();
     }
+
+    // Maintenance assets
+    match /maintenanceAssets/{assetId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor();
+    }
+
+    // Maintenance records
+    match /maintenanceRecords/{recordId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor() || isTaller();
+    }
+
+    // Maintenance notifications
+    match /maintenanceNotifications/{notifId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor();
+    }
   }
 }
