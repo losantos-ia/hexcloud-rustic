@@ -1,9 +1,9 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
-import { Plus, Wrench, AlertTriangle, Clock, CheckCircle2, Search } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, Clock, CheckCircle2, Search, MoreHorizontal, Pencil } from "lucide-react";
 import { listMaintenanceAssets } from "@/lib/firestore/maintenance";
 import type { MaintenanceAsset, MaintenanceProjectType } from "@/types/maintenance";
 import { MAINTENANCE_PROJECT_TYPE_LABELS } from "@/types/maintenance";
@@ -41,7 +41,42 @@ function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; lab
     </div>
   );
 }
+function RowMenu({ assetId }: { assetId: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="size-7 rounded-md flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700 transition-colors"
+      >
+        <MoreHorizontal size={15} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-50 w-36 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
+          <Link
+            href={`/mantenimientos/${assetId}/editar`}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+          >
+            <Pencil size={13} /> Editar
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 export default function MantenimientosPage() {
   const [assets, setAssets] = useState<MaintenanceAsset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,6 +192,7 @@ export default function MantenimientosPage() {
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500">Instalación</th>
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500">Próximo mant.</th>
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500">Estado</th>
+                    <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>
                 <tbody>
@@ -181,6 +217,9 @@ export default function MantenimientosPage() {
                         <td className="px-4 py-3">
                           <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
                         </td>
+                        <td className="px-4 py-3">
+                          <RowMenu assetId={asset.id} />
+                        </td>
                       </tr>
                     );
                   })}
@@ -193,21 +232,24 @@ export default function MantenimientosPage() {
               {filtered.map((asset) => {
                 const st = getMaintenanceStatus(asset);
                 return (
-                  <Link key={asset.id} href={`/mantenimientos/${asset.id}`} className="flex items-start gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors">
-                    <div className="size-9 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
-                      <Wrench size={16} className="text-amber-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-medium text-zinc-100 truncate">{asset.clientName}</p>
-                        <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
+                  <div key={asset.id} className="flex items-start gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors">
+                    <Link href={`/mantenimientos/${asset.id}`} className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="size-9 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
+                        <Wrench size={16} className="text-amber-400" />
                       </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">{MAINTENANCE_PROJECT_TYPE_LABELS[asset.projectType]} · {asset.clientPhone}</p>
-                      <p className={`text-xs mt-1 font-medium ${st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-400"}`}>
-                        Próximo: {formatDate(asset.nextMaintenanceDate)}
-                      </p>
-                    </div>
-                  </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium text-zinc-100 truncate">{asset.clientName}</p>
+                          <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-0.5">{MAINTENANCE_PROJECT_TYPE_LABELS[asset.projectType]} · {asset.clientPhone}</p>
+                        <p className={`text-xs mt-1 font-medium ${st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-400"}`}>
+                          Próximo: {formatDate(asset.nextMaintenanceDate)}
+                        </p>
+                      </div>
+                    </Link>
+                    <RowMenu assetId={asset.id} />
+                  </div>
                 );
               })}
             </div>
