@@ -348,7 +348,7 @@ export async function createPurchaseOrder(
   const ref = await addDoc(collection(db, PURCHASE_ORDERS_COL), {
     ...stripUndefined(values as object),
     purchaseOrderNumber,
-    supplierName: supplierName ?? values.supplierName ?? "",
+    supplierName: supplierName ?? "",
     destinationLocationName: locationName ?? "",
     status: "draft",
     subtotal,
