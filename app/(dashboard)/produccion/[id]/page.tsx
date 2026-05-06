@@ -22,6 +22,8 @@ import {
 } from "@/lib/firestore/production";
 import { getOrderById } from "@/lib/firestore/orders";
 import { getInventoryItemById, getInventoryLocationById } from "@/lib/firestore/inventory";
+import { createMaintenanceAsset } from "@/lib/firestore/maintenance";
+import type { MaintenanceProjectType } from "@/types/maintenance";
 import type { ProductionOrder, ProductionTask, ProductionStatus } from "@/types/production";
 import {
   PRODUCTION_STATUS_LABELS,
@@ -109,6 +111,13 @@ export default function ProductionOrderDetailPage() {
   const [savingHours, setSavingHours] = useState(false);
   const [postingInventory, setPostingInventory] = useState(false);
   const [postInventoryError, setPostInventoryError] = useState<string | null>(null);
+  const [newMaintenanceAssetId, setNewMaintenanceAssetId] = useState<string | null>(null);
+
+  // Production project types that map to a maintainable structure
+  const PROD_TO_MAINT_TYPE: Partial<Record<string, MaintenanceProjectType>> = {
+    cabin: "cabin", pergola: "pergola", deck: "deck",
+    kiosk: "kiosk", playground: "playground", custom: "custom",
+  };
 
   const {
     register,
@@ -155,9 +164,10 @@ export default function ProductionOrderDetailPage() {
     if (!order || newStatus === order.status) return;
     setSavingStatus(true);
     try {
+      const today = new Date().toISOString().split("T")[0];
       const extra: Partial<Parameters<typeof updateProductionOrder>[1]> = {};
       if (newStatus === "installed" || newStatus === "closed") {
-        extra.actualFinishDate = new Date().toISOString().split("T")[0];
+        extra.actualFinishDate = today;
       }
       await updateProductionOrder(id, { status: newStatus, ...extra });
       setOrder((prev) => prev ? {
@@ -169,6 +179,26 @@ export default function ProductionOrderDetailPage() {
         await createDefaultFabricationTasks(id);
         const refreshed = await listProductionTasksByProductionOrder(id);
         setTasks(refreshed);
+      }
+      // Auto-create maintenance asset when closing an order_based order with a client
+      if (newStatus === "closed" && order.productionType === "order_based" && order.clientName) {
+        const maintenanceType = PROD_TO_MAINT_TYPE[order.projectType];
+        if (maintenanceType) {
+          const assetId = await createMaintenanceAsset({
+            clientName: order.clientName,
+            clientPhone: order.clientPhone ?? "",
+            projectType: maintenanceType,
+            productionOrderId: id,
+            orderId: order.orderId ?? "",
+            locationAddress: "Por definir",
+            googleMapsUrl: "",
+            installationDate: today,
+            maintenanceFrequencyMonths: 6,
+            status: "active",
+            notes: `Generado automáticamente al cerrar la orden ${order.productionNumber}: ${order.title}`,
+          });
+          setNewMaintenanceAssetId(assetId);
+        }
       }
     } finally {
       setSavingStatus(false);
@@ -316,6 +346,20 @@ export default function ProductionOrderDetailPage() {
         <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
           <AlertTriangle size={14} />
           Esta orden está retrasada. Fecha prometida: {formatDate(order.promisedDeliveryDate)}
+        </div>
+      )}
+
+      {/* Maintenance asset auto-created banner */}
+      {newMaintenanceAssetId && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+          <CheckCircle2 size={15} className="text-amber-400 shrink-0" />
+          <span>Se creó una ficha de mantenimiento para este proyecto.</span>
+          <Link
+            href={`/mantenimientos/${newMaintenanceAssetId}/editar`}
+            className="ml-auto text-amber-400 hover:text-amber-300 underline text-xs shrink-0"
+          >
+            Completar ficha →
+          </Link>
         </div>
       )}
 
