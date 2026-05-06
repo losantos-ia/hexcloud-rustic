@@ -13,7 +13,7 @@ export const expenseSchema = z.object({
   date: z.string().min(1, "La fecha es obligatoria"),
   category: z.enum(EXPENSE_CATEGORIES, { message: "Selecciona una categoría" }),
   amount: z
-    .number({ invalid_type_error: "El monto es obligatorio" })
+    .number()
     .positive("El monto debe ser mayor a 0"),
   locationId: z.string().min(1, "Selecciona una ubicación"),
   locationName: z.string().optional(),
