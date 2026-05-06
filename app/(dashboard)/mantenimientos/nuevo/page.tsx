@@ -1,11 +1,13 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search, X, CheckCircle2 } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { listClients } from "@/lib/firestore/clients";
+import type { Client } from "@/types/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +40,48 @@ function Field({ label, error, children, className }: { label: string; error?: s
 export default function NuevoActivoPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  // ── Client search ──
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { listClients().then(setClients); }, []);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowDropdown(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filteredClients = clientSearch.trim().length > 0
+    ? clients.filter((c) =>
+        c.fullName.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        c.phone?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        c.documentId?.toLowerCase().includes(clientSearch.toLowerCase())
+      ).slice(0, 8)
+    : clients.slice(0, 6);
+
+  function pickClient(c: Client) {
+    setSelectedClient(c);
+    setClientSearch(c.fullName);
+    setShowDropdown(false);
+    setValue("clientName", c.fullName, { shouldValidate: true });
+    setValue("clientPhone", c.phone ?? "", { shouldValidate: true });
+    setValue("clientId", c.id);
+  }
+
+  function clearClient() {
+    setSelectedClient(null);
+    setClientSearch("");
+    setValue("clientName", "");
+    setValue("clientPhone", "");
+    setValue("clientId", "");
+  }
 
   const {
     register,
@@ -79,17 +123,69 @@ export default function NuevoActivoPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         {/* Client info */}
         <Section title="Información del cliente">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Nombre del cliente *" error={errors.clientName?.message} className="sm:col-span-2">
-              <Input {...register("clientName")} placeholder="Nombre completo" className="bg-zinc-950 border-zinc-800 text-zinc-200" />
-            </Field>
-            <Field label="Teléfono *" error={errors.clientPhone?.message}>
-              <Input {...register("clientPhone")} placeholder="+504 0000-0000" className="bg-zinc-950 border-zinc-800 text-zinc-200" />
-            </Field>
-            <Field label="ID cliente (opcional)">
-              <Input {...register("clientId")} placeholder="ID en el sistema" className="bg-zinc-950 border-zinc-800 text-zinc-200" />
-            </Field>
+          <div ref={searchRef} className="relative">
+            <Label>Buscar cliente</Label>
+            <div className="relative mt-1.5">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+              <input
+                type="text"
+                value={clientSearch}
+                onChange={(e) => { setClientSearch(e.target.value); setShowDropdown(true); setSelectedClient(null); }}
+                onFocus={() => setShowDropdown(true)}
+                placeholder="Buscar por nombre, teléfono o cédula…"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 pl-8 pr-8 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              />
+              {clientSearch && (
+                <button type="button" onClick={clearClient} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200 transition-colors">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {showDropdown && filteredClients.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl max-h-56 overflow-y-auto">
+                {filteredClients.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onMouseDown={() => pickClient(c)}
+                    className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-0"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-medium text-zinc-100 truncate">{c.fullName}</span>
+                      <span className="text-xs text-zinc-500">{c.phone}{c.documentId ? ` · ${c.documentId}` : ""}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {showDropdown && clientSearch.trim().length > 0 && filteredClients.length === 0 && (
+              <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-xs text-zinc-500">
+                Sin resultados. <Link href="/clientes/nuevo" className="text-amber-400 hover:underline">Crear cliente nuevo</Link>
+              </div>
+            )}
           </div>
+
+          {selectedClient ? (
+            <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+              <CheckCircle2 size={15} className="text-amber-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-amber-300">{selectedClient.fullName}</p>
+                <p className="text-xs text-zinc-400">{selectedClient.phone}{selectedClient.documentId ? ` · ${selectedClient.documentId}` : ""}</p>
+              </div>
+              <button type="button" onClick={clearClient} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            (errors.clientName || errors.clientPhone) && (
+              <p className="text-xs text-red-400">Debes seleccionar un cliente.</p>
+            )
+          )}
+
+          {/* Hidden registered fields so react-hook-form tracks them */}
+          <input type="hidden" {...register("clientName")} />
+          <input type="hidden" {...register("clientPhone")} />
+          <input type="hidden" {...register("clientId")} />
         </Section>
 
         {/* Project info */}
