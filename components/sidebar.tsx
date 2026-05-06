@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   Menu,
   LogOut,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -36,6 +37,7 @@ const navItems = [
   { label: "Inventario", href: "/inventario", icon: Package },
   { label: "Compras", href: "/compras", icon: Truck },
   { label: "Mantenimientos", href: "/mantenimientos", icon: Wrench },
+  { label: "Gastos", href: "/gastos", icon: Receipt },
   { label: "Tiendas", href: "/tiendas", icon: Store },
   { label: "Finanzas", href: "/finanzas", icon: DollarSign },
   { label: "Reportes", href: "/reportes", icon: BarChart2 },
