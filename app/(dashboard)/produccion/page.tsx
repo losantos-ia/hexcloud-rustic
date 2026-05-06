@@ -9,6 +9,8 @@ import {
   Plus, Search, Factory, AlertTriangle, Clock, CheckCircle2, Hammer, MoreVertical,
 } from "lucide-react";
 import { listProductionOrders, updateProductionOrder } from "@/lib/firestore/production";
+import { createMaintenanceAsset } from "@/lib/firestore/maintenance";
+import type { MaintenanceProjectType } from "@/types/maintenance";
 import type { ProductionOrder, ProductionStatus, ProductionPriority, ProductionProjectType, ProductionType } from "@/types/production";
 import {
   PRODUCTION_STATUS_LABELS,
@@ -190,6 +192,11 @@ export default function ProduccionPage() {
     setOpenMenuId(id);
   }
 
+  const PROD_TO_MAINT_TYPE: Partial<Record<string, MaintenanceProjectType>> = {
+    cabin: "cabin", pergola: "pergola", deck: "deck",
+    kiosk: "kiosk", playground: "playground", custom: "custom",
+  };
+
   async function handleDrop(targetStatus: ProductionStatus, e: React.DragEvent) {
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain");
@@ -200,7 +207,32 @@ export default function ProduccionPage() {
     if (!order || order.status === targetStatus) return;
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: targetStatus } : o));
     try {
-      await updateProductionOrder(id, { status: targetStatus });
+      const today = new Date().toISOString().split("T")[0];
+      const extra: { actualFinishDate?: string } = {};
+      if (targetStatus === "installed" || targetStatus === "closed") {
+        extra.actualFinishDate = today;
+      }
+      await updateProductionOrder(id, { status: targetStatus, ...extra });
+      // Auto-create maintenance asset when closing an order_based order with a client
+      if (targetStatus === "closed" && order.productionType === "order_based" && order.clientName) {
+        const maintenanceType = PROD_TO_MAINT_TYPE[order.projectType];
+        if (maintenanceType) {
+          createMaintenanceAsset({
+            clientName: order.clientName,
+            clientPhone: order.clientPhone ?? "",
+            projectType: maintenanceType,
+            productionOrderId: id,
+            orderId: order.orderId ?? "",
+            locationAddress: "Por definir",
+            googleMapsUrl: "",
+            installationDate: today,
+            maintenanceFrequencyMonths: 6,
+            status: "active",
+            createdSource: "automatic",
+            notes: `Generado automáticamente al cerrar la orden ${order.productionNumber}: ${order.title}`,
+          }).catch(() => {});
+        }
+      }
     } catch {
       // revert on failure
       setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: order.status } : o));
