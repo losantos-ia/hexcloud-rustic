@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -262,10 +263,9 @@ export default function NuevaOrdenPage() {
 
             <div className="flex flex-col gap-1.5">
               <Label>Fecha esperada de entrega</Label>
-              <Input
-                type="date"
-                {...register("expectedDeliveryDate")}
-                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              <DatePicker
+                value={watch("expectedDeliveryDate")}
+                onChange={(v) => setValue("expectedDeliveryDate", v || undefined)}
               />
             </div>
           </div>
