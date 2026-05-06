@@ -121,8 +121,8 @@ export default function MaintenanceAssetDetailPage() {
   useEffect(() => {
     Promise.all([
       getMaintenanceAssetById(assetId),
-      listMaintenanceRecordsByAsset(assetId),
-      listPendingMaintenanceNotifications(),
+      listMaintenanceRecordsByAsset(assetId).catch(() => [] as MaintenanceRecord[]),
+      listPendingMaintenanceNotifications().catch(() => [] as MaintenanceNotification[]),
     ]).then(([a, r, n]) => {
       if (!a) { setLoadError("Activo no encontrado."); setLoading(false); return; }
       setAsset(a);
