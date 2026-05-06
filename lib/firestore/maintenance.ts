@@ -73,6 +73,7 @@ function docToAsset(id: string, data: Record<string, unknown>): MaintenanceAsset
     nextMaintenanceDate: toDate(data.nextMaintenanceDate),
     maintenanceFrequencyMonths: (data.maintenanceFrequencyMonths as number) ?? 6,
     status: (data.status as MaintenanceAsset["status"]) ?? "active",
+    createdSource: (data.createdSource as MaintenanceAsset["createdSource"]) ?? "manual",
     notes: data.notes as string | undefined,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),

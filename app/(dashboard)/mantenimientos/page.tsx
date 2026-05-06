@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Plus, Wrench, AlertTriangle, Clock, CheckCircle2, Search, MoreHorizontal, Pencil } from "lucide-react";
 import { listMaintenanceAssets } from "@/lib/firestore/maintenance";
 import type { MaintenanceAsset, MaintenanceProjectType } from "@/types/maintenance";
-import { MAINTENANCE_PROJECT_TYPE_LABELS } from "@/types/maintenance";
+import { MAINTENANCE_PROJECT_TYPE_LABELS, MAINTENANCE_ASSET_SOURCE_LABELS } from "@/types/maintenance";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 
@@ -192,6 +192,7 @@ export default function MantenimientosPage() {
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500">Instalación</th>
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500">Próximo mant.</th>
                     <th className="px-4 py-3 text-xs font-medium text-zinc-500">Estado</th>
+                    <th className="px-4 py-3 text-xs font-medium text-zinc-500">Origen</th>
                     <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>
@@ -216,6 +217,11 @@ export default function MantenimientosPage() {
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={asset.createdSource === "automatic" ? "blue" : "default"}>
+                            {MAINTENANCE_ASSET_SOURCE_LABELS[asset.createdSource ?? "manual"]}
+                          </Badge>
                         </td>
                         <td className="px-4 py-3">
                           <RowMenu assetId={asset.id} />
@@ -243,9 +249,14 @@ export default function MantenimientosPage() {
                           <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
                         </div>
                         <p className="text-xs text-zinc-500 mt-0.5">{MAINTENANCE_PROJECT_TYPE_LABELS[asset.projectType]} · {asset.clientPhone}</p>
-                        <p className={`text-xs mt-1 font-medium ${st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-400"}`}>
-                          Próximo: {formatDate(asset.nextMaintenanceDate)}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className={`text-xs font-medium ${st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-400"}`}>
+                            Próximo: {formatDate(asset.nextMaintenanceDate)}
+                          </p>
+                          <Badge variant={asset.createdSource === "automatic" ? "blue" : "default"} className="text-[10px] py-0">
+                            {MAINTENANCE_ASSET_SOURCE_LABELS[asset.createdSource ?? "manual"]}
+                          </Badge>
+                        </div>
                       </div>
                     </Link>
                     <RowMenu assetId={asset.id} />

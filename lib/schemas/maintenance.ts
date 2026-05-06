@@ -6,6 +6,8 @@ const MAINTENANCE_PROJECT_TYPES = [
 
 const MAINTENANCE_ASSET_STATUSES = ["active", "inactive"] as const;
 
+const MAINTENANCE_ASSET_CREATED_SOURCES = ["manual", "automatic"] as const;
+
 const MAINTENANCE_RECORD_TYPES = ["preventive", "corrective"] as const;
 
 const MAINTENANCE_RECORD_STATUSES = [
@@ -30,6 +32,7 @@ export const maintenanceAssetSchema = z.object({
   installationDate: z.string().min(1, "La fecha de instalación es obligatoria"),
   maintenanceFrequencyMonths: z.number().min(1).max(60).default(6),
   status: z.enum(MAINTENANCE_ASSET_STATUSES).default("active"),
+  createdSource: z.enum(MAINTENANCE_ASSET_CREATED_SOURCES).default("manual"),
   notes: z.string().optional(),
 });
 

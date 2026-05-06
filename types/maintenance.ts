@@ -11,6 +11,8 @@ export type MaintenanceProjectType =
 
 export type MaintenanceAssetStatus = "active" | "inactive";
 
+export type MaintenanceAssetCreatedSource = "manual" | "automatic";
+
 export type MaintenanceRecordType = "preventive" | "corrective";
 
 export type MaintenanceRecordStatus =
@@ -36,6 +38,11 @@ export const MAINTENANCE_PROJECT_TYPE_LABELS: Record<MaintenanceProjectType, str
 export const MAINTENANCE_ASSET_STATUS_LABELS: Record<MaintenanceAssetStatus, string> = {
   active: "Activo",
   inactive: "Inactivo",
+};
+
+export const MAINTENANCE_ASSET_SOURCE_LABELS: Record<MaintenanceAssetCreatedSource, string> = {
+  manual: "Manual",
+  automatic: "Auto · Producción",
 };
 
 export const MAINTENANCE_RECORD_TYPE_LABELS: Record<MaintenanceRecordType, string> = {
@@ -73,6 +80,7 @@ export interface MaintenanceAsset {
   nextMaintenanceDate: Date;
   maintenanceFrequencyMonths: number;
   status: MaintenanceAssetStatus;
+  createdSource: MaintenanceAssetCreatedSource;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

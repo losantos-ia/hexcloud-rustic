@@ -91,7 +91,7 @@ export default function NuevoActivoPage() {
     formState: { errors, isSubmitting },
   } = useForm<MaintenanceAssetFormValues>({
     resolver: zodResolver(maintenanceAssetSchema),
-    defaultValues: { maintenanceFrequencyMonths: 6, status: "active" },
+    defaultValues: { maintenanceFrequencyMonths: 6, status: "active", createdSource: "manual" },
   });
 
   async function onSubmit(values: MaintenanceAssetFormValues) {

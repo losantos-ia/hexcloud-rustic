@@ -195,6 +195,7 @@ export default function ProductionOrderDetailPage() {
             installationDate: today,
             maintenanceFrequencyMonths: 6,
             status: "active",
+            createdSource: "automatic",
             notes: `Generado automáticamente al cerrar la orden ${order.productionNumber}: ${order.title}`,
           });
           setNewMaintenanceAssetId(assetId);
