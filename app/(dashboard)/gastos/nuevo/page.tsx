@@ -2,16 +2,17 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Phone, Mail, Tag, ExternalLink } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { listSuppliers, createSupplier } from "@/lib/firestore/purchases";
+import { listSuppliers, getSupplier } from "@/lib/firestore/purchases";
 import type { Supplier } from "@/types/purchases";
+import { SUPPLIER_CATEGORY_LABELS } from "@/types/purchases";
 import { expenseSchema, type ExpenseFormValues } from "@/lib/schemas/expenses";
 import { createExpense } from "@/lib/firestore/expenses";
 import { listInventoryLocations } from "@/lib/firestore/inventory";
@@ -51,16 +52,34 @@ function Field({
 
 export default function NuevoGastoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierOpen, setSupplierOpen] = useState(false);
-  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const supplierContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     listInventoryLocations().then(setLocations);
     listSuppliers().then(setSuppliers);
+  }, []);
+
+  // Handle return from supplier creation page
+  useEffect(() => {
+    const supplierId = searchParams.get("supplierId");
+    const supplierNameParam = searchParams.get("supplierName");
+    if (supplierId) {
+      getSupplier(supplierId).then((s) => {
+        if (s) {
+          setSelectedSupplier(s);
+          setValue("supplierName", s.name);
+        } else if (supplierNameParam) {
+          setValue("supplierName", supplierNameParam);
+        }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const today = new Date().toISOString().split("T")[0];
@@ -103,6 +122,12 @@ export default function NuevoGastoPage() {
   const exactMatch = suppliers.some(
     (s) => s.name.toLowerCase() === supplierName.trim().toLowerCase()
   );
+  // Clear selected supplier card if user edits the name manually
+  function handleSupplierInput(val: string) {
+    setValue("supplierName", val);
+    setSupplierOpen(true);
+    if (selectedSupplier && val !== selectedSupplier.name) setSelectedSupplier(null);
+  }
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (supplierContainerRef.current && !supplierContainerRef.current.contains(e.target as Node)) {
@@ -155,7 +180,7 @@ export default function NuevoGastoPage() {
             <label className="block text-xs text-zinc-400 mb-1.5">Proveedor / Pagado a</label>
             <input
               value={supplierName}
-              onChange={(e) => { setValue("supplierName", e.target.value); setSupplierOpen(true); }}
+              onChange={(e) => handleSupplierInput(e.target.value)}
               onFocus={() => setSupplierOpen(true)}
               placeholder="Ej. ENEE, propietario, arrendador…"
               className="w-full bg-transparent text-lg text-zinc-100 placeholder-zinc-600 border-b border-zinc-700 focus:border-amber-500 focus:outline-none pb-1 transition-colors"
@@ -170,34 +195,57 @@ export default function NuevoGastoPage() {
                   <button
                     key={s.id}
                     type="button"
-                    onMouseDown={() => { setValue("supplierName", s.name); setSupplierOpen(false); }}
+                    onMouseDown={() => { setValue("supplierName", s.name); setSelectedSupplier(s); setSupplierOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
                   >
-                    {s.name}
+                    <span className="font-medium">{s.name}</span>
+                    {s.contactName && <span className="text-zinc-500 ml-2 text-xs">{s.contactName}</span>}
                   </button>
                 ))}
                 {supplierName.trim().length > 0 && !exactMatch && (
-                  <button
-                    type="button"
-                    onMouseDown={async () => {
-                      setCreatingSupplier(true);
-                      try {
-                        await createSupplier({ name: supplierName.trim(), category: "other" });
-                        const updated = await listSuppliers();
-                        setSuppliers(updated);
-                        setValue("supplierName", supplierName.trim());
-                      } finally {
-                        setCreatingSupplier(false);
-                        setSupplierOpen(false);
-                      }
-                    }}
-                    disabled={creatingSupplier}
-                    className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  <Link
+                    href={`/compras/proveedores/nuevo?returnTo=/gastos/nuevo&supplierName=${encodeURIComponent(supplierName.trim())}`}
+                    className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2"
                   >
                     <Plus size={12} />
-                    {creatingSupplier ? "Creando…" : `Crear "${supplierName.trim()}" como nuevo proveedor`}
-                  </button>
+                    Crear &quot;{supplierName.trim()}&quot; como nuevo proveedor
+                  </Link>
                 )}
+              </div>
+            )}
+            {/* Supplier summary card */}
+            {selectedSupplier && (
+              <div className="mt-3 rounded-lg border border-zinc-700/60 bg-zinc-800/50 px-4 py-3 flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-zinc-300">{selectedSupplier.name}</span>
+                    <span className="text-xs text-zinc-500 bg-zinc-700/50 rounded px-1.5 py-0.5">
+                      {SUPPLIER_CATEGORY_LABELS[selectedSupplier.category]}
+                    </span>
+                  </div>
+                  {selectedSupplier.contactName && (
+                    <span className="text-xs text-zinc-500">{selectedSupplier.contactName}</span>
+                  )}
+                  <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                    {selectedSupplier.phone && (
+                      <span className="flex items-center gap-1 text-xs text-zinc-500">
+                        <Phone size={10} />{selectedSupplier.phone}
+                      </span>
+                    )}
+                    {selectedSupplier.email && (
+                      <span className="flex items-center gap-1 text-xs text-zinc-500">
+                        <Mail size={10} />{selectedSupplier.email}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <Link
+                  href={`/compras/proveedores/${selectedSupplier.id}`}
+                  className="shrink-0 text-zinc-500 hover:text-amber-400 transition-colors mt-0.5"
+                  title="Ver proveedor"
+                >
+                  <ExternalLink size={13} />
+                </Link>
               </div>
             )}
           </div>

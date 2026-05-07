@@ -1,8 +1,8 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -24,6 +24,9 @@ import { SUPPLIER_CATEGORY_LABELS } from "@/types/purchases";
 
 export default function NuevoProveedorPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
+  const supplierNameParam = searchParams.get("supplierName") ?? "";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,15 +37,24 @@ export default function NuevoProveedorPage() {
     formState: { errors },
   } = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
-    defaultValues: { category: "general" },
+    defaultValues: { category: "general", name: supplierNameParam },
   });
+
+  useEffect(() => {
+    if (supplierNameParam) setValue("name", supplierNameParam);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onSubmit(values: SupplierFormValues) {
     setSubmitting(true);
     setError(null);
     try {
       const id = await createSupplier(values);
-      router.push(`/compras/proveedores/${id}`);
+      if (returnTo) {
+        router.push(`${returnTo}?supplierId=${id}&supplierName=${encodeURIComponent(values.name)}`);
+      } else {
+        router.push(`/compras/proveedores/${id}`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al crear el proveedor");
     } finally {
@@ -55,14 +67,16 @@ export default function NuevoProveedorPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
-          href="/compras/proveedores"
+          href={returnTo ?? "/compras/proveedores"}
           className="size-8 rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors"
         >
           <ArrowLeft className="size-4" />
         </Link>
         <div>
           <h1 className="text-xl font-bold text-white">Nuevo proveedor</h1>
-          <p className="text-sm text-zinc-400">Agrega un proveedor al directorio</p>
+          <p className="text-sm text-zinc-400">
+            {returnTo ? "Crear y volver al formulario" : "Agrega un proveedor al directorio"}
+          </p>
         </div>
       </div>
 
@@ -157,14 +171,14 @@ export default function NuevoProveedorPage() {
 
         <div className="flex gap-3 justify-end">
           <Button asChild variant="outline" className="border-zinc-700 text-zinc-300 hover:text-white">
-            <Link href="/compras/proveedores">Cancelar</Link>
+            <Link href={returnTo ?? "/compras/proveedores"}>Cancelar</Link>
           </Button>
           <Button
             type="submit"
             disabled={submitting}
             className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold"
           >
-            {submitting ? "Guardando..." : "Crear proveedor"}
+            {submitting ? "Guardando..." : returnTo ? "Guardar y volver" : "Crear proveedor"}
           </Button>
         </div>
       </form>
