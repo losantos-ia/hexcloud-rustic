@@ -1,7 +1,7 @@
 ﻿"use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
@@ -9,8 +9,9 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { listSuppliers, createSupplier } from "@/lib/firestore/purchases";
+import type { Supplier } from "@/types/purchases";
 import { expenseSchema, type ExpenseFormValues } from "@/lib/schemas/expenses";
 import { createExpense } from "@/lib/firestore/expenses";
 import { listInventoryLocations } from "@/lib/firestore/inventory";
@@ -52,9 +53,14 @@ export default function NuevoGastoPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierOpen, setSupplierOpen] = useState(false);
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+  const supplierContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     listInventoryLocations().then(setLocations);
+    listSuppliers().then(setSuppliers);
   }, []);
 
   const today = new Date().toISOString().split("T")[0];
@@ -88,6 +94,24 @@ export default function NuevoGastoPage() {
   useEffect(() => {
     if (hasItems) setValue("amount", computedTotal, { shouldValidate: false });
   }, [computedTotal, hasItems, setValue]);
+
+  // Supplier autocomplete
+  const supplierName = watch("supplierName") ?? "";
+  const filteredSuppliers = supplierName.trim()
+    ? suppliers.filter((s) => s.name.toLowerCase().includes(supplierName.toLowerCase()))
+    : suppliers;
+  const exactMatch = suppliers.some(
+    (s) => s.name.toLowerCase() === supplierName.trim().toLowerCase()
+  );
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (supplierContainerRef.current && !supplierContainerRef.current.contains(e.target as Node)) {
+        setSupplierOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Sync location name
   const locationId = watch("locationId");
@@ -127,15 +151,54 @@ export default function NuevoGastoPage() {
         <div className="rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
 
           {/* Proveedor */}
-          <div className="px-6 py-5">
+          <div className="px-6 py-5 relative" ref={supplierContainerRef}>
             <label className="block text-xs text-zinc-400 mb-1.5">Proveedor / Pagado a</label>
             <input
-              {...register("supplierName")}
+              value={supplierName}
+              onChange={(e) => { setValue("supplierName", e.target.value); setSupplierOpen(true); }}
+              onFocus={() => setSupplierOpen(true)}
               placeholder="Ej. ENEE, propietario, arrendador…"
               className="w-full bg-transparent text-lg text-zinc-100 placeholder-zinc-600 border-b border-zinc-700 focus:border-amber-500 focus:outline-none pb-1 transition-colors"
+              autoComplete="off"
             />
             {errors.supplierName && (
               <p className="text-xs text-red-400 mt-1">{errors.supplierName.message}</p>
+            )}
+            {supplierOpen && (filteredSuppliers.length > 0 || (supplierName.trim().length > 0 && !exactMatch)) && (
+              <div className="absolute left-6 right-6 z-50 mt-1 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl overflow-hidden" style={{ maxHeight: "240px", overflowY: "auto" }}>
+                {filteredSuppliers.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onMouseDown={() => { setValue("supplierName", s.name); setSupplierOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+                  >
+                    {s.name}
+                  </button>
+                ))}
+                {supplierName.trim().length > 0 && !exactMatch && (
+                  <button
+                    type="button"
+                    onMouseDown={async () => {
+                      setCreatingSupplier(true);
+                      try {
+                        await createSupplier({ name: supplierName.trim(), category: "other" });
+                        const updated = await listSuppliers();
+                        setSuppliers(updated);
+                        setValue("supplierName", supplierName.trim());
+                      } finally {
+                        setCreatingSupplier(false);
+                        setSupplierOpen(false);
+                      }
+                    }}
+                    disabled={creatingSupplier}
+                    className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Plus size={12} />
+                    {creatingSupplier ? "Creando…" : `Crear "${supplierName.trim()}" como nuevo proveedor`}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -280,19 +343,6 @@ export default function NuevoGastoPage() {
             </Field>
           </div>
 
-          {/* Descripción + Notas */}
-          <div className="px-6 py-5 flex flex-col gap-4">
-            <Field label="Descripción" error={errors.description?.message}>
-              <Input placeholder="Ej. Pago mensual de luz del taller" {...register("description")} />
-            </Field>
-            <Field label="Notas" error={errors.notes?.message}>
-              <Textarea
-                placeholder="Observaciones adicionales…"
-                rows={3}
-                {...register("notes")}
-              />
-            </Field>
-          </div>
         </div>
 
         {/* ── Right: sidebar ── */}
