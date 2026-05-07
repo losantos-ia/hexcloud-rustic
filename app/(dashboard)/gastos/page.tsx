@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Plus, Receipt, Search, TrendingDown, MoreHorizontal, Pencil, Trash2,
+  Calendar, ChevronLeft, ChevronRight, X,
 } from "lucide-react";
 import { listExpenses, deleteExpense } from "@/lib/firestore/expenses";
 import { listInventoryLocations } from "@/lib/firestore/inventory";
@@ -71,6 +72,180 @@ function SummaryCard({
         <p className={`text-xl font-bold ${colorClass}`}>{value}</p>
         {sub && <p className="text-[10px] text-zinc-600 mt-0.5">{sub}</p>}
       </div>
+    </div>
+  );
+}
+
+// ── Date range preset helpers ─────────────────────────────────────────────
+function startOf(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
+
+const DATE_PRESETS = [
+  { label: "Año actual", getRange: () => { const y = new Date().getFullYear(); return { from: `${y}-01-01`, to: `${y}-12-31` }; } },
+  { label: "Año anterior", getRange: () => { const y = new Date().getFullYear() - 1; return { from: `${y}-01-01`, to: `${y}-12-31` }; } },
+  { label: "Últimos 12 meses", getRange: () => { const to = new Date(); const from = new Date(to); from.setFullYear(from.getFullYear() - 1); return { from: isoDate(from), to: isoDate(to) }; } },
+  { label: "Últimos 7 días", getRange: () => { const to = new Date(); const from = new Date(to); from.setDate(from.getDate() - 6); return { from: isoDate(from), to: isoDate(to) }; } },
+  { label: "Mes actual", getRange: () => { const n = new Date(); return { from: isoDate(new Date(n.getFullYear(), n.getMonth(), 1)), to: isoDate(new Date(n.getFullYear(), n.getMonth() + 1, 0)) }; } },
+  { label: "Mes anterior", getRange: () => { const n = new Date(); return { from: isoDate(new Date(n.getFullYear(), n.getMonth() - 1, 1)), to: isoDate(new Date(n.getFullYear(), n.getMonth(), 0)) }; } },
+  { label: "1 trimestre", getRange: () => { const y = new Date().getFullYear(); return { from: `${y}-01-01`, to: `${y}-03-31` }; } },
+  { label: "2 trimestre", getRange: () => { const y = new Date().getFullYear(); return { from: `${y}-04-01`, to: `${y}-06-30` }; } },
+  { label: "3 trimestre", getRange: () => { const y = new Date().getFullYear(); return { from: `${y}-07-01`, to: `${y}-09-30` }; } },
+  { label: "4 trimestre", getRange: () => { const y = new Date().getFullYear(); return { from: `${y}-10-01`, to: `${y}-12-31` }; } },
+];
+
+const MONTH_NAMES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DAY_NAMES_ES = ["L","M","X","J","V","S","D"];
+
+function buildCalendar(year: number, month: number) {
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const offset = firstDay === 0 ? 6 : firstDay - 1; // Mon=0 offset
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = Array(offset).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+function DateRangeFilter({
+  from, to, onChange, onClear,
+}: {
+  from: string; to: string;
+  onChange: (f: string, t: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const today = new Date();
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+  const [picking, setPicking] = useState<"from" | "to">("from");
+
+  useEffect(() => {
+    if (!open) return;
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  const cells = buildCalendar(calYear, calMonth);
+
+  function labelForRange() {
+    if (!from && !to) return "Selecciona un rango";
+    const fmt = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+    if (from && to) return `${fmt(from)} – ${fmt(to)}`;
+    return from ? `Desde ${fmt(from)}` : `Hasta ${fmt(to)}`;
+  }
+
+  function pickDay(day: number) {
+    const d = isoDate(new Date(calYear, calMonth, day));
+    if (picking === "from") {
+      onChange(d, to && d > to ? "" : to);
+      setPicking("to");
+    } else {
+      if (from && d < from) { onChange(d, from); }
+      else { onChange(from, d); }
+      setPicking("from");
+    }
+  }
+
+  function inRange(day: number) {
+    const d = isoDate(new Date(calYear, calMonth, day));
+    return !!from && !!to && d >= from && d <= to;
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-1.5 transition-colors focus:outline-none ${
+          (from || to)
+            ? "bg-amber-500/10 border-amber-500/40 text-amber-300"
+            : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500"
+        }`}
+      >
+        <Calendar size={14} />
+        <span className="max-w-[180px] truncate">{labelForRange()}</span>
+        {(from || to) && (
+          <span onClick={(e) => { e.stopPropagation(); onClear(); }} className="ml-1 text-zinc-500 hover:text-zinc-200">
+            <X size={12} />
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-10 z-50 flex rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden min-w-max">
+          {/* Presets */}
+          <div className="w-44 border-r border-zinc-800 py-2 flex flex-col">
+            {DATE_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => { const r = p.getRange(); onChange(r.from, r.to); setOpen(false); }}
+                className="text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors"
+              >
+                {p.label}
+              </button>
+            ))}
+            <div className="mt-auto border-t border-zinc-800 pt-1">
+              <button
+                type="button"
+                onClick={() => { onClear(); setOpen(false); }}
+                className="w-full text-center px-4 py-2 text-sm text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+              >
+                Limpiar filtro
+              </button>
+            </div>
+          </div>
+
+          {/* Calendar */}
+          <div className="p-4 w-64">
+            <div className="flex items-center justify-between mb-3">
+              <button type="button" onClick={() => { let m = calMonth - 1; let y = calYear; if (m < 0) { m = 11; y--; } setCalMonth(m); setCalYear(y); }} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
+                <ChevronLeft size={14} />
+              </button>
+              <span className="text-sm font-semibold text-zinc-200">{MONTH_NAMES_ES[calMonth]} {calYear}</span>
+              <button type="button" onClick={() => { let m = calMonth + 1; let y = calYear; if (m > 11) { m = 0; y++; } setCalMonth(m); setCalYear(y); }} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
+                <ChevronRight size={14} />
+              </button>
+            </div>
+            <div className="grid grid-cols-7 mb-1">
+              {DAY_NAMES_ES.map((d) => (<span key={d} className="text-center text-[10px] text-zinc-600 pb-1">{d}</span>))}
+            </div>
+            <div className="grid grid-cols-7 gap-y-0.5">
+              {cells.map((day, i) => {
+                if (!day) return <span key={i} />;
+                const d = isoDate(new Date(calYear, calMonth, day));
+                const isFrom = d === from;
+                const isTo = d === to;
+                const inR = inRange(day);
+                const isToday = d === isoDate(today);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => pickDay(day)}
+                    className={`text-xs h-7 rounded transition-colors ${
+                      isFrom || isTo
+                        ? "bg-amber-500 text-zinc-950 font-bold"
+                        : inR
+                        ? "bg-amber-500/20 text-amber-200"
+                        : isToday
+                        ? "text-amber-400 hover:bg-zinc-800"
+                        : "text-zinc-300 hover:bg-zinc-800"
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-xs text-zinc-600 text-center">
+              {picking === "from" ? "Selecciona fecha inicio" : "Selecciona fecha fin"}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -287,19 +462,11 @@ export default function GastosPage() {
             <option key={m} value={m}>{EXPENSE_PAYMENT_METHOD_LABELS[m]}</option>
           ))}
         </select>
-        <input
-          type="date"
-          value={filterFrom}
-          onChange={(e) => setFilterFrom(e.target.value)}
-          title="Desde"
-          className="text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 px-2 py-1.5 focus:outline-none focus:border-amber-500"
-        />
-        <input
-          type="date"
-          value={filterTo}
-          onChange={(e) => setFilterTo(e.target.value)}
-          title="Hasta"
-          className="text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 px-2 py-1.5 focus:outline-none focus:border-amber-500"
+        <DateRangeFilter
+          from={filterFrom}
+          to={filterTo}
+          onChange={(f, t) => { setFilterFrom(f); setFilterTo(t); }}
+          onClear={() => { setFilterFrom(""); setFilterTo(""); }}
         />
         {(filterCategory || filterLocation || filterPayment || filterFrom || filterTo || search) && (
           <button
