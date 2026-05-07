@@ -11,7 +11,7 @@ export default function DashboardLayout({
   return (
     <AuthGuard>
       <SidebarProvider>
-        <div className="flex min-h-screen bg-zinc-950">
+        <div className="flex h-screen bg-zinc-950">
           <Sidebar />
           <DashboardShell>
             {/* Environment banner — staging */}
