@@ -525,8 +525,6 @@ export default function NuevoGastoPage() {
             </Field>
           </div>
 
-        </div>
-
           {/* ── Monto + Comprobante ── */}
           <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
