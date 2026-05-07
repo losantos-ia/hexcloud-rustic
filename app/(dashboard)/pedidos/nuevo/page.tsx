@@ -379,27 +379,6 @@ export default function NewOrderPage() {
           </div>
         </Section>
 
-        {/* Financial */}
-        <Section title="Términos financieros">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Field label="Precio de venta *" error={errors.finalSalePrice?.message} className="col-span-2 sm:col-span-2">
-              <Input type="number" min={0} {...register("finalSalePrice", { valueAsNumber: true })} placeholder="0" />
-            </Field>
-            <Field label="Anticipo requerido" error={errors.depositRequired?.message}>
-              <Input type="number" min={0} {...register("depositRequired", { valueAsNumber: true })} placeholder="0" />
-            </Field>
-            <Field label="Anticipo recibido" error={errors.depositPaid?.message}>
-              <Input type="number" min={0} {...register("depositPaid", { valueAsNumber: true })} placeholder="0" />
-            </Field>
-          </div>
-          <div className="rounded-lg bg-zinc-800/50 px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-zinc-400">Saldo pendiente</span>
-            <span className={`text-sm font-bold ${balanceDue > 0 ? "text-amber-400" : "text-emerald-400"}`}>
-              {formatCurrency(Math.max(0, balanceDue))}
-            </span>
-          </div>
-        </Section>
-
         {/* Delivery */}
         <Section title="Entrega e instalación">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
