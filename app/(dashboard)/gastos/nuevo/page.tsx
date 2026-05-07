@@ -104,7 +104,7 @@ export default function NuevoGastoPage() {
       date: today,
       category: "other",
       paymentMethod: "cash",
-      lineItems: [],
+      lineItems: [{ sku: "", inventoryItemId: "", description: "", quantity: 1, unitPrice: 0 }],
     },
   });
 
@@ -369,15 +369,8 @@ export default function NuevoGastoPage() {
 
           {/* ── Line items table ── */}
           <div className="px-6 py-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4">
               <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wide">Ítems / Conceptos</p>
-              <button
-                type="button"
-                onClick={() => append({ sku: "", inventoryItemId: "", description: "", quantity: 1, unitPrice: 0 })}
-                className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 rounded-md px-2.5 py-1.5 transition-colors"
-              >
-                <Plus size={12} /> Añadir ítem
-              </button>
             </div>
 
             {fields.length > 0 ? (
@@ -482,11 +475,16 @@ export default function NuevoGastoPage() {
                   </tfoot>
                 </table>
               </div>
-            ) : (
-              <p className="text-xs text-zinc-600 italic">
-                Sin ítems. Haz clic en &quot;Añadir ítem&quot; para desglosar el gasto.
-              </p>
-            )}
+            ) : null}
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => append({ sku: "", inventoryItemId: "", description: "", quantity: 1, unitPrice: 0 })}
+                className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 rounded-md px-2.5 py-1.5 transition-colors"
+              >
+                <Plus size={12} /> Añadir ítem
+              </button>
+            </div>
           </div>
 
           {/* Categoría + Método de pago */}
