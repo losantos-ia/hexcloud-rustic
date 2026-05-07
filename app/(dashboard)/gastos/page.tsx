@@ -174,7 +174,7 @@ function DateRangeFilter({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-10 z-50 flex rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden min-w-max">
+        <div className="absolute right-0 top-10 z-50 flex rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden min-w-max">
           {/* Presets */}
           <div className="w-44 border-r border-zinc-800 py-2 flex flex-col">
             {DATE_PRESETS.map((p) => (
