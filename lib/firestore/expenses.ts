@@ -48,6 +48,8 @@ function docToExpense(id: string, data: Record<string, unknown>): Expense {
     locationName: data.locationName as string | undefined,
     description: data.description as string | undefined,
     paymentMethod: data.paymentMethod as Expense["paymentMethod"],
+    invoiceNumber: data.invoiceNumber as string | undefined,
+    dueDate: data.dueDate ? toDate(data.dueDate) : undefined,
     supplierName: data.supplierName as string | undefined,
     receiptUrl: data.receiptUrl as string | undefined,
     notes: data.notes as string | undefined,
@@ -73,14 +75,19 @@ export async function generateExpenseNumber(): Promise<string> {
 
 export async function createExpense(values: ExpenseFormValues): Promise<string> {
   const expenseNumber = await generateExpenseNumber();
-  const date = new Date(`${values.date}T00:00:00`);
-  const ref = await addDoc(collection(db, COL), {
+  const payload: Record<string, unknown> = {
     ...stripUndefined(values as object),
     expenseNumber,
-    date: Timestamp.fromDate(date),
+    date: Timestamp.fromDate(new Date(`${values.date}T00:00:00`)),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (values.dueDate) {
+    payload.dueDate = Timestamp.fromDate(new Date(`${values.dueDate}T00:00:00`));
+  } else {
+    delete payload.dueDate;
+  }
+  const ref = await addDoc(collection(db, COL), payload);
   return ref.id;
 }
 
@@ -94,6 +101,11 @@ export async function updateExpense(
   };
   if (values.date) {
     payload.date = Timestamp.fromDate(new Date(`${values.date}T00:00:00`));
+  }
+  if (values.dueDate) {
+    payload.dueDate = Timestamp.fromDate(new Date(`${values.dueDate}T00:00:00`));
+  } else if ("dueDate" in values) {
+    payload.dueDate = null;
   }
   await updateDoc(doc(db, COL, id), payload);
 }

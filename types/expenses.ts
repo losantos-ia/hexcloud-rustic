@@ -63,6 +63,8 @@ export interface Expense {
   locationName?: string;
   description?: string;
   paymentMethod: ExpensePaymentMethod;
+  invoiceNumber?: string;
+  dueDate?: Date;
   supplierName?: string;
   receiptUrl?: string;
   notes?: string;

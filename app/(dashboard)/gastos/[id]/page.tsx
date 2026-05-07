@@ -158,11 +158,25 @@ export default function GastoDetailPage() {
 
       {/* Details */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 divide-y divide-zinc-800">
+        {expense.invoiceNumber && (
+          <InfoRow
+            icon={<Hash size={16} />}
+            label="Nº de factura"
+            value={<span className="font-mono">{expense.invoiceNumber}</span>}
+          />
+        )}
         <InfoRow
           icon={<CalendarDays size={16} />}
-          label="Fecha"
+          label="Fecha de emisión"
           value={formatDate(expense.date)}
         />
+        {expense.dueDate && (
+          <InfoRow
+            icon={<CalendarDays size={16} />}
+            label="Fecha de vencimiento"
+            value={formatDate(expense.dueDate)}
+          />
+        )}
         <InfoRow
           icon={<Tag size={16} />}
           label="Categoría"

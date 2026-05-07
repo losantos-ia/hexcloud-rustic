@@ -21,6 +21,8 @@ export const expenseSchema = z.object({
   paymentMethod: z.enum(EXPENSE_PAYMENT_METHODS, {
     message: "Selecciona un método de pago",
   }),
+  invoiceNumber: z.string().optional(),
+  dueDate: z.string().optional(),
   supplierName: z.string().optional(),
   receiptUrl: z.string().url("URL inválida").optional().or(z.literal("")),
   notes: z.string().optional(),
