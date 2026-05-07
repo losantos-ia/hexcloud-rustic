@@ -369,7 +369,7 @@ export default function NuevoGastoPage() {
             )}
           </div>
 
-          {/* Nº factura + fechas */}
+          {/* Nº factura + fechas + categoría + método + ubicación */}
           <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Field label="Nº de factura / referencia" error={errors.invoiceNumber?.message}>
               <Input placeholder="FAC-001, RF-2026…" {...register("invoiceNumber")} />
@@ -379,6 +379,28 @@ export default function NuevoGastoPage() {
             </Field>
             <Field label="Fecha de vencimiento" error={errors.dueDate?.message}>
               <Input type="date" {...register("dueDate")} />
+            </Field>
+            <Field label="Categoría *" error={errors.category?.message}>
+              <select {...register("category")} className={selectCls}>
+                {EXPENSE_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS[c]}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Método de pago *" error={errors.paymentMethod?.message}>
+              <select {...register("paymentMethod")} className={selectCls}>
+                {EXPENSE_PAYMENT_METHODS.map((m) => (
+                  <option key={m} value={m}>{EXPENSE_PAYMENT_METHOD_LABELS[m]}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Ubicación *" error={errors.locationId?.message}>
+              <select {...register("locationId")} className={selectCls}>
+                <option value="">Selecciona una ubicación…</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
             </Field>
           </div>
 
@@ -500,36 +522,6 @@ export default function NuevoGastoPage() {
                 <Plus size={12} /> Añadir ítem
               </button>
             </div>
-          </div>
-
-          {/* Categoría + Método de pago */}
-          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Categoría *" error={errors.category?.message}>
-              <select {...register("category")} className={selectCls}>
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS[c]}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Método de pago *" error={errors.paymentMethod?.message}>
-              <select {...register("paymentMethod")} className={selectCls}>
-                {EXPENSE_PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>{EXPENSE_PAYMENT_METHOD_LABELS[m]}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
-          {/* Ubicación */}
-          <div className="px-6 py-5">
-            <Field label="Ubicación *" error={errors.locationId?.message}>
-              <select {...register("locationId")} className={selectCls}>
-                <option value="">Selecciona una ubicación…</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
-            </Field>
           </div>
 
           {/* ── Impuesto + Resumen ── */}
