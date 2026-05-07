@@ -568,9 +568,6 @@ export default function NuevoGastoPage() {
                   <span className="text-zinc-500 text-sm">%</span>
                 </div>
               </div>
-              <Field label="URL del comprobante / recibo" error={errors.receiptUrl?.message}>
-                <Input type="url" placeholder="https://…" {...register("receiptUrl")} />
-              </Field>
             </div>
 
             {/* Right: summary */}
