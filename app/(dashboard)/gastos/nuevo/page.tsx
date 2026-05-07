@@ -385,12 +385,12 @@ export default function NuevoGastoPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-zinc-700">
-                      <th className="text-left text-xs text-zinc-500 font-normal pb-2 pr-3 w-28">Código</th>
+                      <th className="text-left text-xs text-zinc-500 font-normal pb-2 pr-3 w-36">Código</th>
                       <th className="text-left text-xs text-zinc-500 font-normal pb-2 pr-3">Descripción</th>
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-28">Unidades</th>
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-32">Precio unit.</th>
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 pl-3 w-28">Total</th>
-                      <th className="w-16" />
+                      <th className="w-8" />
                     </tr>
                   </thead>
                   <tbody>
@@ -401,16 +401,26 @@ export default function NuevoGastoPage() {
                       return (
                         <tr key={field.id} className="border-b border-zinc-800/60 last:border-0">
                           <td className="py-2 pr-3">
-                            <div className="relative">
-                              <input
-                                {...register(`lineItems.${index}.sku`)}
-                                placeholder="SKU…"
-                                onBlur={(e) => handleSkuBlur(index, e.target.value)}
-                                className={`${cellInputCls} uppercase pr-6`}
-                              />
-                              {lineItemsWatched[index]?.inventoryItemId && (
-                                <Package size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-amber-400" />
-                              )}
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => { setSearchPopupIndex(index); setSearchQuery(""); }}
+                                className="text-zinc-500 hover:text-amber-400 transition-colors shrink-0"
+                                title="Buscar en inventario"
+                              >
+                                <Search size={13} />
+                              </button>
+                              <div className="relative flex-1">
+                                <input
+                                  {...register(`lineItems.${index}.sku`)}
+                                  placeholder="SKU…"
+                                  onBlur={(e) => handleSkuBlur(index, e.target.value)}
+                                  className={`${cellInputCls} uppercase pr-6`}
+                                />
+                                {lineItemsWatched[index]?.inventoryItemId && (
+                                  <Package size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-amber-400" />
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="py-2 pr-3">
@@ -447,23 +457,13 @@ export default function NuevoGastoPage() {
                             {rowTotal.toFixed(2)}
                           </td>
                           <td className="py-2 pl-2">
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => { setSearchPopupIndex(index); setSearchQuery(""); }}
-                                className="text-zinc-500 hover:text-amber-400 transition-colors"
-                                title="Buscar en inventario"
-                              >
-                                <Search size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => remove(index)}
-                                className="text-zinc-600 hover:text-red-400 transition-colors"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => remove(index)}
+                              className="text-zinc-600 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </td>
                         </tr>
                       );
