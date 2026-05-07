@@ -63,6 +63,7 @@ function docToSupplier(id: string, data: Record<string, any>): Supplier {
   return {
     id,
     name: data.name,
+    rtn: data.rtn ?? undefined,
     contactName: data.contactName ?? undefined,
     phone: data.phone ?? undefined,
     email: data.email ?? undefined,

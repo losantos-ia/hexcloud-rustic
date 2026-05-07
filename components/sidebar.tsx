@@ -31,6 +31,7 @@ const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "CRM", href: "/crm", icon: UserCheck },
   { label: "Clientes", href: "/clientes", icon: Users },
+  { label: "Proveedores", href: "/compras/proveedores", icon: Truck },
   { label: "Cotizaciones", href: "/cotizaciones", icon: FileText },
   { label: "Pedidos", href: "/pedidos", icon: ShoppingCart },
   { label: "Producción", href: "/produccion", icon: Factory },

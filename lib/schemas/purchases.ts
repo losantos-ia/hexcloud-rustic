@@ -9,6 +9,7 @@ const SUPPLIER_CATEGORIES = [
 
 export const supplierSchema = z.object({
   name: z.string().min(2, "El nombre es obligatorio"),
+  rtn: z.string().optional(),
   contactName: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email("Correo inválido").optional().or(z.literal("")),

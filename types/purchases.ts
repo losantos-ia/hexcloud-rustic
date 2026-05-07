@@ -26,6 +26,7 @@ export const SUPPLIER_CATEGORY_LABELS: Record<SupplierCategory, string> = {
 export interface Supplier {
   id: string;
   name: string;
+  rtn?: string;
   contactName?: string;
   phone?: string;
   email?: string;

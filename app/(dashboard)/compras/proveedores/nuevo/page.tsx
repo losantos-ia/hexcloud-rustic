@@ -96,6 +96,15 @@ export default function NuevoProveedorPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
+              <Label>RTN (Registro Tributario Nacional)</Label>
+              <Input
+                {...register("rtn")}
+                placeholder="Ej. 08019999123456"
+                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <Label>Nombre del contacto</Label>
               <Input
                 {...register("contactName")}
