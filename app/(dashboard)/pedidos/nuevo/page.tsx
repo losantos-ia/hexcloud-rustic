@@ -195,12 +195,23 @@ export default function NewOrderPage() {
   const watchItems = watch("items");
   const watchFinalSalePrice = watch("finalSalePrice");
   const watchDepositPaid = watch("depositPaid");
+  const watchTaxRate = watch("taxRate") ?? 0;
   const watchInstallation = watch("installationRequired");
+  const [depositPercent, setDepositPercent] = useState(0);
 
   const subtotal = (watchItems ?? []).reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
   }, 0);
+  const taxAmount = subtotal * (Number(watchTaxRate) || 0) / 100;
+  const totalFinal = subtotal + taxAmount;
   const balanceDue = (Number(watchFinalSalePrice) || 0) - (Number(watchDepositPaid) || 0);
+
+  // Auto-update finalSalePrice and depositRequired when subtotal or rates change
+  useEffect(() => {
+    setValue("finalSalePrice", totalFinal, { shouldValidate: false });
+    setValue("depositRequired", Math.round(totalFinal * (depositPercent || 0) / 100), { shouldValidate: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalFinal, depositPercent]);
 
   function pickInventoryItem(index: number, item: InventoryItem) {
     setValue(`items.${index}.sku`, item.sku ?? "");
@@ -620,15 +631,41 @@ export default function NewOrderPage() {
         </Section>
 
         {/* Totals */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-          <div className="flex justify-end">
-            <div className="flex flex-col gap-2 min-w-64">
-              <TotalRow label="Subtotal ítems" value={formatCurrency(subtotal)} />
-              <TotalRow label="Precio de venta final" value={formatCurrency(Number(watchFinalSalePrice) || 0)} bold />
-              <div className="border-t border-zinc-700 pt-2 mt-1">
-                <TotalRow label="Anticipo recibido" value={formatCurrency(Number(watchDepositPaid) || 0)} />
-                <TotalRow label="Saldo pendiente" value={formatCurrency(Math.max(0, balanceDue))} accent />
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col sm:flex-row gap-6 justify-between items-start">
+          {/* Left: small inputs */}
+          <div className="flex flex-col gap-3 min-w-[180px]">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-zinc-500">Impuesto (%)</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number" min={0} max={100} step="0.1"
+                  {...register("taxRate", { valueAsNumber: true })}
+                  className="w-20 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-100 text-right focus:border-amber-500 focus:outline-none"
+                />
+                <span className="text-xs text-zinc-500">%</span>
               </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-zinc-500">Anticipo requerido (%)</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number" min={0} max={100} step="1"
+                  value={depositPercent}
+                  onChange={(e) => setDepositPercent(Number(e.target.value) || 0)}
+                  className="w-20 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-100 text-right focus:border-amber-500 focus:outline-none"
+                />
+                <span className="text-xs text-zinc-500">%</span>
+              </div>
+            </div>
+          </div>
+          {/* Right: summary */}
+          <div className="flex flex-col gap-2 min-w-64">
+            <TotalRow label="Subtotal" value={formatCurrency(subtotal)} />
+            <TotalRow label={`ISV (${Number(watchTaxRate) || 0}%)`} value={formatCurrency(taxAmount)} />
+            <TotalRow label="Total" value={formatCurrency(totalFinal)} bold />
+            <div className="border-t border-zinc-700 pt-2 mt-1">
+              <TotalRow label={`Anticipo requerido (${depositPercent}%)`} value={formatCurrency(Math.round(totalFinal * depositPercent / 100))} />
+              <TotalRow label="Saldo pendiente" value={formatCurrency(Math.max(0, balanceDue))} accent />
             </div>
           </div>
         </div>

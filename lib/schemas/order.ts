@@ -37,6 +37,7 @@ export const orderSchema = z.object({
   status: z.enum(ORDER_STATUSES),
   priority: z.enum(ORDER_PRIORITIES),
   finalSalePrice: z.number().min(0, "Debe ser mayor o igual a 0"),
+  taxRate: z.number().min(0).max(100).optional(),
   depositRequired: z.number().min(0),
   depositPaid: z.number().min(0),
   promisedDeliveryDate: z.string().optional(),
