@@ -421,17 +421,18 @@ export default function GastosPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative">
+      <div className="flex gap-2 items-center">
+        <div className="relative flex-1 min-w-0">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             placeholder="Buscar gasto o proveedor…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500 w-56"
+            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
           />
         </div>
+        <div className="flex gap-2 items-center shrink-0">
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "")}
@@ -479,6 +480,7 @@ export default function GastosPage() {
             Limpiar
           </button>
         )}
+        </div>
       </div>
 
       {/* Table */}
