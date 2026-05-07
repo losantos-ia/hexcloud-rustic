@@ -10,6 +10,8 @@ const EXPENSE_PAYMENT_METHODS = ["cash", "bank_transfer", "card", "other"] as co
 // ── Line item ────────────────────────────────────────────
 
 export const lineItemSchema = z.object({
+  sku: z.string().optional(),
+  inventoryItemId: z.string().optional(),
   description: z.string().min(1, "Descripción requerida"),
   quantity: z.number().positive("Debe ser mayor a 0"),
   unitPrice: z.number().min(0, "Debe ser 0 o más"),

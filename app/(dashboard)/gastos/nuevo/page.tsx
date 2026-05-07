@@ -4,14 +4,16 @@ export const dynamic = "force-dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Phone, Mail, Tag, ExternalLink } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Phone, Mail, Tag, ExternalLink, Package } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSuppliers, getSupplier } from "@/lib/firestore/purchases";
+import { listInventoryItems } from "@/lib/firestore/inventory";
 import type { Supplier } from "@/types/purchases";
+import type { InventoryItem } from "@/types/inventory";
 import { SUPPLIER_CATEGORY_LABELS } from "@/types/purchases";
 import { expenseSchema, type ExpenseFormValues } from "@/lib/schemas/expenses";
 import { createExpense } from "@/lib/firestore/expenses";
@@ -56,6 +58,7 @@ export default function NuevoGastoPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const supplierContainerRef = useRef<HTMLDivElement>(null);
@@ -63,6 +66,7 @@ export default function NuevoGastoPage() {
   useEffect(() => {
     listInventoryLocations().then(setLocations);
     listSuppliers().then(setSuppliers);
+    listInventoryItems().then(setInventoryItems);
   }, []);
 
   // Handle return from supplier creation page
@@ -113,6 +117,28 @@ export default function NuevoGastoPage() {
   useEffect(() => {
     if (hasItems) setValue("amount", computedTotal, { shouldValidate: false });
   }, [computedTotal, hasItems, setValue]);
+
+  function handleSkuBlur(index: number, sku: string) {
+    const trimmed = sku.trim().toUpperCase();
+    if (!trimmed) {
+      setValue(`lineItems.${index}.inventoryItemId`, "");
+      return;
+    }
+    const found = inventoryItems.find(
+      (it) => (it.sku ?? "").toUpperCase() === trimmed
+    );
+    if (found) {
+      setValue(`lineItems.${index}.inventoryItemId`, found.id);
+      if (!lineItemsWatched[index]?.description) {
+        setValue(`lineItems.${index}.description`, found.name);
+      }
+      if (!(Number(lineItemsWatched[index]?.unitPrice) > 0)) {
+        setValue(`lineItems.${index}.unitPrice`, found.lastPurchaseCost ?? found.averageCost);
+      }
+    } else {
+      setValue(`lineItems.${index}.inventoryItemId`, "");
+    }
+  }
 
   // Supplier autocomplete
   const supplierName = watch("supplierName") ?? "";
@@ -269,7 +295,7 @@ export default function NuevoGastoPage() {
               <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wide">Ítems / Conceptos</p>
               <button
                 type="button"
-                onClick={() => append({ description: "", quantity: 1, unitPrice: 0 })}
+                onClick={() => append({ sku: "", inventoryItemId: "", description: "", quantity: 1, unitPrice: 0 })}
                 className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 rounded-md px-2.5 py-1.5 transition-colors"
               >
                 <Plus size={12} /> Añadir ítem
@@ -281,6 +307,7 @@ export default function NuevoGastoPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-zinc-700">
+                      <th className="text-left text-xs text-zinc-500 font-normal pb-2 pr-3 w-28">Código</th>
                       <th className="text-left text-xs text-zinc-500 font-normal pb-2 pr-3">Descripción</th>
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-28">Unidades</th>
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-32">Precio unit.</th>
@@ -295,6 +322,19 @@ export default function NuevoGastoPage() {
                       const rowTotal = qty * price;
                       return (
                         <tr key={field.id} className="border-b border-zinc-800/60 last:border-0">
+                          <td className="py-2 pr-3">
+                            <div className="relative">
+                              <input
+                                {...register(`lineItems.${index}.sku`)}
+                                placeholder="SKU…"
+                                onBlur={(e) => handleSkuBlur(index, e.target.value)}
+                                className={`${cellInputCls} uppercase pr-6`}
+                              />
+                              {lineItemsWatched[index]?.inventoryItemId && (
+                                <Package size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-amber-400" />
+                              )}
+                            </div>
+                          </td>
                           <td className="py-2 pr-3">
                             <input
                               {...register(`lineItems.${index}.description`)}

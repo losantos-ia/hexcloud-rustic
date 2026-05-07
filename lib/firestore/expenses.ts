@@ -15,6 +15,7 @@ import {
 import { db } from "@/lib/firebase";
 import type { Expense, ExpenseCategory } from "@/types/expenses";
 import type { ExpenseFormValues } from "@/lib/schemas/expenses";
+import { adjustInventoryStock } from "@/lib/firestore/inventory";
 
 // ── Collection ────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ function docToExpense(id: string, data: Record<string, unknown>): Expense {
     supplierName: data.supplierName as string | undefined,
     receiptUrl: data.receiptUrl as string | undefined,
     notes: data.notes as string | undefined,
-    lineItems: (data.lineItems as Array<{ description: string; quantity: number; unitPrice: number }>) ?? undefined,
+    lineItems: (data.lineItems as Array<{ sku?: string; inventoryItemId?: string; description: string; quantity: number; unitPrice: number }>) ?? undefined,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -89,6 +90,22 @@ export async function createExpense(values: ExpenseFormValues): Promise<string> 
     delete payload.dueDate;
   }
   const ref = await addDoc(collection(db, COL), payload);
+
+  // Inventory movements: purchase_in for linked line items
+  if (values.lineItems?.length) {
+    for (const item of values.lineItems) {
+      if (item.inventoryItemId) {
+        await adjustInventoryStock(
+          item.inventoryItemId,
+          values.locationId,
+          "purchase_in",
+          item.quantity,
+          { unitCost: item.unitPrice, referenceType: "purchase", referenceId: ref.id }
+        );
+      }
+    }
+  }
+
   return ref.id;
 }
 
