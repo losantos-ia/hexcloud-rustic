@@ -266,7 +266,7 @@ export default function NuevoGastoPage() {
         className="flex flex-col -mt-4 md:-mt-6"
       >
         {/* ── Sticky header ── */}
-        <div className="sticky top-0 z-40 bg-zinc-950 border-b border-zinc-800 pt-4 md:pt-6 pb-3 mb-4 flex items-center gap-4 -mx-4 md:-mx-6 px-4 md:px-6">
+        <div className="sticky top-0 z-40 bg-zinc-950 border-b border-zinc-800 py-3 mb-4 flex items-center gap-4 -mx-4 md:-mx-6 px-4 md:px-6">
           <Link href="/gastos" className="text-zinc-400 hover:text-zinc-200 transition-colors">
             <ArrowLeft size={18} />
           </Link>

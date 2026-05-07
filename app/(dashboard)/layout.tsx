@@ -15,7 +15,9 @@ export default function DashboardLayout({
           <Sidebar />
           <DashboardShell>
             {/* Main content */}
-            <main className="flex-1 px-4 md:px-6 pt-4 md:pt-6 pb-4 md:pb-6 overflow-y-auto">{children}</main>
+            <main className="flex-1 px-4 md:px-6 pb-4 md:pb-6 overflow-y-auto">
+              <div className="pt-4 md:pt-6">{children}</div>
+            </main>
           </DashboardShell>
         </div>
       </SidebarProvider>
