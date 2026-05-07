@@ -196,7 +196,7 @@ export default function NuevoGastoPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div>
       {/* Inventory search popup */}
       {searchPopupIndex !== null && (() => {
         const q = searchQuery.toLowerCase();
@@ -261,22 +261,30 @@ export default function NuevoGastoPage() {
           </div>
         );
       })()}
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/gastos" className="text-zinc-400 hover:text-zinc-200 transition-colors">
-          <ArrowLeft size={20} />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold text-zinc-100">Registrar gasto</h1>
-          <p className="text-xs text-zinc-500">Nuevo gasto operacional</p>
-        </div>
-      </div>
-
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start"
+        className="flex flex-col"
       >
-        {/* ── Left: document card ── */}
+        {/* ── Sticky header ── */}
+        <div className="sticky top-0 z-40 bg-zinc-950 border-b border-zinc-800 py-3 mb-6 flex items-center gap-4">
+          <Link href="/gastos" className="text-zinc-400 hover:text-zinc-200 transition-colors">
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold text-zinc-100">Registrar gasto</h1>
+            <p className="text-xs text-zinc-500">Nuevo gasto operacional</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/gastos">
+              <Button type="button" variant="outline" size="sm">Cancelar</Button>
+            </Link>
+            <Button type="submit" size="sm" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando…" : "Registrar gasto"}
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Document card ── */}
         <div className="rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
 
           {/* Proveedor */}
@@ -519,61 +527,42 @@ export default function NuevoGastoPage() {
 
         </div>
 
-        {/* ── Right: sidebar ── */}
-        <div className="flex flex-col gap-4">
-          {/* Amount card */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <p className="text-xs text-zinc-500 mb-3">
-              {hasItems ? "Total (calculado)" : "Monto total *"}
-            </p>
-            {/* Input always registered; hidden when items auto-compute the total */}
-            <div className={hasItems ? "hidden" : "flex items-center gap-2"}>
-              <span className="text-2xl font-light text-zinc-500">L</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                {...register("amount", { valueAsNumber: true })}
-                className="w-full bg-transparent text-3xl font-bold text-zinc-100 placeholder-zinc-700 focus:outline-none"
-              />
-            </div>
-            {hasItems && (
-              <p className="text-3xl font-bold text-amber-400 font-mono">
-                L {computedTotal.toFixed(2)}
+          {/* ── Monto + Comprobante ── */}
+          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <p className="text-xs text-zinc-400 mb-1.5">
+                {hasItems ? "Monto total (calculado)" : "Monto total *"}
               </p>
-            )}
-            {!hasItems && errors.amount && (
-              <p className="text-xs text-red-400 mt-2">{errors.amount.message}</p>
-            )}
-          </div>
-
-          {/* Comprobante */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+              <div className={hasItems ? "hidden" : "flex items-center gap-2"}>
+                <span className="text-zinc-500 text-sm font-mono">L</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  {...register("amount", { valueAsNumber: true })}
+                  className="w-full bg-transparent text-2xl font-bold text-zinc-100 placeholder-zinc-700 focus:outline-none"
+                />
+              </div>
+              {hasItems && (
+                <p className="text-2xl font-bold text-amber-400 font-mono">L {computedTotal.toFixed(2)}</p>
+              )}
+              {!hasItems && errors.amount && (
+                <p className="text-xs text-red-400 mt-1">{errors.amount.message}</p>
+              )}
+            </div>
             <Field label="URL del comprobante / recibo" error={errors.receiptUrl?.message}>
               <Input type="url" placeholder="https://…" {...register("receiptUrl")} />
             </Field>
           </div>
 
-          {/* Error */}
-          {serverError && (
-            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
-              {serverError}
-            </p>
-          )}
-
-          {/* Actions */}
-          <div className="flex flex-col gap-2">
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? "Guardando…" : "Registrar gasto"}
-            </Button>
-            <Link href="/gastos" className="w-full">
-              <Button type="button" variant="outline" className="w-full">
-                Cancelar
-              </Button>
-            </Link>
-          </div>
         </div>
+
+        {serverError && (
+          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 mt-2">
+            {serverError}
+          </p>
+        )}
       </form>
     </div>
   );
