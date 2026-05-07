@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Edit, Trash2, Receipt, MapPin, CreditCard, CalendarDays,
-  Tag, User, ExternalLink,
+  Tag, User, ExternalLink, Hash,
 } from "lucide-react";
 import { getExpenseById, deleteExpense } from "@/lib/firestore/expenses";
 import type { Expense } from "@/types/expenses";
