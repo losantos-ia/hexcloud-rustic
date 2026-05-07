@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Phone, Mail, Tag, ExternalLink, Package } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Phone, Mail, ExternalLink, Package, Search, X } from "lucide-react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,9 @@ export default function NuevoGastoPage() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  // Inventory search popup
+  const [searchPopupIndex, setSearchPopupIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const supplierContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,6 +120,17 @@ export default function NuevoGastoPage() {
   useEffect(() => {
     if (hasItems) setValue("amount", computedTotal, { shouldValidate: false });
   }, [computedTotal, hasItems, setValue]);
+
+  function pickInventoryItem(index: number, item: InventoryItem) {
+    setValue(`lineItems.${index}.sku`, item.sku ?? "");
+    setValue(`lineItems.${index}.inventoryItemId`, item.id);
+    setValue(`lineItems.${index}.description`, item.name);
+    if (!(Number(lineItemsWatched[index]?.unitPrice) > 0)) {
+      setValue(`lineItems.${index}.unitPrice`, item.lastPurchaseCost ?? item.averageCost);
+    }
+    setSearchPopupIndex(null);
+    setSearchQuery("");
+  }
 
   function handleSkuBlur(index: number, sku: string) {
     const trimmed = sku.trim().toUpperCase();
@@ -183,6 +197,70 @@ export default function NuevoGastoPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Inventory search popup */}
+      {searchPopupIndex !== null && (() => {
+        const q = searchQuery.toLowerCase();
+        const results = q.length > 0
+          ? inventoryItems.filter(
+              (it) =>
+                it.name.toLowerCase().includes(q) ||
+                (it.sku ?? "").toLowerCase().includes(q)
+            )
+          : inventoryItems;
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) { setSearchPopupIndex(null); setSearchQuery(""); } }}
+          >
+            <div className="w-full max-w-lg bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: "80vh" }}>
+              {/* Header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800">
+                <Search size={15} className="text-zinc-500 shrink-0" />
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar por nombre o código (SKU)…"
+                  className="flex-1 bg-transparent text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setSearchPopupIndex(null); setSearchQuery(""); }}
+                  className="text-zinc-600 hover:text-zinc-300 transition-colors"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+              {/* Results */}
+              <div className="overflow-y-auto flex-1">
+                {results.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-zinc-600">Sin resultados</p>
+                ) : (
+                  results.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={() => pickInventoryItem(searchPopupIndex, item)}
+                      className="w-full text-left px-4 py-3 hover:bg-zinc-800 border-b border-zinc-800/60 last:border-0 transition-colors flex items-start gap-3"
+                    >
+                      <Package size={14} className="text-amber-400 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm text-zinc-200 font-medium truncate">{item.name}</p>
+                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                          {item.sku && (
+                            <span className="text-xs text-zinc-500 font-mono">{item.sku}</span>
+                          )}
+                          <span className="text-xs text-zinc-600">Costo: L {(item.lastPurchaseCost ?? item.averageCost).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/gastos" className="text-zinc-400 hover:text-zinc-200 transition-colors">
@@ -312,7 +390,7 @@ export default function NuevoGastoPage() {
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-28">Unidades</th>
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-32">Precio unit.</th>
                       <th className="text-right text-xs text-zinc-500 font-normal pb-2 pl-3 w-28">Total</th>
-                      <th className="w-8" />
+                      <th className="w-16" />
                     </tr>
                   </thead>
                   <tbody>
@@ -369,13 +447,23 @@ export default function NuevoGastoPage() {
                             {rowTotal.toFixed(2)}
                           </td>
                           <td className="py-2 pl-2">
-                            <button
-                              type="button"
-                              onClick={() => remove(index)}
-                              className="text-zinc-600 hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => { setSearchPopupIndex(index); setSearchQuery(""); }}
+                                className="text-zinc-500 hover:text-amber-400 transition-colors"
+                                title="Buscar en inventario"
+                              >
+                                <Search size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => remove(index)}
+                                className="text-zinc-600 hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
