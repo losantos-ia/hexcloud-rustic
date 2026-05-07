@@ -156,6 +156,35 @@ export default function GastoDetailPage() {
         <Receipt size={32} className="text-amber-500/30" />
       </div>
 
+      {/* Line items */}
+      {expense.lineItems && expense.lineItems.length > 0 && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+          <div className="px-5 py-3 border-b border-zinc-800">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Ítems / Conceptos</p>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-800 bg-zinc-800/40">
+                <th className="text-left text-xs text-zinc-500 font-normal px-5 py-2.5">Descripción</th>
+                <th className="text-right text-xs text-zinc-500 font-normal px-4 py-2.5 w-24">Unidades</th>
+                <th className="text-right text-xs text-zinc-500 font-normal px-4 py-2.5 w-32">Precio unit.</th>
+                <th className="text-right text-xs text-zinc-500 font-normal px-5 py-2.5 w-28">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {expense.lineItems.map((item, i) => (
+                <tr key={i}>
+                  <td className="px-5 py-2.5 text-zinc-200">{item.description}</td>
+                  <td className="px-4 py-2.5 text-right text-zinc-400 tabular-nums">{item.quantity}</td>
+                  <td className="px-4 py-2.5 text-right text-zinc-400 font-mono tabular-nums">{formatCurrency(item.unitPrice)}</td>
+                  <td className="px-5 py-2.5 text-right text-zinc-200 font-mono font-semibold tabular-nums">{formatCurrency(item.quantity * item.unitPrice)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Details */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 divide-y divide-zinc-800">
         {expense.invoiceNumber && (

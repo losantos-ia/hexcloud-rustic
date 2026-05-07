@@ -53,6 +53,7 @@ function docToExpense(id: string, data: Record<string, unknown>): Expense {
     supplierName: data.supplierName as string | undefined,
     receiptUrl: data.receiptUrl as string | undefined,
     notes: data.notes as string | undefined,
+    lineItems: (data.lineItems as Array<{ description: string; quantity: number; unitPrice: number }>) ?? undefined,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };

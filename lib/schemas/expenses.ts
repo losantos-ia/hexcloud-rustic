@@ -7,6 +7,16 @@ const EXPENSE_CATEGORIES = [
 
 const EXPENSE_PAYMENT_METHODS = ["cash", "bank_transfer", "card", "other"] as const;
 
+// ── Line item ────────────────────────────────────────────
+
+export const lineItemSchema = z.object({
+  description: z.string().min(1, "Descripción requerida"),
+  quantity: z.number().positive("Debe ser mayor a 0"),
+  unitPrice: z.number().min(0, "Debe ser 0 o más"),
+});
+
+export type LineItemValues = z.input<typeof lineItemSchema>;
+
 // ── ExpenseSchema ─────────────────────────────────────────
 
 export const expenseSchema = z.object({
@@ -26,6 +36,7 @@ export const expenseSchema = z.object({
   supplierName: z.string().optional(),
   receiptUrl: z.string().url("URL inválida").optional().or(z.literal("")),
   notes: z.string().optional(),
+  lineItems: z.array(lineItemSchema).optional(),
 });
 
 export const updateExpenseSchema = expenseSchema.partial();
