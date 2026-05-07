@@ -328,7 +328,7 @@ export default function GastosPage() {
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-zinc-800">
+          <div className="hidden md:block rounded-xl border border-zinc-800 overflow-visible">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-xs text-zinc-500">
@@ -368,7 +368,7 @@ export default function GastosPage() {
                     <td className="px-4 py-3 text-right font-semibold text-zinc-100">
                       {formatCurrency(expense.amount)}
                     </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3 overflow-visible" onClick={(e) => e.stopPropagation()}>
                       <RowMenu expenseId={expense.id} onDelete={() => handleDelete(expense.id)} />
                     </td>
                   </tr>
