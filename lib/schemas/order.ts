@@ -9,6 +9,8 @@ const ORDER_PAYMENT_TYPES = ["deposit", "partial", "final"] as const;
 const ORDER_PAYMENT_METHODS = ["cash", "bank_transfer", "card", "other"] as const;
 
 export const orderItemSchema = z.object({
+  sku: z.string().optional(),
+  inventoryItemId: z.string().optional(),
   description: z.string().min(1, "La descripción es obligatoria"),
   quantity: z.number().positive("Debe ser mayor a 0"),
   unit: z.string().min(1),
