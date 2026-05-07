@@ -103,6 +103,7 @@ const s = StyleSheet.create({
   colTotal: { width: 72, textAlign: "right" },
   thText: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.black, textTransform: "uppercase", letterSpacing: 0.5 },
   itemDesc: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.black },
+  itemDescRest: { fontSize: 8.5, fontFamily: "Helvetica", color: C.black, marginTop: 1 },
   itemNotes: { fontSize: 7.5, color: C.mid, marginTop: 2, lineHeight: 1.4 },
   tdText: { fontSize: 8.5, color: C.dark },
   tdTotal: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.black },
@@ -265,7 +266,16 @@ export function OrderPDFDocument({
           {items.map((item, i) => (
             <View key={item.id} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]} wrap={false}>
               <View style={s.colDesc}>
-                <Text style={s.itemDesc}>{item.description}</Text>
+                {(() => {
+                  const nlIdx = item.description.indexOf("\n");
+                  if (nlIdx === -1) return <Text style={s.itemDesc}>{item.description}</Text>;
+                  return (
+                    <View>
+                      <Text style={s.itemDesc}>{item.description.slice(0, nlIdx)}</Text>
+                      <Text style={s.itemDescRest}>{item.description.slice(nlIdx + 1)}</Text>
+                    </View>
+                  );
+                })()}
                 {item.notes && <Text style={s.itemNotes}>{item.notes}</Text>}
               </View>
               <View style={s.colQty}><Text style={s.tdText}>{item.quantity}</Text></View>
