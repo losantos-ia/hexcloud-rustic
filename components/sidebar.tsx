@@ -36,7 +36,6 @@ const navItems = [
   { label: "Pedidos", href: "/pedidos", icon: ShoppingCart },
   { label: "Producción", href: "/produccion", icon: Factory },
   { label: "Inventario", href: "/inventario", icon: Package },
-  { label: "Compras", href: "/compras", icon: Truck },
   { label: "Mantenimientos", href: "/mantenimientos", icon: Wrench },
   { label: "Gastos", href: "/gastos", icon: Receipt },
   { label: "Tiendas", href: "/tiendas", icon: Store },
