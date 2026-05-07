@@ -242,7 +242,7 @@ export default function NewOrderPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
@@ -322,14 +322,16 @@ export default function NewOrderPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Nombre del cliente *" error={errors.clientName?.message}>
-              <Input {...register("clientName")} placeholder="Nombre completo" />
-            </Field>
-            <Field label="Teléfono *" error={errors.clientPhone?.message}>
-              <Input {...register("clientPhone")} placeholder="+504 9999-9999" />
-            </Field>
-          </div>
+          {!selectedClient && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Nombre del cliente *" error={errors.clientName?.message}>
+                <Input {...register("clientName")} placeholder="Nombre completo" />
+              </Field>
+              <Field label="Teléfono *" error={errors.clientPhone?.message}>
+                <Input {...register("clientPhone")} placeholder="+504 9999-9999" />
+              </Field>
+            </div>
+          )}
         </Section>
 
         {/* Order header */}
