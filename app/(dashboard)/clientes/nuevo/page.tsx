@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -23,6 +23,8 @@ function FieldError({ message }: { message?: string }) {
 
 export default function NuevoClientePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -56,7 +58,11 @@ export default function NuevoClientePage() {
         source: values.source,
         notes: clean(values.notes),
       });
-      router.push(`/clientes/${id}`);
+      if (returnTo) {
+        router.push(`${returnTo}?clientId=${id}`);
+      } else {
+        router.push(`/clientes/${id}`);
+      }
     } catch (err: unknown) {
       setServerError(
         err instanceof Error ? err.message : "Error al crear el cliente"

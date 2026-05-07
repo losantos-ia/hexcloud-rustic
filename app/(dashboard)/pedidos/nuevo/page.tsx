@@ -11,7 +11,7 @@ import Link from "next/link";
 import { orderSchema, type OrderFormValues } from "@/lib/schemas/order";
 import { createOrder } from "@/lib/firestore/orders";
 import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
-import { listClients } from "@/lib/firestore/clients";
+import { listClients, getClientById } from "@/lib/firestore/clients";
 import type { Client } from "@/types/client";
 import {
   ORDER_SOURCE_LABELS,
@@ -64,6 +64,7 @@ export default function NewOrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromQuotationId = searchParams.get("fromQuotation");
+  const returnClientId = searchParams.get("clientId");
   const { formatCurrency } = useCurrency();
   const [serverError, setServerError] = useState<string | null>(null);
   const [fromQuotationNumber, setFromQuotationNumber] = useState<string | null>(null);
@@ -74,6 +75,24 @@ export default function NewOrderPage() {
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { listClients().then(setClients); }, []);
+
+  // Auto-select client when returning from create-client flow
+  useEffect(() => {
+    if (!returnClientId) return;
+    getClientById(returnClientId).then((c) => {
+      if (!c) return;
+      setSelectedClient(c);
+      setClientSearch(c.fullName);
+      setValue("clientName", c.fullName);
+      setValue("clientPhone", c.phone);
+      setValue("clientId", c.id);
+      setValue("clientDocumentId", c.documentId ?? "");
+      setValue("clientAddress", c.address ?? "");
+      setValue("clientCity", c.city ?? "");
+      setValue("clientDepartment", c.department ?? "");
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnClientId]);
 
   useEffect(() => {
     if (!showDropdown) return;
@@ -309,29 +328,28 @@ export default function NewOrderPage() {
               </div>
             )}
             {showDropdown && clientSearch.trim().length > 0 && filteredClients.length === 0 && (
-              <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 text-xs text-zinc-500">
-                Sin resultados. Completa los datos manualmente abajo.
+              <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-3 flex items-center justify-between gap-2">
+                <span className="text-xs text-zinc-500">No se encontró ningún cliente.</span>
+                <Link
+                  href={`/clientes/nuevo?returnTo=/pedidos/nuevo`}
+                  className="text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors shrink-0"
+                >
+                  + Crear cliente
+                </Link>
               </div>
             )}
           </div>
 
-          {selectedClient && (
+          {selectedClient ? (
             <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-400">
               <span className="font-medium">Cliente seleccionado:</span>
               <span>{selectedClient.fullName}</span>
               <span className="text-zinc-500">({selectedClient.phone})</span>
             </div>
-          )}
-
-          {!selectedClient && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Nombre del cliente *" error={errors.clientName?.message}>
-                <Input {...register("clientName")} placeholder="Nombre completo" />
-              </Field>
-              <Field label="Teléfono *" error={errors.clientPhone?.message}>
-                <Input {...register("clientPhone")} placeholder="+504 9999-9999" />
-              </Field>
-            </div>
+          ) : (
+            errors.clientName && (
+              <p className="text-xs text-red-400">Selecciona un cliente para continuar.</p>
+            )
           )}
         </Section>
 
