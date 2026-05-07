@@ -106,7 +106,7 @@ export default function NewOrderPage() {
       priority: "medium",
       source: "direct",
       projectType: "custom",
-      installationRequired: true,
+      installationRequired: false,
       finalSalePrice: 0,
       depositRequired: 0,
       depositPaid: 0,
@@ -171,6 +171,7 @@ export default function NewOrderPage() {
   const watchItems = watch("items");
   const watchFinalSalePrice = watch("finalSalePrice");
   const watchDepositPaid = watch("depositPaid");
+  const watchInstallation = watch("installationRequired");
 
   const subtotal = (watchItems ?? []).reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
@@ -396,12 +397,16 @@ export default function NewOrderPage() {
                 <label htmlFor="installationRequired" className="text-sm text-zinc-300">Sí, requiere instalación</label>
               </div>
             </Field>
-            <Field label="Dirección de entrega" className="sm:col-span-2">
-              <Input {...register("deliveryAddress")} placeholder="Dirección completa" />
-            </Field>
-            <Field label="Link Google Maps" className="sm:col-span-2">
-              <Input {...register("googleMapsUrl")} placeholder="https://maps.google.com/..." />
-            </Field>
+            {watchInstallation && (
+              <>
+                <Field label="Dirección de entrega" className="sm:col-span-2">
+                  <Input {...register("deliveryAddress")} placeholder="Dirección completa" />
+                </Field>
+                <Field label="Link Google Maps" className="sm:col-span-2">
+                  <Input {...register("googleMapsUrl")} placeholder="https://maps.google.com/..." />
+                </Field>
+              </>
+            )}
           </div>
         </Section>
 
