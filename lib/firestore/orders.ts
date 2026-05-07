@@ -126,7 +126,7 @@ export interface CreateOrderPayload {
   source: Order["source"];
   storeId?: string;
   projectType: Order["projectType"];
-  title: string;
+  title?: string;
   description?: string;
   status: OrderStatus;
   priority: Order["priority"];
@@ -168,7 +168,7 @@ export async function createOrder(payload: CreateOrderPayload): Promise<string> 
     clientPhone: payload.clientPhone,
     source: payload.source,
     projectType: payload.projectType,
-    title: payload.title,
+    ...(payload.title !== undefined ? { title: payload.title } : {}),
     status: payload.status,
     priority: payload.priority,
     finalSalePrice: payload.finalSalePrice,
