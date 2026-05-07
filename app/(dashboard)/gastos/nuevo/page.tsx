@@ -54,6 +54,7 @@ function Field({
 }
 
 export default function NuevoGastoPage() {
+  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const router = useRouter();
   const searchParams = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -258,7 +259,7 @@ export default function NuevoGastoPage() {
                           {item.sku && (
                             <span className="text-xs text-zinc-500 font-mono">{item.sku}</span>
                           )}
-                          <span className="text-xs text-zinc-600">Costo: L {(item.lastPurchaseCost ?? item.averageCost).toFixed(2)}</span>
+                          <span className="text-xs text-zinc-600">Costo: L {fmt(item.lastPurchaseCost ?? item.averageCost)}</span>
                         </div>
                       </div>
                     </button>
@@ -491,7 +492,7 @@ export default function NuevoGastoPage() {
                             />
                           </td>
                           <td className="py-2 pl-3 text-right text-sm text-zinc-200 font-mono tabular-nums whitespace-nowrap">
-                            {rowTotal.toFixed(2)}
+                            {fmt(rowTotal)}
                           </td>
                           <td className="py-2 pl-2">
                             <button
@@ -512,7 +513,7 @@ export default function NuevoGastoPage() {
                         Total
                       </td>
                       <td className="pt-3 text-right text-zinc-100 font-semibold font-mono tabular-nums">
-                        {computedTotal.toFixed(2)}
+                        {fmt(computedTotal)}
                       </td>
                       <td />
                     </tr>
@@ -573,16 +574,16 @@ export default function NuevoGastoPage() {
             <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 px-5 py-4 w-full sm:w-64 flex flex-col gap-2 shrink-0">
               <div className="flex justify-between text-sm text-zinc-400">
                 <span>Subtotal</span>
-                <span className="font-mono">L {subtotal.toFixed(2)}</span>
+                <span className="font-mono">L {fmt(subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm text-zinc-400">
                 <span>ISV ({taxRateWatched}%)</span>
-                <span className="font-mono">L {taxAmount.toFixed(2)}</span>
+                <span className="font-mono">L {fmt(taxAmount)}</span>
               </div>
               <div className="h-px bg-zinc-700 my-1" />
               <div className="flex justify-between items-baseline">
                 <span className="text-sm font-semibold text-zinc-200">Total</span>
-                <span className="text-xl font-bold text-amber-400 font-mono">L {totalFinal.toFixed(2)}</span>
+                <span className="text-xl font-bold text-amber-400 font-mono">L {fmt(totalFinal)}</span>
               </div>
             </div>
           </div>
