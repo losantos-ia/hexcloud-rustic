@@ -560,10 +560,11 @@ export default function NewOrderPage() {
                         </div>
                       </td>
                       <td className="py-2 pr-3">
-                        <input
+                        <textarea
                           {...register(`items.${idx}.description`)}
                           placeholder="Descripción del ítem…"
-                          className={cellCls}
+                          rows={1}
+                          className={`${cellCls} resize-y min-h-[2rem]`}
                         />
                         {errors.items?.[idx]?.description && (
                           <p className="text-xs text-red-400 mt-0.5">{errors.items[idx]?.description?.message}</p>
