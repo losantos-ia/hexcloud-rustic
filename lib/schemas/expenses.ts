@@ -38,6 +38,7 @@ export const expenseSchema = z.object({
   supplierName: z.string().optional(),
   receiptUrl: z.string().url("URL inválida").optional().or(z.literal("")),
   notes: z.string().optional(),
+  taxRate: z.number().min(0).max(100).optional(),
   lineItems: z.array(lineItemSchema).optional(),
 });
 

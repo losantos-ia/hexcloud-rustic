@@ -104,6 +104,7 @@ export default function NuevoGastoPage() {
       date: today,
       category: "other",
       paymentMethod: "cash",
+      taxRate: 0,
       lineItems: [{ sku: "", inventoryItemId: "", description: "", quantity: 1, unitPrice: 0 }],
     },
   });
@@ -117,9 +118,15 @@ export default function NuevoGastoPage() {
     return sum + (Number(item?.quantity) || 0) * (Number(item?.unitPrice) || 0);
   }, 0);
 
+  const [manualSubtotal, setManualSubtotal] = useState<number>(0);
+  const taxRateWatched = Number(watch("taxRate") ?? 0);
+  const subtotal = hasItems ? computedTotal : manualSubtotal;
+  const taxAmount = subtotal * taxRateWatched / 100;
+  const totalFinal = subtotal + taxAmount;
+
   useEffect(() => {
-    if (hasItems) setValue("amount", computedTotal, { shouldValidate: false });
-  }, [computedTotal, hasItems, setValue]);
+    setValue("amount", totalFinal || 0, { shouldValidate: false });
+  }, [totalFinal, setValue]);
 
   function pickInventoryItem(index: number, item: InventoryItem) {
     setValue(`lineItems.${index}.sku`, item.sku ?? "");
@@ -525,33 +532,63 @@ export default function NuevoGastoPage() {
             </Field>
           </div>
 
-          {/* ── Monto + Comprobante ── */}
-          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <p className="text-xs text-zinc-400 mb-1.5">
-                {hasItems ? "Monto total (calculado)" : "Monto total *"}
-              </p>
-              <div className={hasItems ? "hidden" : "flex items-center gap-2"}>
-                <span className="text-zinc-500 text-sm font-mono">L</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  {...register("amount", { valueAsNumber: true })}
-                  className="w-full bg-transparent text-2xl font-bold text-zinc-100 placeholder-zinc-700 focus:outline-none"
-                />
+          {/* ── Impuesto + Resumen ── */}
+          <div className="px-6 py-5 flex flex-col sm:flex-row gap-6 justify-between items-start border-t border-zinc-800">
+            {/* Left: inputs */}
+            <div className="flex flex-col gap-4 flex-1">
+              {!hasItems && (
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1.5">Subtotal *</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-zinc-500 text-sm font-mono">L</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={manualSubtotal || ""}
+                      onChange={(e) => setManualSubtotal(Number(e.target.value) || 0)}
+                      className="w-full bg-transparent text-xl font-bold text-zinc-100 placeholder-zinc-700 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1.5">Impuesto (%)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="0"
+                    {...register("taxRate", { valueAsNumber: true })}
+                    className="w-24 h-9 bg-zinc-800 border border-zinc-700 rounded px-3 text-sm text-zinc-200 focus:outline-none focus:border-amber-500"
+                  />
+                  <span className="text-zinc-500 text-sm">%</span>
+                </div>
               </div>
-              {hasItems && (
-                <p className="text-2xl font-bold text-amber-400 font-mono">L {computedTotal.toFixed(2)}</p>
-              )}
-              {!hasItems && errors.amount && (
-                <p className="text-xs text-red-400 mt-1">{errors.amount.message}</p>
-              )}
+              <Field label="URL del comprobante / recibo" error={errors.receiptUrl?.message}>
+                <Input type="url" placeholder="https://…" {...register("receiptUrl")} />
+              </Field>
             </div>
-            <Field label="URL del comprobante / recibo" error={errors.receiptUrl?.message}>
-              <Input type="url" placeholder="https://…" {...register("receiptUrl")} />
-            </Field>
+
+            {/* Right: summary */}
+            <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 px-5 py-4 w-full sm:w-64 flex flex-col gap-2 shrink-0">
+              <div className="flex justify-between text-sm text-zinc-400">
+                <span>Subtotal</span>
+                <span className="font-mono">L {subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-zinc-400">
+                <span>ISV ({taxRateWatched}%)</span>
+                <span className="font-mono">L {taxAmount.toFixed(2)}</span>
+              </div>
+              <div className="h-px bg-zinc-700 my-1" />
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm font-semibold text-zinc-200">Total</span>
+                <span className="text-xl font-bold text-amber-400 font-mono">L {totalFinal.toFixed(2)}</span>
+              </div>
+            </div>
           </div>
 
         </div>
