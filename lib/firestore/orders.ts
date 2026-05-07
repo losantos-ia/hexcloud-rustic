@@ -74,6 +74,8 @@ function docToItem(id: string, data: Record<string, any>): OrderItem {
   return {
     id,
     orderId: data.orderId,
+    sku: data.sku ?? undefined,
+    inventoryItemId: data.inventoryItemId ?? undefined,
     description: data.description,
     quantity: data.quantity,
     unit: data.unit,
@@ -276,6 +278,8 @@ export async function addOrderItem(orderId: string, item: OrderItemFormValues): 
   const snap = await getDocs(query(collection(db, ITEMS_COL), where("orderId", "==", orderId)));
   const ref = await addDoc(collection(db, ITEMS_COL), {
     orderId,
+    ...(item.sku ? { sku: item.sku } : {}),
+    ...(item.inventoryItemId ? { inventoryItemId: item.inventoryItemId } : {}),
     description: item.description,
     quantity: item.quantity,
     unit: item.unit,

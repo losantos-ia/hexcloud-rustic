@@ -149,6 +149,8 @@ export interface Order {
 export interface OrderItem {
   id: string;
   orderId: string;
+  sku?: string;
+  inventoryItemId?: string;
   description: string;
   quantity: number;
   unit: string;
