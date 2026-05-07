@@ -8,6 +8,7 @@ import { ArrowLeft, Plus, Trash2, Phone, Mail, ExternalLink, Package, Search, X 
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSuppliers, getSupplier } from "@/lib/firestore/purchases";
@@ -375,10 +376,16 @@ export default function NuevoGastoPage() {
               <Input placeholder="FAC-001, RF-2026…" {...register("invoiceNumber")} />
             </Field>
             <Field label="Fecha de emisión *" error={errors.date?.message}>
-              <Input type="date" {...register("date")} />
+              <DatePicker
+                value={watch("date")}
+                onChange={(v) => setValue("date", v, { shouldValidate: true })}
+              />
             </Field>
             <Field label="Fecha de vencimiento" error={errors.dueDate?.message}>
-              <Input type="date" {...register("dueDate")} />
+              <DatePicker
+                value={watch("dueDate") ?? ""}
+                onChange={(v) => setValue("dueDate", v, { shouldValidate: true })}
+              />
             </Field>
             <Field label="Categoría *" error={errors.category?.message}>
               <select {...register("category")} className={selectCls}>
