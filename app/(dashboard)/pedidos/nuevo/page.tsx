@@ -365,12 +365,6 @@ export default function NewOrderPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Título del pedido *" error={errors.title?.message} className="sm:col-span-2">
-              <Input {...register("title")} placeholder="Ej. Cabaña 3 habitaciones - Finca La Esperanza" />
-            </Field>
-            <Field label="Descripción" className="sm:col-span-2">
-              <Textarea {...register("description")} rows={2} placeholder="Detalles adicionales del proyecto..." />
-            </Field>
             <Field label="Nº de cotización (opcional)">
               <Input
                 {...register("quotationId")}

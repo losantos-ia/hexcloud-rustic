@@ -30,7 +30,7 @@ export const orderSchema = z.object({
   source: z.enum(ORDER_SOURCES),
   storeId: z.string().optional(),
   projectType: z.enum(ORDER_PROJECT_TYPES),
-  title: z.string().min(3, "El título debe tener al menos 3 caracteres"),
+  title: z.string().optional(),
   description: z.string().optional(),
   status: z.enum(ORDER_STATUSES),
   priority: z.enum(ORDER_PRIORITIES),
