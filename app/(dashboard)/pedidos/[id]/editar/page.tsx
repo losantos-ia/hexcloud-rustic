@@ -175,7 +175,7 @@ export default function EditOrderPage() {
         source: values.source,
         storeId: clean(values.storeId),
         projectType: values.projectType,
-        title: values.title.trim(),
+        title: clean(values.title),
         description: clean(values.description),
         status: values.status,
         priority: values.priority,
