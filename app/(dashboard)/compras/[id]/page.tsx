@@ -126,7 +126,9 @@ export default function GastoDetailPage() {
                 {EXPENSE_CATEGORY_LABELS[expense.category]}
               </Badge>
             </div>
-            <p className="text-xs text-zinc-500 font-mono mt-0.5">{expense.expenseNumber}</p>
+            {(expense.invoiceNumber || expense.expenseNumber) && (
+              <p className="text-xs text-zinc-500 font-mono mt-0.5">{expense.invoiceNumber || expense.expenseNumber}</p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">

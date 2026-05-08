@@ -367,7 +367,8 @@ export default function ComprasPage() {
         return (
           (e.description?.toLowerCase().includes(q) ?? false) ||
           (e.supplierName?.toLowerCase().includes(q) ?? false) ||
-          e.expenseNumber.toLowerCase().includes(q)
+          (e.invoiceNumber?.toLowerCase().includes(q) ?? false) ||
+          (e.expenseNumber?.toLowerCase().includes(q) ?? false)
         );
       }
       return true;
@@ -518,7 +519,7 @@ export default function ComprasPage() {
                     onClick={() => window.location.href = `/compras/${expense.id}`}
                     className="border-b border-zinc-800/60 hover:bg-zinc-900/60 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-amber-400">{expense.expenseNumber}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-amber-400">{expense.invoiceNumber || expense.expenseNumber || <span className="text-zinc-600">—</span>}</td>
                     <td className="px-4 py-3 text-zinc-400">{formatDate(expense.date)}</td>
                     <td className="px-4 py-3">
                       <Badge variant={CATEGORY_VARIANT[expense.category]}>
@@ -565,7 +566,7 @@ export default function ComprasPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col gap-1">
-                    <span className="font-mono text-[10px] text-amber-400">{expense.expenseNumber}</span>
+                    <span className="font-mono text-[10px] text-amber-400">{expense.invoiceNumber || expense.expenseNumber || '—'}</span>
                     <span className="text-sm font-semibold text-zinc-100">
                       {expense.description || EXPENSE_CATEGORY_LABELS[expense.category]}
                     </span>

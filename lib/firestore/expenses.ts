@@ -41,7 +41,7 @@ function stripUndefined<T extends object>(obj: T): Partial<T> {
 function docToExpense(id: string, data: Record<string, unknown>): Expense {
   return {
     id,
-    expenseNumber: data.expenseNumber as string,
+    expenseNumber: data.expenseNumber as string | undefined,
     date: toDate(data.date),
     category: data.category as Expense["category"],
     amount: data.amount as number,
@@ -76,10 +76,8 @@ export async function generateExpenseNumber(): Promise<string> {
 // ── CRUD ──────────────────────────────────────────────────
 
 export async function createExpense(values: ExpenseFormValues): Promise<string> {
-  const expenseNumber = await generateExpenseNumber();
   const payload: Record<string, unknown> = {
     ...stripUndefined(values as object),
-    expenseNumber,
     date: Timestamp.fromDate(new Date(`${values.date}T00:00:00`)),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

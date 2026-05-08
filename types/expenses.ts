@@ -55,7 +55,7 @@ export const EXPENSE_PAYMENT_METHODS: ExpensePaymentMethod[] = [
 
 export interface Expense {
   id: string;
-  expenseNumber: string;
+  expenseNumber?: string;
   date: Date;
   category: ExpenseCategory;
   amount: number;
