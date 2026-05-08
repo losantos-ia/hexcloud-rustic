@@ -436,7 +436,7 @@ export default function NuevoGastoPage() {
           {/* RIGHT: Form card */}
           <div className="flex-1 min-w-0 rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
 
-          {/* Proveedor */
+          {/* Proveedor */}
           <div className="px-6 py-5 relative" ref={supplierContainerRef}>
             <label className="block text-xs text-zinc-400 mb-1.5">Proveedor / Pagado a</label>
             <input
