@@ -80,7 +80,7 @@ export default function GastoDetailPage() {
     setDeleting(true);
     try {
       await deleteExpense(id);
-      router.push("/gastos");
+      router.push("/compras");
     } catch {
       setDeleting(false);
       setConfirmDelete(false);
@@ -99,8 +99,8 @@ export default function GastoDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3 text-zinc-500">
         <p className="text-sm">{loadError ?? "Gasto no encontrado."}</p>
-        <Link href="/gastos" className="text-xs text-amber-400 hover:text-amber-300">
-          ← Volver a gastos
+        <Link href="/compras" className="text-xs text-amber-400 hover:text-amber-300">
+          ← Volver a compras
         </Link>
       </div>
     );
@@ -114,7 +114,7 @@ export default function GastoDetailPage() {
       {/* ── Top bar ── */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link href="/gastos" className="text-zinc-400 hover:text-zinc-200 transition-colors">
+          <Link href="/compras" className="text-zinc-400 hover:text-zinc-200 transition-colors">
             <ArrowLeft size={20} />
           </Link>
           <div>
@@ -131,7 +131,7 @@ export default function GastoDetailPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Link
-            href={`/gastos/${id}/editar`}
+            href={`/compras/${id}/editar`}
             className="flex items-center gap-1.5 text-sm text-zinc-300 hover:text-zinc-100 border border-zinc-700 hover:border-zinc-500 rounded-lg px-3 py-1.5 transition-colors"
           >
             <Edit size={14} /> Editar
@@ -200,7 +200,7 @@ export default function GastoDetailPage() {
                 <p className="text-xs text-zinc-600 mt-0.5">Puedes añadir un comprobante editando este gasto</p>
               </div>
               <Link
-                href={`/gastos/${id}/editar`}
+                href={`/compras/${id}/editar`}
                 className="flex items-center gap-1.5 text-xs text-zinc-400 border border-zinc-700 hover:border-zinc-600 hover:text-zinc-200 rounded-md px-3 py-1.5 transition-colors"
               >
                 <Upload size={12} /> Subir archivo
@@ -331,3 +331,4 @@ export default function GastoDetailPage() {
     </div>
   );
 }
+

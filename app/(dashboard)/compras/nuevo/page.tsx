@@ -255,7 +255,7 @@ export default function NuevoGastoPage() {
     setServerError(null);
     try {
       const id = await createExpense(values);
-      router.push(`/gastos/${id}`);
+      router.push(`/compras/${id}`);
     } catch {
       setServerError("Error al registrar el gasto. Inténtalo de nuevo.");
     }
@@ -333,19 +333,19 @@ export default function NuevoGastoPage() {
       >
         {/* ── Sticky header ── */}
         <div className="sticky top-0 z-40 bg-zinc-950 border-b border-zinc-800 py-3 mb-4 flex items-center gap-4 -mx-4 md:-mx-6 px-4 md:px-6">
-          <Link href="/gastos" className="text-zinc-400 hover:text-zinc-200 transition-colors">
+          <Link href="/compras" className="text-zinc-400 hover:text-zinc-200 transition-colors">
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-zinc-100">Registrar gasto</h1>
+            <h1 className="text-lg font-bold text-zinc-100">Registrar compra</h1>
             <p className="text-xs text-zinc-500">Nuevo gasto operacional</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/gastos">
+            <Link href="/compras">
               <Button type="button" variant="outline" size="sm">Cancelar</Button>
             </Link>
             <Button type="submit" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? "Guardando…" : "Registrar gasto"}
+              {isSubmitting ? "Guardando…" : "Registrar compra"}
             </Button>
           </div>
         </div>
@@ -465,7 +465,7 @@ export default function NuevoGastoPage() {
                 ))}
                 {supplierName.trim().length > 0 && !exactMatch && (
                   <Link
-                    href={`/compras/proveedores/nuevo?returnTo=/gastos/nuevo&supplierName=${encodeURIComponent(supplierName.trim())}`}
+                    href={`/compras/proveedores/nuevo?returnTo=/compras/nuevo&supplierName=${encodeURIComponent(supplierName.trim())}`}
                     className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2"
                   >
                     <Plus size={12} />
@@ -740,3 +740,5 @@ export default function NuevoGastoPage() {
     </div>
   );
 }
+
+

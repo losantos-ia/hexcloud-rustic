@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -37,7 +37,7 @@ const navItems = [
   { label: "Producción", href: "/produccion", icon: Factory },
   { label: "Inventario", href: "/inventario", icon: Package },
   { label: "Mantenimientos", href: "/mantenimientos", icon: Wrench },
-  { label: "Gastos", href: "/gastos", icon: Receipt },
+  { label: "Compras", href: "/compras", icon: Receipt },
   { label: "Tiendas", href: "/tiendas", icon: Store },
   { label: "Finanzas", href: "/finanzas", icon: DollarSign },
   { label: "Reportes", href: "/reportes", icon: BarChart2 },
@@ -197,3 +197,4 @@ export function Sidebar() {
     </>
   );
 }
+

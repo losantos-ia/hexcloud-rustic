@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useMemo, useRef } from "react";
@@ -281,7 +281,7 @@ function RowMenu({ expenseId, onDelete }: { expenseId: string; onDelete: () => v
         <div className="absolute right-0 top-8 z-50 w-40 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
           <button
             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
-            onClick={() => { router.push(`/gastos/${expenseId}/editar`); setOpen(false); }}
+            onClick={() => { router.push(`/compras/${expenseId}/editar`); setOpen(false); }}
           >
             <Pencil size={13} /> Editar
           </button>
@@ -306,7 +306,7 @@ function RowMenu({ expenseId, onDelete }: { expenseId: string; onDelete: () => v
   );
 }
 
-export default function GastosPage() {
+export default function ComprasPage() {
   const { formatCurrency } = useCurrency();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
@@ -384,12 +384,12 @@ export default function GastosPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-100">Gastos</h1>
-          <p className="text-sm text-zinc-500">Control de gastos operacionales por ubicación</p>
+          <h1 class="text-2xl font-bold text-zinc-100">Compras</h1>
+          <p className="text-sm text-zinc-500">Control de compras operacionales por ubicación</p>
         </div>
-        <Link href="/gastos/nuevo">
+        <Link href="/compras/nuevo">
           <button className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold text-sm px-4 py-2 rounded-lg transition-colors">
-            <Plus size={16} /> Registrar gasto
+            <Plus size={16} /> Registrar compra
           </button>
         </Link>
       </div>
@@ -485,12 +485,12 @@ export default function GastosPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">Cargando gastos…</div>
+        <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">Cargando compras…</div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-zinc-500">
           <Receipt size={40} className="text-zinc-700" />
-          <p className="text-sm">Sin gastos registrados</p>
-          <Link href="/gastos/nuevo" className="text-xs text-amber-400 hover:text-amber-300">
+          <p className="text-sm">Sin compras registradas</p>
+          <Link href="/compras/nuevo" className="text-xs text-amber-400 hover:text-amber-300">
             + Registrar primer gasto
           </Link>
         </div>
@@ -515,7 +515,7 @@ export default function GastosPage() {
                 {filtered.map((expense) => (
                   <tr
                     key={expense.id}
-                    onClick={() => window.location.href = `/gastos/${expense.id}`}
+                    onClick={() => window.location.href = `/compras/${expense.id}`}
                     className="border-b border-zinc-800/60 hover:bg-zinc-900/60 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3 font-mono text-xs text-amber-400">{expense.expenseNumber}</td>
@@ -544,7 +544,7 @@ export default function GastosPage() {
                 ))}
                 <tr className="border-t border-zinc-700">
                   <td colSpan={6} className="px-4 py-3 text-xs text-zinc-500 font-medium">
-                    Total ({filtered.length} gastos)
+                    Total ({filtered.length} compras)
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-amber-400">
                     {formatCurrency(filteredTotal)}
@@ -560,7 +560,7 @@ export default function GastosPage() {
             {filtered.map((expense) => (
               <Link
                 key={expense.id}
-                href={`/gastos/${expense.id}`}
+                href={`/compras/${expense.id}`}
                 className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-2"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -592,3 +592,4 @@ export default function GastosPage() {
     </div>
   );
 }
+

@@ -117,7 +117,7 @@ export default function EditarGastoPage() {
     setServerError(null);
     try {
       await updateExpense(id, values);
-      router.push(`/gastos/${id}`);
+      router.push(`/compras/${id}`);
     } catch {
       setServerError("Error al actualizar el gasto. Inténtalo de nuevo.");
     }
@@ -135,8 +135,8 @@ export default function EditarGastoPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-3 text-zinc-500">
         <p className="text-sm">{loadError}</p>
-        <Link href="/gastos" className="text-xs text-amber-400 hover:text-amber-300">
-          ← Volver a gastos
+        <Link href="/compras" className="text-xs text-amber-400 hover:text-amber-300">
+          ← Volver a compras
         </Link>
       </div>
     );
@@ -146,7 +146,7 @@ export default function EditarGastoPage() {
     <div className="flex flex-col gap-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href={`/gastos/${id}`} className="text-zinc-400 hover:text-zinc-200 transition-colors">
+        <Link href={`/compras/${id}`} className="text-zinc-400 hover:text-zinc-200 transition-colors">
           <ArrowLeft size={20} />
         </Link>
         <div>
@@ -378,7 +378,7 @@ export default function EditarGastoPage() {
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? "Guardando…" : "Guardar cambios"}
             </Button>
-            <Link href={`/gastos/${id}`} className="w-full">
+            <Link href={`/compras/${id}`} className="w-full">
               <Button type="button" variant="outline" className="w-full">
                 Cancelar
               </Button>
@@ -389,3 +389,4 @@ export default function EditarGastoPage() {
     </div>
   );
 }
+
