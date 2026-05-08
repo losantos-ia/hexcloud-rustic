@@ -89,11 +89,7 @@ export default function NuevoGastoPage() {
     setReceiptFile(file);
     setReceiptUploadError(null);
     setReceiptUploadProgress(0);
-    if (file.type.startsWith("image/")) {
-      setReceiptPreview(URL.createObjectURL(file));
-    } else {
-      setReceiptPreview(null);
-    }
+    setReceiptPreview(URL.createObjectURL(file));
     setReceiptUploading(true);
     try {
       const ext = file.name.split(".").pop();
@@ -120,6 +116,7 @@ export default function NuevoGastoPage() {
   }
 
   function removeReceiptFile() {
+    if (receiptPreview) URL.revokeObjectURL(receiptPreview);
     setReceiptFile(null);
     setReceiptPreview(null);
     setReceiptUploadError(null);
@@ -353,87 +350,93 @@ export default function NuevoGastoPage() {
           </div>
         </div>
 
-        {/* ── Document card ── */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
+        {/* ── Two-column layout ── */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
 
-          {/* ── Archivo / Factura ── */}
-          <div className="px-6 py-5">
-            <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wide mb-3">Archivo</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
-            />
-            {!receiptFile ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleFileSelect(f); }}
-                className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-800/40 hover:border-amber-500/50 hover:bg-zinc-800/70 cursor-pointer transition-colors px-6 py-10 select-none"
-              >
-                <div className="size-10 rounded-xl bg-zinc-700/60 flex items-center justify-center">
-                  <Upload size={18} className="text-zinc-400" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm text-zinc-300 font-medium">Subir factura o recibo</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">PDF, JPG, PNG o WEBP — máx. 10 MB</p>
-                </div>
-                <span className="text-xs text-amber-400 border border-amber-500/30 rounded-md px-3 py-1">Seleccionar archivo</span>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-zinc-700 bg-zinc-800/50 overflow-hidden">
-                {/* Preview */}
-                {receiptPreview ? (
-                  <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={receiptPreview} alt="Vista previa" className="w-full max-h-56 object-contain bg-zinc-950 rounded-t-xl" />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center bg-zinc-900 rounded-t-xl py-8">
-                    <FileText size={40} className="text-zinc-600" />
-                  </div>
+          {/* LEFT: Archive panel */}
+          <div className="w-full lg:w-[300px] xl:w-[340px] shrink-0 lg:sticky lg:top-[70px]">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Archivo</p>
+                {receiptFile && !receiptUploading && (
+                  <button type="button" onClick={removeReceiptFile} className="text-xs text-red-400 hover:text-red-300 transition-colors">
+                    Eliminar archivo
+                  </button>
                 )}
-                {/* File info + actions */}
-                <div className="px-4 py-3 flex items-center gap-3">
-                  <div className="shrink-0">
-                    {receiptPreview ? (
-                      <ImageIcon size={16} className="text-zinc-500" />
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
+              />
+              {!receiptFile ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleFileSelect(f); }}
+                  className="flex flex-col items-center justify-center gap-4 cursor-pointer px-6 py-16 select-none hover:bg-zinc-800/40 group transition-colors"
+                >
+                  <div className="size-12 rounded-xl bg-zinc-800 group-hover:bg-zinc-700 flex items-center justify-center transition-colors">
+                    <Upload size={20} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-zinc-400 font-medium">Selecciona o arrastra</p>
+                    <p className="text-xs text-zinc-600 mt-0.5">un documento</p>
+                  </div>
+                  <span className="text-xs text-zinc-500 border border-zinc-700 rounded-md px-3 py-1 group-hover:border-zinc-600 group-hover:text-zinc-400 transition-colors">PDF, JPG, PNG · máx. 10 MB</span>
+                </div>
+              ) : (
+                <>
+                  {receiptPreview && (
+                    receiptFile.type === "application/pdf" ? (
+                      <iframe
+                        src={receiptPreview}
+                        className="w-full border-0 block"
+                        style={{ height: "420px" }}
+                        title="Vista previa"
+                      />
                     ) : (
-                      <FileText size={16} className="text-zinc-500" />
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={receiptPreview}
+                        alt="Vista previa"
+                        className="w-full object-contain bg-zinc-950 block"
+                        style={{ maxHeight: "420px" }}
+                      />
+                    )
+                  )}
+                  <div className="px-4 py-3 border-t border-zinc-800 flex items-center gap-2">
+                    {receiptFile.type === "application/pdf" ? (
+                      <FileText size={14} className="text-zinc-500 shrink-0" />
+                    ) : (
+                      <ImageIcon size={14} className="text-zinc-500 shrink-0" />
+                    )}
+                    <p className="text-xs text-zinc-400 truncate flex-1">{receiptFile.name}</p>
+                    {receiptUploading ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-16 h-1 rounded-full bg-zinc-700 overflow-hidden">
+                          <div className="h-full bg-amber-500 transition-all" style={{ width: `${receiptUploadProgress}%` }} />
+                        </div>
+                        <span className="text-xs text-zinc-500">{receiptUploadProgress}%</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-zinc-600 shrink-0">{(receiptFile.size / 1024).toFixed(0)} KB</span>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-zinc-200 truncate">{receiptFile.name}</p>
-                    <p className="text-xs text-zinc-500">{(receiptFile.size / 1024).toFixed(0)} KB</p>
-                  </div>
-                  {receiptUploading ? (
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-xs text-zinc-500">{receiptUploadProgress}%</span>
-                      <div className="w-24 h-1.5 rounded-full bg-zinc-700 overflow-hidden">
-                        <div className="h-full bg-amber-500 transition-all" style={{ width: `${receiptUploadProgress}%` }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={removeReceiptFile}
-                      className="shrink-0 text-zinc-500 hover:text-red-400 transition-colors"
-                      title="Eliminar archivo"
-                    >
-                      <X size={15} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            {receiptUploadError && (
-              <p className="text-xs text-red-400 mt-2">{receiptUploadError}</p>
-            )}
+                </>
+              )}
+              {receiptUploadError && (
+                <p className="text-xs text-red-400 px-4 pb-3">{receiptUploadError}</p>
+              )}
+            </div>
           </div>
 
-          {/* Proveedor */}
+          {/* RIGHT: Form card */}
+          <div className="flex-1 min-w-0 rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
+
+          {/* Proveedor */
           <div className="px-6 py-5 relative" ref={supplierContainerRef}>
             <label className="block text-xs text-zinc-400 mb-1.5">Proveedor / Pagado a</label>
             <input
@@ -725,6 +728,7 @@ export default function NuevoGastoPage() {
             </div>
           </div>
 
+          </div>
         </div>
 
         {serverError && (
