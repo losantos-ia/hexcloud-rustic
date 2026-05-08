@@ -4,7 +4,9 @@ export const dynamic = "force-dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Phone, Mail, ExternalLink, Package, Search, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Phone, Mail, ExternalLink, Package, Search, X, Upload, FileText, ImageIcon } from "lucide-react";
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -67,6 +69,64 @@ export default function NuevoGastoPage() {
   const [searchPopupIndex, setSearchPopupIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const supplierContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptUploadError, setReceiptUploadError] = useState<string | null>(null);
+  const [receiptUploadProgress, setReceiptUploadProgress] = useState(0);
+
+  async function handleFileSelect(file: File) {
+    const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      setReceiptUploadError("Solo se aceptan PDF e imágenes (JPG, PNG, WEBP).");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setReceiptUploadError("El archivo no debe superar 10 MB.");
+      return;
+    }
+    setReceiptFile(file);
+    setReceiptUploadError(null);
+    setReceiptUploadProgress(0);
+    if (file.type.startsWith("image/")) {
+      setReceiptPreview(URL.createObjectURL(file));
+    } else {
+      setReceiptPreview(null);
+    }
+    setReceiptUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `expenses/receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const sRef = storageRef(storage, path);
+      const uploadTask = uploadBytesResumable(sRef, file);
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snap) => setReceiptUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+          (err) => { setReceiptUploadError("Error al subir el archivo."); reject(err); },
+          () => resolve(),
+        );
+      });
+      const url = await getDownloadURL(uploadTask.snapshot.ref);
+      setValue("receiptUrl", url);
+    } catch {
+      setReceiptUploadError("Error al subir el archivo. Intenta de nuevo.");
+      setReceiptFile(null);
+      setReceiptPreview(null);
+    } finally {
+      setReceiptUploading(false);
+    }
+  }
+
+  function removeReceiptFile() {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptUploadError(null);
+    setReceiptUploadProgress(0);
+    setValue("receiptUrl", "");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   useEffect(() => {
     listInventoryLocations().then(setLocations);
@@ -295,6 +355,83 @@ export default function NuevoGastoPage() {
 
         {/* ── Document card ── */}
         <div className="rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
+
+          {/* ── Archivo / Factura ── */}
+          <div className="px-6 py-5">
+            <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wide mb-3">Archivo</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
+            />
+            {!receiptFile ? (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleFileSelect(f); }}
+                className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-800/40 hover:border-amber-500/50 hover:bg-zinc-800/70 cursor-pointer transition-colors px-6 py-10 select-none"
+              >
+                <div className="size-10 rounded-xl bg-zinc-700/60 flex items-center justify-center">
+                  <Upload size={18} className="text-zinc-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-zinc-300 font-medium">Subir factura o recibo</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">PDF, JPG, PNG o WEBP — máx. 10 MB</p>
+                </div>
+                <span className="text-xs text-amber-400 border border-amber-500/30 rounded-md px-3 py-1">Seleccionar archivo</span>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-zinc-700 bg-zinc-800/50 overflow-hidden">
+                {/* Preview */}
+                {receiptPreview ? (
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={receiptPreview} alt="Vista previa" className="w-full max-h-56 object-contain bg-zinc-950 rounded-t-xl" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center bg-zinc-900 rounded-t-xl py-8">
+                    <FileText size={40} className="text-zinc-600" />
+                  </div>
+                )}
+                {/* File info + actions */}
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <div className="shrink-0">
+                    {receiptPreview ? (
+                      <ImageIcon size={16} className="text-zinc-500" />
+                    ) : (
+                      <FileText size={16} className="text-zinc-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-zinc-200 truncate">{receiptFile.name}</p>
+                    <p className="text-xs text-zinc-500">{(receiptFile.size / 1024).toFixed(0)} KB</p>
+                  </div>
+                  {receiptUploading ? (
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-xs text-zinc-500">{receiptUploadProgress}%</span>
+                      <div className="w-24 h-1.5 rounded-full bg-zinc-700 overflow-hidden">
+                        <div className="h-full bg-amber-500 transition-all" style={{ width: `${receiptUploadProgress}%` }} />
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={removeReceiptFile}
+                      className="shrink-0 text-zinc-500 hover:text-red-400 transition-colors"
+                      title="Eliminar archivo"
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {receiptUploadError && (
+              <p className="text-xs text-red-400 mt-2">{receiptUploadError}</p>
+            )}
+          </div>
 
           {/* Proveedor */}
           <div className="px-6 py-5 relative" ref={supplierContainerRef}>
