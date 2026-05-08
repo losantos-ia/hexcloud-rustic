@@ -64,6 +64,7 @@ export default function GastoDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [itemsExpanded, setItemsExpanded] = useState(false);
 
   useEffect(() => {
     getExpenseById(id)
@@ -220,35 +221,6 @@ export default function GastoDetailPage() {
             <Receipt size={28} className="text-amber-500/30" />
           </div>
 
-          {/* Line items */}
-          {expense.lineItems && expense.lineItems.length > 0 && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
-              <div className="px-4 py-3 border-b border-zinc-800">
-                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Ítems / Conceptos</p>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-800/40">
-                    <th className="text-left text-xs text-zinc-500 font-normal px-4 py-2">Descripción</th>
-                    <th className="text-right text-xs text-zinc-500 font-normal px-3 py-2 w-16">Ud.</th>
-                    <th className="text-right text-xs text-zinc-500 font-normal px-3 py-2 w-28">P. unit.</th>
-                    <th className="text-right text-xs text-zinc-500 font-normal px-4 py-2 w-28">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800">
-                  {expense.lineItems.map((item, i) => (
-                    <tr key={i}>
-                      <td className="px-4 py-2.5 text-zinc-200">{item.description}</td>
-                      <td className="px-3 py-2.5 text-right text-zinc-400 tabular-nums">{item.quantity}</td>
-                      <td className="px-3 py-2.5 text-right text-zinc-400 font-mono tabular-nums">{formatCurrency(item.unitPrice)}</td>
-                      <td className="px-4 py-2.5 text-right text-zinc-200 font-mono font-semibold tabular-nums">{formatCurrency(item.quantity * item.unitPrice)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
           {/* General info */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-1">
             {expense.invoiceNumber && (
@@ -305,6 +277,50 @@ export default function GastoDetailPage() {
               <p className="text-sm text-zinc-300 whitespace-pre-wrap">{expense.notes}</p>
             </div>
           )}
+
+          {/* Line items — collapsible, at the bottom */}
+          {expense.lineItems && expense.lineItems.length > 0 && (() => {
+            const LIMIT = 3;
+            const items = expense.lineItems!;
+            const visible = itemsExpanded ? items : items.slice(0, LIMIT);
+            const hasMore = items.length > LIMIT;
+            return (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+                <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Ítems / Conceptos</p>
+                  <span className="text-xs text-zinc-600">{items.length} {items.length === 1 ? "ítem" : "ítems"}</span>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-800 bg-zinc-800/40">
+                      <th className="text-left text-xs text-zinc-500 font-normal px-4 py-2">Descripción</th>
+                      <th className="text-right text-xs text-zinc-500 font-normal px-3 py-2 w-16">Ud.</th>
+                      <th className="text-right text-xs text-zinc-500 font-normal px-3 py-2 w-28">P. unit.</th>
+                      <th className="text-right text-xs text-zinc-500 font-normal px-4 py-2 w-28">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {visible.map((item, i) => (
+                      <tr key={i}>
+                        <td className="px-4 py-2.5 text-zinc-200">{item.description}</td>
+                        <td className="px-3 py-2.5 text-right text-zinc-400 tabular-nums">{item.quantity}</td>
+                        <td className="px-3 py-2.5 text-right text-zinc-400 font-mono tabular-nums">{formatCurrency(item.unitPrice)}</td>
+                        <td className="px-4 py-2.5 text-right text-zinc-200 font-mono font-semibold tabular-nums">{formatCurrency(item.quantity * item.unitPrice)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {hasMore && (
+                  <button
+                    onClick={() => setItemsExpanded((v) => !v)}
+                    className="w-full text-xs text-zinc-500 hover:text-zinc-300 py-2.5 border-t border-zinc-800 transition-colors"
+                  >
+                    {itemsExpanded ? "Mostrar menos ↑" : `Ver todos los ítems (${items.length}) ↓`}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           <p className="text-xs text-zinc-600 px-1">
             Creado: {expense.createdAt?.toLocaleDateString("es-ES") ?? "—"}
