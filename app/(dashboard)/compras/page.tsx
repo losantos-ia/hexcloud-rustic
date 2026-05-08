@@ -384,7 +384,7 @@ export default function ComprasPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 class="text-2xl font-bold text-zinc-100">Compras</h1>
+          <h1 className="text-2xl font-bold text-zinc-100">Compras</h1>
           <p className="text-sm text-zinc-500">Control de compras operacionales por ubicación</p>
         </div>
         <Link href="/compras/nuevo">
