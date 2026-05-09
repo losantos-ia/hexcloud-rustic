@@ -34,6 +34,7 @@ import type { BadgeProps } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 
 type BadgeVariant = BadgeProps["variant"];
 
@@ -171,11 +172,10 @@ function TaskQuickForm({
             <option key={t} value={t}>{LEAD_TASK_TYPE_LABELS[t]}</option>
           ))}
         </select>
-        <input
-          type="date"
+        <DatePicker
           value={values.dueDate}
-          onChange={(e) => setValues((v) => ({ ...v, dueDate: e.target.value }))}
-          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-amber-500"
+          onChange={(v) => setValues((prev) => ({ ...prev, dueDate: v }))}
+          className="flex-1"
         />
       </div>
       <div className="flex gap-2 justify-end">
@@ -287,26 +287,26 @@ function NextActionCard({
           </div>
 
           {showReschedule ? (
-            <div className="flex gap-2">
-              <input
-                type="date"
+            <div className="flex flex-col gap-2">
+              <DatePicker
                 value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-amber-500"
+                onChange={setNewDate}
               />
-              <button
-                onClick={handleReschedule}
-                disabled={actionLoading || !newDate}
-                className="px-3 py-1.5 rounded-lg bg-amber-500 text-xs font-semibold text-zinc-950 hover:bg-amber-400 disabled:opacity-60 transition-colors"
-              >
-                Guardar
-              </button>
-              <button
-                onClick={() => setShowReschedule(false)}
-                className="px-2 py-1.5 rounded-lg border border-zinc-700 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
-              >
-                ✕
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleReschedule}
+                  disabled={actionLoading || !newDate}
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-amber-500 text-xs font-semibold text-zinc-950 hover:bg-amber-400 disabled:opacity-60 transition-colors"
+                >
+                  Guardar
+                </button>
+                <button
+                  onClick={() => setShowReschedule(false)}
+                  className="px-3 py-1.5 rounded-lg border border-zinc-700 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex gap-2">
@@ -634,7 +634,7 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
@@ -651,7 +651,7 @@ export default function LeadDetailPage() {
             <p className="text-xs text-zinc-500">Lead · {formatDate(lead.createdAt)}</p>
           </div>
         </div>
-        <div className="flex gap-2 sm:shrink-0">
+        <div className="flex flex-wrap gap-2 sm:shrink-0">
           <Link
             href={`/crm/${lead.id}/editar`}
             className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
@@ -669,9 +669,9 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Left column */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
+        <div className="md:col-span-2 flex flex-col gap-4">
           {/* Lead info */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -770,11 +770,9 @@ export default function LeadDetailPage() {
                         placeholder="Título del seguimiento…"
                         className="h-8 text-sm"
                       />
-                      <input
-                        type="date"
+                      <DatePicker
                         value={followUpValues.dueDate}
-                        onChange={(e) => setFollowUpValues((v) => ({ ...v, dueDate: e.target.value }))}
-                        className="rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-amber-500"
+                        onChange={(v) => setFollowUpValues((prev) => ({ ...prev, dueDate: v }))}
                       />
                     </div>
                   )}
@@ -840,7 +838,7 @@ export default function LeadDetailPage() {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 order-first md:order-none">
           {/* Próxima acción */}
           <NextActionCard
             leadId={leadId}
