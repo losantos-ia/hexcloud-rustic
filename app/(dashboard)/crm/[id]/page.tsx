@@ -504,8 +504,8 @@ export default function LeadDetailPage() {
     Promise.all([
       getLeadById(leadId),
       listLeadActivities(leadId),
-      listLeadTasksByLead(leadId),
-      getNextPendingLeadTask(leadId),
+      listLeadTasksByLead(leadId).catch(() => [] as LeadTask[]),
+      getNextPendingLeadTask(leadId).catch(() => null),
     ]).then(([l, a, t, next]) => {
       setLead(l);
       setActivities(a);
