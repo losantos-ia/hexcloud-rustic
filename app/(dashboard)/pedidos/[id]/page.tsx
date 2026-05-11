@@ -111,6 +111,7 @@ export default function OrderDetailPage() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [payments, setPayments] = useState<OrderPayment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [activeTab, setActiveTab] = useState<"detalle" | "gastos">("detalle");
   const [loading, setLoading] = useState(true);
   const [savingStatus, setSavingStatus] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -302,6 +303,31 @@ export default function OrderDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Main content */}
         <div className="lg:col-span-2 flex flex-col gap-4">
+          {/* Tab bar */}
+          <div className="flex border-b border-zinc-800">
+            {(["detalle", "gastos"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2.5 text-xs font-semibold tracking-wide transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
+                  activeTab === tab
+                    ? "border-amber-500 text-amber-400"
+                    : "border-transparent text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {tab === "detalle" ? "DETALLE" : "GASTOS"}
+                {tab === "gastos" && expenses.length > 0 && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                    activeTab === "gastos" ? "bg-amber-500/20 text-amber-400" : "bg-zinc-800 text-zinc-500"
+                  }`}>
+                    {expenses.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "detalle" && <>
           {/* Client + project info */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
             <h2 className="text-sm font-semibold text-zinc-300">Información del pedido</h2>
@@ -499,74 +525,68 @@ export default function OrderDetailPage() {
               )}
             </div>
           )}
-        </div>
+          </>}
 
-        {/* Sidebar */}
-        <div className="flex flex-col gap-4">
-          {/* Payment summary */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-zinc-300">Resumen financiero</h2>
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Precio de venta</span>
-                <span className="font-medium text-zinc-200">{formatCurrency(order.finalSalePrice)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Anticipo requerido</span>
-                <span className="text-zinc-400">{formatCurrency(order.depositRequired)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500">Total cobrado</span>
-                <span className="text-emerald-400 font-medium">{formatCurrency(order.depositPaid)}</span>
-              </div>
-              <div className="border-t border-zinc-700 pt-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-zinc-300">Saldo pendiente</span>
-                  <span className={`font-bold ${order.balanceDue > 0 ? "text-amber-400" : "text-emerald-400"}`}>
-                    {order.balanceDue > 0 ? formatCurrency(order.balanceDue) : "Pagado"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Project expenses */}
-          {(() => {
+          {activeTab === "gastos" && (() => {
             const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
             const margin = order.finalSalePrice - totalExpenses;
             return (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-3">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-semibold text-zinc-300">Gastos del proyecto</h2>
                   <Link
                     href="/compras/nuevo"
-                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 transition-colors"
                   >
-                    + Registrar gasto
+                    <Plus size={12} /> Registrar gasto
                   </Link>
                 </div>
                 {expenses.length === 0 ? (
-                  <p className="text-xs text-zinc-600 text-center py-2">Sin compras asociadas</p>
+                  <div className="flex flex-col items-center gap-3 py-10">
+                    <p className="text-sm text-zinc-500">Sin gastos asociados a este pedido</p>
+                    <Link
+                      href="/compras/nuevo"
+                      className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                    >
+                      + Registrar el primer gasto
+                    </Link>
+                  </div>
                 ) : (
                   <>
-                    <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
-                      {expenses.map((exp) => (
-                        <Link
-                          key={exp.id}
-                          href={`/compras/${exp.id}`}
-                          className="flex items-center justify-between gap-2 text-xs hover:bg-zinc-800 rounded-lg px-2 py-1.5 -mx-2 transition-colors group"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-zinc-300 truncate group-hover:text-zinc-100">
-                              {exp.supplierName || EXPENSE_CATEGORY_LABELS[exp.category]}
-                            </p>
-                            <p className="text-zinc-600">{formatDateShort(exp.date)}</p>
-                          </div>
-                          <span className="text-zinc-400 font-mono shrink-0">{formatCurrency(exp.amount)}</span>
-                        </Link>
-                      ))}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-zinc-800 text-left">
+                            <th className="pb-2 text-xs font-medium text-zinc-500">Proveedor / Categoría</th>
+                            <th className="pb-2 pl-4 text-xs font-medium text-zinc-500">Descripción</th>
+                            <th className="pb-2 pl-4 text-xs font-medium text-zinc-500 text-right whitespace-nowrap">Fecha</th>
+                            <th className="pb-2 pl-4 text-xs font-medium text-zinc-500 text-right whitespace-nowrap">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-800">
+                          {expenses.map((exp) => (
+                            <tr key={exp.id} className="hover:bg-zinc-800/50 transition-colors group">
+                              <td className="py-2.5 pr-4">
+                                <Link href={`/compras/${exp.id}`} className="block group-hover:text-amber-400 text-zinc-200 transition-colors">
+                                  {exp.supplierName || EXPENSE_CATEGORY_LABELS[exp.category]}
+                                </Link>
+                                <span className="text-xs text-zinc-500">{EXPENSE_CATEGORY_LABELS[exp.category]}</span>
+                              </td>
+                              <td className="py-2.5 pl-4 text-zinc-400 text-xs max-w-[200px]">
+                                <p className="truncate">{exp.description || "—"}</p>
+                              </td>
+                              <td className="py-2.5 pl-4 text-right text-zinc-500 text-xs whitespace-nowrap">
+                                {formatDateShort(exp.date)}
+                              </td>
+                              <td className="py-2.5 pl-4 text-right font-mono font-medium text-zinc-200 whitespace-nowrap">
+                                {formatCurrency(exp.amount)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <div className="border-t border-zinc-800 pt-2 flex flex-col gap-1.5">
+                    <div className="border-t border-zinc-800 pt-3 flex flex-col gap-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-zinc-500">Total gastos</span>
                         <span className="text-red-400 font-medium">{formatCurrency(totalExpenses)}</span>
@@ -580,6 +600,56 @@ export default function OrderDetailPage() {
                     </div>
                   </>
                 )}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Sidebar */}
+        <div className="flex flex-col gap-4">
+          {/* Payment summary */}
+          {(() => {
+            const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+            const margin = order.finalSalePrice - totalExpenses;
+            return (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-3">
+                <h2 className="text-sm font-semibold text-zinc-300">Resumen financiero</h2>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-500">Precio de venta</span>
+                    <span className="font-medium text-zinc-200">{formatCurrency(order.finalSalePrice)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-500">Anticipo requerido</span>
+                    <span className="text-zinc-400">{formatCurrency(order.depositRequired)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-500">Total cobrado</span>
+                    <span className="text-emerald-400 font-medium">{formatCurrency(order.depositPaid)}</span>
+                  </div>
+                  <div className="border-t border-zinc-700 pt-2 flex flex-col gap-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-zinc-300">Saldo pendiente</span>
+                      <span className={`font-bold ${order.balanceDue > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                        {order.balanceDue > 0 ? formatCurrency(order.balanceDue) : "Pagado"}
+                      </span>
+                    </div>
+                    {expenses.length > 0 && (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-zinc-500">Total gastos</span>
+                          <span className="text-red-400 font-medium">{formatCurrency(totalExpenses)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium text-zinc-300">Margen bruto</span>
+                          <span className={`font-bold ${margin >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                            {formatCurrency(margin)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })()}
