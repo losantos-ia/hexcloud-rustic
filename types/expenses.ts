@@ -70,6 +70,8 @@ export interface Expense {
   notes?: string;
   lineItems?: { sku?: string; inventoryItemId?: string; description: string; quantity: number; unitPrice: number }[];
   taxRate?: number;
+  orderId?: string;
+  orderNumber?: string;
   createdAt: Date;
   updatedAt: Date;
 }

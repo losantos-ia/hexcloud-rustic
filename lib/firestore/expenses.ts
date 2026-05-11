@@ -55,6 +55,8 @@ function docToExpense(id: string, data: Record<string, unknown>): Expense {
     receiptUrl: data.receiptUrl as string | undefined,
     notes: data.notes as string | undefined,
     lineItems: (data.lineItems as Array<{ sku?: string; inventoryItemId?: string; description: string; quantity: number; unitPrice: number }>) ?? undefined,
+    orderId: data.orderId as string | undefined,
+    orderNumber: data.orderNumber as string | undefined,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -152,6 +154,16 @@ export async function listExpensesByCategory(category: ExpenseCategory): Promise
   const q = query(
     collection(db, COL),
     where("category", "==", category),
+    orderBy("date", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => docToExpense(d.id, d.data() as Record<string, unknown>));
+}
+
+export async function listExpensesByOrder(orderId: string): Promise<Expense[]> {
+  const q = query(
+    collection(db, COL),
+    where("orderId", "==", orderId),
     orderBy("date", "desc")
   );
   const snap = await getDocs(q);

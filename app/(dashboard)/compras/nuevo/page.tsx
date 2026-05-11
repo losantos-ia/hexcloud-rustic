@@ -15,8 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSuppliers, getSupplier } from "@/lib/firestore/purchases";
 import { listInventoryItems } from "@/lib/firestore/inventory";
+import { listOrders } from "@/lib/firestore/orders";
 import type { Supplier } from "@/types/purchases";
 import type { InventoryItem } from "@/types/inventory";
+import type { Order } from "@/types/order";
 import { SUPPLIER_CATEGORY_LABELS } from "@/types/purchases";
 import { expenseSchema, type ExpenseFormValues } from "@/lib/schemas/expenses";
 import { createExpense } from "@/lib/firestore/expenses";
@@ -63,6 +65,7 @@ export default function NuevoGastoPage() {
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   // Inventory search popup
@@ -129,6 +132,10 @@ export default function NuevoGastoPage() {
     listInventoryLocations().then(setLocations);
     listSuppliers().then(setSuppliers);
     listInventoryItems().then(setInventoryItems);
+    listOrders().then((orders) => {
+      const active = orders.filter((o) => o.status !== "cancelled" && o.status !== "closed");
+      setActiveOrders(active);
+    });
   }, []);
 
   // Handle return from supplier creation page
@@ -547,6 +554,24 @@ export default function NuevoGastoPage() {
                 <option value="">Selecciona una ubicación…</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Proyecto / Pedido (opcional)" className="sm:col-span-3">
+              <select
+                className={selectCls}
+                value={watch("orderId") ?? ""}
+                onChange={(e) => {
+                  const order = activeOrders.find((o) => o.id === e.target.value);
+                  setValue("orderId", e.target.value || undefined);
+                  setValue("orderNumber", order?.orderNumber ?? undefined);
+                }}
+              >
+                <option value="">Sin proyecto asociado (gasto general)</option>
+                {activeOrders.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.orderNumber} — {o.clientName}{o.title ? ` · ${o.title}` : ""}
+                  </option>
                 ))}
               </select>
             </Field>

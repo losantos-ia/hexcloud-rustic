@@ -14,7 +14,9 @@ import { Label } from "@/components/ui/label";
 import { expenseSchema, type ExpenseFormValues } from "@/lib/schemas/expenses";
 import { getExpenseById, updateExpense } from "@/lib/firestore/expenses";
 import { listInventoryLocations } from "@/lib/firestore/inventory";
+import { listOrders } from "@/lib/firestore/orders";
 import type { InventoryLocation } from "@/types/inventory";
+import type { Order } from "@/types/order";
 import {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_PAYMENT_METHOD_LABELS,
@@ -56,6 +58,7 @@ export default function EditarGastoPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
 
   const {
     register,
@@ -83,9 +86,10 @@ export default function EditarGastoPage() {
   }, [computedTotal, hasItems, setValue]);
 
   useEffect(() => {
-    Promise.all([getExpenseById(id), listInventoryLocations()])
-      .then(([expense, locs]) => {
+    Promise.all([getExpenseById(id), listInventoryLocations(), listOrders()])
+      .then(([expense, locs, orders]) => {
         setLocations(locs);
+        setActiveOrders(orders.filter((o) => o.status !== "cancelled" && o.status !== "closed"));
         if (!expense) { setLoadError("Gasto no encontrado."); return; }
         reset({
           date: expense.date.toISOString().split("T")[0],
@@ -101,6 +105,8 @@ export default function EditarGastoPage() {
           receiptUrl: expense.receiptUrl ?? "",
           notes: expense.notes ?? "",
           lineItems: expense.lineItems ?? [],
+          orderId: expense.orderId ?? "",
+          orderNumber: expense.orderNumber ?? "",
         });
       })
       .catch(() => setLoadError("Error al cargar el gasto."))
@@ -185,6 +191,24 @@ export default function EditarGastoPage() {
             </Field>
             <Field label="Fecha de vencimiento" error={errors.dueDate?.message}>
               <Input type="date" {...register("dueDate")} />
+            </Field>
+            <Field label="Proyecto / Pedido (opcional)" className="sm:col-span-3">
+              <select
+                className={selectCls}
+                value={watch("orderId") ?? ""}
+                onChange={(e) => {
+                  const order = activeOrders.find((o) => o.id === e.target.value);
+                  setValue("orderId", e.target.value || undefined);
+                  setValue("orderNumber", order?.orderNumber ?? undefined);
+                }}
+              >
+                <option value="">Sin proyecto asociado (gasto general)</option>
+                {activeOrders.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.orderNumber} — {o.clientName}{o.title ? ` · ${o.title}` : ""}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
 

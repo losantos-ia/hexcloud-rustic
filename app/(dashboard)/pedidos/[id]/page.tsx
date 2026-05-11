@@ -15,7 +15,10 @@ import {
   getOrderById, listOrderItems, listOrderPayments,
   updateOrder, addOrderPayment,
 } from "@/lib/firestore/orders";
+import { listExpensesByOrder } from "@/lib/firestore/expenses";
 import type { Order, OrderItem, OrderPayment, OrderStatus } from "@/types/order";
+import type { Expense } from "@/types/expenses";
+import { EXPENSE_CATEGORY_LABELS } from "@/types/expenses";
 import {
   ORDER_STATUS_LABELS,
   ORDER_PROJECT_TYPE_LABELS,
@@ -107,6 +110,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
   const [payments, setPayments] = useState<OrderPayment[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingStatus, setSavingStatus] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -135,11 +139,13 @@ export default function OrderDetailPage() {
       getOrderById(orderId),
       listOrderItems(orderId),
       listOrderPayments(orderId),
+      listExpensesByOrder(orderId).catch(() => [] as Expense[]),
     ])
-      .then(([o, i, p]) => {
+      .then(([o, i, p, e]) => {
         setOrder(o);
         setItems(i);
         setPayments(p);
+        setExpenses(e);
       })
       .catch((err) => {
         console.error("Error loading order:", err);
@@ -523,6 +529,60 @@ export default function OrderDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Project expenses */}
+          {(() => {
+            const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+            const margin = order.finalSalePrice - totalExpenses;
+            return (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-zinc-300">Gastos del proyecto</h2>
+                  <Link
+                    href="/compras/nuevo"
+                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                  >
+                    + Registrar gasto
+                  </Link>
+                </div>
+                {expenses.length === 0 ? (
+                  <p className="text-xs text-zinc-600 text-center py-2">Sin compras asociadas</p>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                      {expenses.map((exp) => (
+                        <Link
+                          key={exp.id}
+                          href={`/compras/${exp.id}`}
+                          className="flex items-center justify-between gap-2 text-xs hover:bg-zinc-800 rounded-lg px-2 py-1.5 -mx-2 transition-colors group"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-zinc-300 truncate group-hover:text-zinc-100">
+                              {exp.supplierName || EXPENSE_CATEGORY_LABELS[exp.category]}
+                            </p>
+                            <p className="text-zinc-600">{formatDateShort(exp.date)}</p>
+                          </div>
+                          <span className="text-zinc-400 font-mono shrink-0">{formatCurrency(exp.amount)}</span>
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="border-t border-zinc-800 pt-2 flex flex-col gap-1.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-zinc-500">Total gastos</span>
+                        <span className="text-red-400 font-medium">{formatCurrency(totalExpenses)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium text-zinc-300">Margen bruto</span>
+                        <span className={`font-bold ${margin >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {formatCurrency(margin)}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Status */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-3">
