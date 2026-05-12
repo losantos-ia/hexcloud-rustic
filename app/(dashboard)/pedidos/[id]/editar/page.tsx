@@ -131,6 +131,10 @@ export default function EditOrderPage() {
   const watchDepositPaid = watch("depositPaid");
   const watchTaxRate = watch("taxRate") ?? 0;
   const watchInstallation = watch("installationRequired");
+  const watchProjectType = watch("projectType");
+  const isMaintenance = watchProjectType === "maintenance";
+  const [maintInstallationDate, setMaintInstallationDate] = useState<string>("");
+  const [maintMaintenanceDate, setMaintMaintenanceDate] = useState<string>("");
 
   const subtotal = (watchItems ?? []).reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
@@ -505,7 +509,25 @@ export default function EditOrderPage() {
         </Section>
 
         {/* Delivery */}
-        <Section title="Entrega e instalacion">
+        {isMaintenance ? (
+          <Section title="Fechas del mantenimiento">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Fecha de instalación">
+                <DatePicker value={maintInstallationDate} onChange={(v) => setMaintInstallationDate(v ?? "")} />
+              </Field>
+              <Field label="Fecha de mantenimiento">
+                <DatePicker value={maintMaintenanceDate} onChange={(v) => setMaintMaintenanceDate(v ?? "")} />
+              </Field>
+              <Field label="Dirección" className="sm:col-span-2">
+                <Input {...register("deliveryAddress")} placeholder="Dirección de instalación" />
+              </Field>
+              <Field label="Link Google Maps" className="sm:col-span-2">
+                <Input {...register("googleMapsUrl")} placeholder="https://maps.google.com/..." />
+              </Field>
+            </div>
+          </Section>
+        ) : (
+          <Section title="Entrega e instalacion">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Fecha de entrega prometida">
               <DatePicker value={watch("promisedDeliveryDate")} onChange={(v) => setValue("promisedDeliveryDate", v || undefined)} />
@@ -533,6 +555,7 @@ export default function EditOrderPage() {
             )}
           </div>
         </Section>
+        )}
 
         {/* Items */}
         <Section title="Items del pedido">
@@ -586,7 +609,7 @@ export default function EditOrderPage() {
                         <textarea
                           {...register(`items.${idx}.description`)}
                           placeholder="Descripcion del item..."
-                          rows={1}
+                          rows={Math.max(2, (watchItems?.[idx]?.description ?? "").split("\n").length)}
                           className={`${cellCls} resize-y min-h-[2rem]`}
                         />
                         {errors.items?.[idx]?.description && (
