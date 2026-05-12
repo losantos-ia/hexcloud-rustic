@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowLeft, Loader2, Plus, Edit, MapPin, Phone,
-  CheckCircle2, Factory, Truck, Package, DollarSign, Download,
+  CheckCircle2, Factory, Truck, Package, DollarSign, Download, X,
 } from "lucide-react";
 import Link from "next/link";
 import {
