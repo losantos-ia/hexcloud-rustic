@@ -166,17 +166,18 @@ export async function listMaintenanceAssets(): Promise<MaintenanceAsset[]> {
 export async function createMaintenanceRecord(
   values: MaintenanceRecordFormValues
 ): Promise<string> {
-  const ref = await addDoc(collection(db, RECORDS_COL), {
+  const payload: Record<string, unknown> = {
     ...stripUndefined(values as object),
     scheduledDate: Timestamp.fromDate(new Date(`${values.scheduledDate}T00:00:00`)),
-    completedDate: values.completedDate
-      ? Timestamp.fromDate(new Date(`${values.completedDate}T00:00:00`))
-      : undefined,
     type: values.type ?? "preventive",
     status: values.status ?? "scheduled",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (values.completedDate) {
+    payload.completedDate = Timestamp.fromDate(new Date(`${values.completedDate}T00:00:00`));
+  }
+  const ref = await addDoc(collection(db, RECORDS_COL), payload);
   return ref.id;
 }
 

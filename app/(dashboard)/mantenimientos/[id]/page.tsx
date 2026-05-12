@@ -207,7 +207,7 @@ export default function MaintenanceAssetDetailPage() {
   const statusVariants: Record<string, BadgeVariant> = { overdue: "red", upcoming: "amber", ok: "green" };
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-start gap-3">
         <Link

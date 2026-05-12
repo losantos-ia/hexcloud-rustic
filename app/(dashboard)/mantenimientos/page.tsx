@@ -146,7 +146,7 @@ export default function MantenimientosPage() {
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value as MaintenanceProjectType | "")}
-          className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 outline-none focus:border-amber-500"
+          className="w-full sm:w-auto rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 outline-none focus:border-amber-500"
         >
           <option value="">Todos los tipos</option>
           {(Object.entries(MAINTENANCE_PROJECT_TYPE_LABELS) as [MaintenanceProjectType, string][]).map(([k, v]) => (
@@ -156,7 +156,7 @@ export default function MantenimientosPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-          className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 outline-none focus:border-amber-500"
+          className="w-full sm:w-auto rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 outline-none focus:border-amber-500"
         >
           <option value="">Todos los estados</option>
           <option value="overdue">Vencido</option>
