@@ -20,6 +20,7 @@ import {
   Menu,
   LogOut,
   Receipt,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -38,6 +39,7 @@ const navItems = [
   { label: "Inventario", href: "/inventario", icon: Package },
   { label: "Mantenimientos", href: "/mantenimientos", icon: Wrench },
   { label: "Compras", href: "/compras", icon: Receipt },
+  { label: "Cuentas", href: "/cuentas", icon: Building2 },
   { label: "Tiendas", href: "/tiendas", icon: Store },
   { label: "Finanzas", href: "/finanzas", icon: DollarSign },
   { label: "Reportes", href: "/reportes", icon: BarChart2 },
