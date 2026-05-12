@@ -96,6 +96,7 @@ function docToPayment(id: string, data: Record<string, any>): OrderPayment {
     method: data.method,
     paymentDate: toDate(data.paymentDate) ?? new Date(),
     notes: data.notes ?? undefined,
+    treasuryAccountId: data.treasuryAccountId ?? undefined,
     createdAt: toDate(data.createdAt) ?? new Date(),
   };
 }
@@ -324,7 +325,8 @@ export async function listOrderPayments(orderId: string): Promise<OrderPayment[]
 
 export async function addOrderPayment(
   orderId: string,
-  payment: OrderPaymentFormValues
+  payment: OrderPaymentFormValues,
+  treasuryAccountId?: string
 ): Promise<string> {
   const ref = await addDoc(collection(db, PAYMENTS_COL), {
     orderId,
@@ -333,6 +335,7 @@ export async function addOrderPayment(
     method: payment.method,
     paymentDate: new Date(payment.paymentDate),
     notes: payment.notes ?? null,
+    treasuryAccountId: treasuryAccountId ?? null,
     createdAt: serverTimestamp(),
   });
 
@@ -350,4 +353,62 @@ export async function addOrderPayment(
   }
 
   return ref.id;
+}
+
+export async function updateOrderPayment(
+  paymentId: string,
+  orderId: string,
+  oldAmount: number,
+  updates: {
+    type?: import("@/types/order").OrderPaymentType;
+    amount?: number;
+    method?: import("@/types/order").OrderPaymentMethod;
+    paymentDate?: string;
+    notes?: string;
+    treasuryAccountId?: string | null;
+  }
+): Promise<void> {
+  const paymentData: Record<string, unknown> = {
+    ...(updates.type !== undefined && { type: updates.type }),
+    ...(updates.amount !== undefined && { amount: updates.amount }),
+    ...(updates.method !== undefined && { method: updates.method }),
+    ...(updates.paymentDate !== undefined && { paymentDate: new Date(updates.paymentDate) }),
+    notes: updates.notes ?? null,
+    ...(updates.treasuryAccountId !== undefined && { treasuryAccountId: updates.treasuryAccountId }),
+  };
+  await updateDoc(doc(db, PAYMENTS_COL, paymentId), paymentData);
+
+  if (updates.amount !== undefined && updates.amount !== oldAmount) {
+    const orderSnap = await getDoc(doc(db, ORDERS_COL, orderId));
+    if (orderSnap.exists()) {
+      const data = orderSnap.data();
+      const diff = updates.amount - oldAmount;
+      const newDepositPaid = (data.depositPaid ?? 0) + diff;
+      const balanceDue = (data.finalSalePrice ?? 0) - newDepositPaid;
+      await updateDoc(doc(db, ORDERS_COL, orderId), {
+        depositPaid: newDepositPaid,
+        balanceDue,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+}
+
+export async function deleteOrderPayment(
+  paymentId: string,
+  orderId: string,
+  amount: number
+): Promise<void> {
+  await deleteDoc(doc(db, PAYMENTS_COL, paymentId));
+  const orderSnap = await getDoc(doc(db, ORDERS_COL, orderId));
+  if (orderSnap.exists()) {
+    const data = orderSnap.data();
+    const newDepositPaid = Math.max(0, (data.depositPaid ?? 0) - amount);
+    const balanceDue = (data.finalSalePrice ?? 0) - newDepositPaid;
+    await updateDoc(doc(db, ORDERS_COL, orderId), {
+      depositPaid: newDepositPaid,
+      balanceDue,
+      updatedAt: serverTimestamp(),
+    });
+  }
 }

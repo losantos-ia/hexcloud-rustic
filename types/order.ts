@@ -168,5 +168,6 @@ export interface OrderPayment {
   method: OrderPaymentMethod;
   paymentDate: Date;
   notes?: string;
+  treasuryAccountId?: string;
   createdAt: Date;
 }
