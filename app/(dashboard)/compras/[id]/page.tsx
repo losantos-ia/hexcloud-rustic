@@ -88,7 +88,10 @@ export default function GastoDetailPage() {
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
 
   async function loadPayments() {
-    const [p, a] = await Promise.all([listPaymentsByExpense(id), listAccounts()]);
+    const [p, a] = await Promise.all([
+      listPaymentsByExpense(id).catch(() => [] as ExpensePayment[]),
+      listAccounts().catch(() => [] as Account[]),
+    ]);
     setPayments(p);
     setAccounts(a);
   }
@@ -298,6 +301,94 @@ export default function GastoDetailPage() {
             <Receipt size={28} className="text-amber-500/30" />
           </div>
 
+          {/* ── Payments panel ── */}
+          {(() => {
+            const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+            const remaining = expense.amount - totalPaid;
+            return (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+                <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Pagos</p>
+                    {payments.length > 0 && (
+                      <p className="text-xs text-zinc-600 mt-0.5">
+                        Pagado: <span className={remaining <= 0 ? "text-green-400" : "text-amber-400"}>{formatCurrency(totalPaid)}</span>
+                        {remaining > 0 && <span className="text-zinc-600"> · Pendiente: {formatCurrency(remaining)}</span>}
+                        {remaining <= 0 && <span className="text-green-400"> · Saldado</span>}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPaymentError(null);
+                      setPaymentForm({
+                        amount: "",
+                        date: new Date().toISOString().split("T")[0],
+                        accountId: accounts[0]?.id ?? "",
+                        notes: "",
+                      });
+                      setShowPaymentModal(true);
+                    }}
+                    className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 rounded-md px-2.5 py-1.5 transition-colors"
+                  >
+                    <Plus size={12} /> Registrar pago
+                  </button>
+                </div>
+
+                {payments.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-xs text-zinc-600">Sin pagos registrados</div>
+                ) : (
+                  <div className="divide-y divide-zinc-800">
+                    {payments.map((p) => {
+                      const AccIcon = ACCOUNT_ICON[accounts.find((a) => a.id === p.accountId)?.type ?? "other"];
+                      return (
+                        <div key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="size-7 rounded-md bg-zinc-800 flex items-center justify-center shrink-0">
+                              <AccIcon size={13} className="text-amber-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-zinc-200 tabular-nums">{formatCurrency(p.amount)}</p>
+                              <p className="text-xs text-zinc-500 truncate">
+                                {p.accountName} · {p.date.toLocaleDateString("es-ES")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {confirmDeletePaymentId === p.id ? (
+                              <>
+                                <button
+                                  onClick={() => handleDeletePayment(p.id)}
+                                  disabled={deletingPaymentId === p.id}
+                                  className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                >
+                                  {deletingPaymentId === p.id ? "…" : "Confirmar"}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmDeletePaymentId(null)}
+                                  className="text-zinc-500 hover:text-zinc-300 p-1 rounded-md hover:bg-zinc-800 transition-colors"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeletePaymentId(p.id)}
+                                className="text-zinc-600 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-colors"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* General info */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-1">
             {expense.invoiceNumber && (
@@ -394,94 +485,6 @@ export default function GastoDetailPage() {
                   >
                     {itemsExpanded ? "Mostrar menos ↑" : `Ver todos los ítems (${items.length}) ↓`}
                   </button>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* ── Payments panel ── */}
-          {(() => {
-            const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-            const remaining = expense.amount - totalPaid;
-            return (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
-                <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Pagos</p>
-                    {payments.length > 0 && (
-                      <p className="text-xs text-zinc-600 mt-0.5">
-                        Pagado: <span className={remaining <= 0 ? "text-green-400" : "text-amber-400"}>{formatCurrency(totalPaid)}</span>
-                        {remaining > 0 && <span className="text-zinc-600"> · Pendiente: {formatCurrency(remaining)}</span>}
-                        {remaining <= 0 && <span className="text-green-400"> · Saldado</span>}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => {
-                      setPaymentError(null);
-                      setPaymentForm({
-                        amount: "",
-                        date: new Date().toISOString().split("T")[0],
-                        accountId: accounts[0]?.id ?? "",
-                        notes: "",
-                      });
-                      setShowPaymentModal(true);
-                    }}
-                    className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 rounded-md px-2.5 py-1.5 transition-colors"
-                  >
-                    <Plus size={12} /> Registrar pago
-                  </button>
-                </div>
-
-                {payments.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-xs text-zinc-600">Sin pagos registrados</div>
-                ) : (
-                  <div className="divide-y divide-zinc-800">
-                    {payments.map((p) => {
-                      const AccIcon = ACCOUNT_ICON[accounts.find((a) => a.id === p.accountId)?.type ?? "other"];
-                      return (
-                        <div key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="size-7 rounded-md bg-zinc-800 flex items-center justify-center shrink-0">
-                              <AccIcon size={13} className="text-amber-400" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-zinc-200 tabular-nums">{formatCurrency(p.amount)}</p>
-                              <p className="text-xs text-zinc-500 truncate">
-                                {p.accountName} · {p.date.toLocaleDateString("es-ES")}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {confirmDeletePaymentId === p.id ? (
-                              <>
-                                <button
-                                  onClick={() => handleDeletePayment(p.id)}
-                                  disabled={deletingPaymentId === p.id}
-                                  className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                                >
-                                  {deletingPaymentId === p.id ? "…" : "Confirmar"}
-                                </button>
-                                <button
-                                  onClick={() => setConfirmDeletePaymentId(null)}
-                                  className="text-zinc-500 hover:text-zinc-300 p-1 rounded-md hover:bg-zinc-800 transition-colors"
-                                >
-                                  <X size={12} />
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setConfirmDeletePaymentId(p.id)}
-                                className="text-zinc-600 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-colors"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 )}
               </div>
             );

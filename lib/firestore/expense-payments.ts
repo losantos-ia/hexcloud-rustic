@@ -6,7 +6,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -39,11 +38,11 @@ export async function listPaymentsByExpense(expenseId: string): Promise<ExpenseP
   const snap = await getDocs(
     query(
       collection(db, COL),
-      where("expenseId", "==", expenseId),
-      orderBy("date", "desc")
+      where("expenseId", "==", expenseId)
     )
   );
-  return snap.docs.map((d) => docToPayment(d.id, d.data() as Record<string, unknown>));
+  const results = snap.docs.map((d) => docToPayment(d.id, d.data() as Record<string, unknown>));
+  return results.sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 export async function createExpensePayment(data: {
