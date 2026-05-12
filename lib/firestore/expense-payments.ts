@@ -34,6 +34,11 @@ function docToPayment(id: string, data: Record<string, unknown>): ExpensePayment
   };
 }
 
+export async function listAllExpensePayments(): Promise<ExpensePayment[]> {
+  const snap = await getDocs(collection(db, COL));
+  return snap.docs.map((d) => docToPayment(d.id, d.data() as Record<string, unknown>));
+}
+
 export async function listPaymentsByExpense(expenseId: string): Promise<ExpensePayment[]> {
   const snap = await getDocs(
     query(

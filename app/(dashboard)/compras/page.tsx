@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { listExpenses, deleteExpense } from "@/lib/firestore/expenses";
 import { listInventoryLocations } from "@/lib/firestore/inventory";
+import { listAllExpensePayments } from "@/lib/firestore/expense-payments";
 import type { Expense, ExpenseCategory, ExpensePaymentMethod } from "@/types/expenses";
 import type { InventoryLocation } from "@/types/inventory";
 import {
@@ -40,6 +41,37 @@ const CATEGORY_VARIANT: Record<ExpenseCategory, BadgeVariant> = {
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+type ExpenseStatus = "pagado" | "parcial" | "vencido" | "pendiente";
+
+function getExpenseStatus(amount: number, paid: number, dueDate?: Date): ExpenseStatus {
+  if (paid >= amount && amount > 0) return "pagado";
+  if (paid > 0) return "parcial";
+  if (dueDate && dueDate < new Date()) return "vencido";
+  return "pendiente";
+}
+
+const STATUS_LABEL: Record<ExpenseStatus, string> = {
+  pagado: "Pagado",
+  parcial: "Pago parcial",
+  vencido: "Vencido",
+  pendiente: "Pendiente",
+};
+
+const STATUS_CLASS: Record<ExpenseStatus, string> = {
+  pagado: "bg-green-500/15 text-green-400 border border-green-500/25",
+  parcial: "bg-amber-500/15 text-amber-400 border border-amber-500/25",
+  vencido: "bg-red-500/15 text-red-400 border border-red-500/25",
+  pendiente: "bg-zinc-700/50 text-zinc-400 border border-zinc-700",
+};
+
+function StatusBadge({ status }: { status: ExpenseStatus }) {
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap ${STATUS_CLASS[status]}`}>
+      {STATUS_LABEL[status]}
+    </span>
+  );
 }
 
 function isThisMonth(date: Date): boolean {
@@ -309,8 +341,7 @@ function RowMenu({ expenseId, onDelete }: { expenseId: string; onDelete: () => v
 export default function ComprasPage() {
   const { formatCurrency } = useCurrency();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [locations, setLocations] = useState<InventoryLocation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [locations, setLocations] = useState<InventoryLocation[]>([]);  const [paidMap, setPaidMap] = useState<Record<string, number>>({});  const [loading, setLoading] = useState(true);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -321,10 +352,15 @@ export default function ComprasPage() {
   const [filterTo, setFilterTo] = useState("");
 
   useEffect(() => {
-    Promise.all([listExpenses(), listInventoryLocations()])
-      .then(([exp, locs]) => {
+    Promise.all([listExpenses(), listInventoryLocations(), listAllExpensePayments().catch(() => [])])
+      .then(([exp, locs, payments]) => {
         setExpenses(exp);
         setLocations(locs);
+        const map: Record<string, number> = {};
+        for (const p of payments) {
+          map[p.expenseId] = (map[p.expenseId] ?? 0) + p.amount;
+        }
+        setPaidMap(map);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -509,6 +545,7 @@ export default function ComprasPage() {
                   <th className="text-left px-4 py-3 font-medium">Descripción</th>
                   <th className="text-left px-4 py-3 font-medium">Categoría</th>
                   <th className="text-left px-4 py-3 font-medium">Método</th>
+                  <th className="text-left px-4 py-3 font-medium">Estado</th>
                   <th className="text-right px-4 py-3 font-medium">Monto</th>
                   <th className="w-10" />
                 </tr>
@@ -544,6 +581,9 @@ export default function ComprasPage() {
                     <td className="px-4 py-3 text-zinc-500 text-xs">
                       {EXPENSE_PAYMENT_METHOD_LABELS[expense.paymentMethod]}
                     </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={getExpenseStatus(expense.amount, paidMap[expense.id] ?? 0, expense.dueDate)} />
+                    </td>
                     <td className="px-4 py-3 text-right font-semibold text-zinc-100">
                       {formatCurrency(expense.amount)}
                     </td>
@@ -553,7 +593,7 @@ export default function ComprasPage() {
                   </tr>
                 ))}
                 <tr className="border-t border-zinc-700">
-                  <td colSpan={7} className="px-4 py-3 text-xs text-zinc-500 font-medium">
+                  <td colSpan={8} className="px-4 py-3 text-xs text-zinc-500 font-medium">
                     Total ({filtered.length} compras)
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-amber-400">
@@ -591,6 +631,7 @@ export default function ComprasPage() {
                   <Badge variant={CATEGORY_VARIANT[expense.category]} className="text-[10px]">
                     {EXPENSE_CATEGORY_LABELS[expense.category]}
                   </Badge>
+                  <StatusBadge status={getExpenseStatus(expense.amount, paidMap[expense.id] ?? 0, expense.dueDate)} />
                   <span className="text-[10px] text-zinc-500">{formatDate(expense.date)}</span>
                   <span className="text-[10px] text-zinc-500">{expense.locationName ?? expense.locationId}</span>
                 </div>
