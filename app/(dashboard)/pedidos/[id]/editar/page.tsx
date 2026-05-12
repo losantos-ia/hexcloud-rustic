@@ -170,6 +170,9 @@ export default function EditOrderPage() {
           setDepositPercent(Math.round((order.depositRequired / order.finalSalePrice) * 100));
         }
 
+        if (order.projectType === "maintenance" && order.promisedDeliveryDate) {
+          setMaintMaintenanceDate(order.promisedDeliveryDate.toISOString().split("T")[0]);
+        }
         reset({
           clientName: order.clientName,
           clientPhone: order.clientPhone,
@@ -294,7 +297,9 @@ export default function EditOrderPage() {
         finalSalePrice: values.finalSalePrice,
         depositRequired: values.depositRequired,
         depositPaid: values.depositPaid,
-        promisedDeliveryDate: values.promisedDeliveryDate ? new Date(values.promisedDeliveryDate) : undefined,
+        promisedDeliveryDate: isMaintenance
+          ? (maintMaintenanceDate ? new Date(maintMaintenanceDate) : undefined)
+          : (values.promisedDeliveryDate ? new Date(values.promisedDeliveryDate) : undefined),
         installationRequired: values.installationRequired,
         deliveryAddress: clean(values.deliveryAddress),
         googleMapsUrl: clean(values.googleMapsUrl),
