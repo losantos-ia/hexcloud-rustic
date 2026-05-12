@@ -630,7 +630,7 @@ export default function NewOrderPage() {
                         <textarea
                           {...register(`items.${idx}.description`)}
                           placeholder="Descripción del ítem…"
-                          rows={1}
+                          rows={Math.max(2, (watchItems?.[idx]?.description ?? "").split("\n").length)}
                           className={`${cellCls} resize-y min-h-[2rem]`}
                         />
                         {errors.items?.[idx]?.description && (
