@@ -35,7 +35,7 @@ export const expenseSchema = z.object({
   }),
   invoiceNumber: z.string().optional(),
   dueDate: z.string().optional(),
-  supplierName: z.string({ required_error: "El proveedor es obligatorio" }).min(1, "El proveedor es obligatorio"),
+  supplierName: z.string({ error: "El proveedor es obligatorio" }).min(1, "El proveedor es obligatorio"),
   receiptUrl: z.string().url("URL inválida").optional().or(z.literal("")),
   notes: z.string().optional(),
   taxRate: z.number().min(0).max(100).optional(),
