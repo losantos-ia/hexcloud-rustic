@@ -13,12 +13,12 @@ import {
 import Link from "next/link";
 import {
   getOrderById, listOrderItems, listOrderPayments,
-  updateOrder, addOrderPayment,
+  updateOrder, addOrderPayment, updateOrderPayment, deleteOrderPayment,
 } from "@/lib/firestore/orders";
 import { listTreasuryAccounts, createTreasuryMovement } from "@/lib/firestore/treasury";
 import type { TreasuryAccount } from "@/types/treasury";
 import { listExpensesByOrder } from "@/lib/firestore/expenses";
-import type { Order, OrderItem, OrderPayment, OrderStatus } from "@/types/order";
+import type { Order, OrderItem, OrderPayment, OrderStatus, OrderPaymentType, OrderPaymentMethod } from "@/types/order";
 import type { Expense } from "@/types/expenses";
 import { EXPENSE_CATEGORY_LABELS } from "@/types/expenses";
 import {
@@ -123,6 +123,14 @@ export default function OrderDetailPage() {
   const [closeWarning, setCloseWarning] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  // Edit/delete payment state
+  const [editingPayment, setEditingPayment] = useState<OrderPayment | null>(null);
+  const [deletingPayment, setDeletingPayment] = useState<OrderPayment | null>(null);
+  const [editForm, setEditForm] = useState({ type: "partial" as OrderPaymentType, method: "cash" as OrderPaymentMethod, amount: "", paymentDate: "", notes: "", accountId: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -193,7 +201,7 @@ export default function OrderDetailPage() {
   async function onAddPayment(values: OrderPaymentFormValues) {
     setPaymentError(null);
     try {
-      const id = await addOrderPayment(orderId, values);
+      const id = await addOrderPayment(orderId, values, selectedAccountId || undefined);
       const newPayment: OrderPayment = {
         id,
         orderId,
@@ -202,6 +210,7 @@ export default function OrderDetailPage() {
         method: values.method,
         paymentDate: new Date(values.paymentDate),
         notes: values.notes?.trim() || undefined,
+        treasuryAccountId: selectedAccountId || undefined,
         createdAt: new Date(),
       };
       setPayments((prev) => [newPayment, ...prev]);
@@ -230,6 +239,126 @@ export default function OrderDetailPage() {
       setShowPaymentForm(false);
     } catch {
       setPaymentError("Error al registrar el pago.");
+    }
+  }
+
+  function openEditPayment(payment: OrderPayment) {
+    setEditForm({
+      type: payment.type,
+      method: payment.method,
+      amount: String(payment.amount),
+      paymentDate: payment.paymentDate.toISOString().split("T")[0],
+      notes: payment.notes ?? "",
+      accountId: payment.treasuryAccountId ?? selectedAccountId ?? "",
+    });
+    setEditError(null);
+    setEditingPayment(payment);
+  }
+
+  async function handleUpdatePayment() {
+    if (!editingPayment) return;
+    const newAmount = parseFloat(editForm.amount);
+    if (isNaN(newAmount) || newAmount <= 0) { setEditError("Ingresa un monto válido."); return; }
+    if (!editForm.paymentDate) { setEditError("Selecciona una fecha."); return; }
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const oldAmount = editingPayment.amount;
+      const oldAccountId = editingPayment.treasuryAccountId;
+      const newAccountId = editForm.accountId || undefined;
+      await updateOrderPayment(editingPayment.id, orderId, oldAmount, {
+        type: editForm.type,
+        amount: newAmount,
+        method: editForm.method,
+        paymentDate: editForm.paymentDate,
+        notes: editForm.notes,
+        treasuryAccountId: newAccountId ?? null,
+      });
+
+      // Handle treasury adjustments
+      const accountChanged = oldAccountId !== newAccountId;
+      if (accountChanged) {
+        // Reverse on old account
+        if (oldAccountId) {
+          await createTreasuryMovement({
+            treasuryAccountId: oldAccountId,
+            type: "adjustment",
+            amount: -oldAmount,
+            date: new Date(),
+            referenceId: orderId,
+            description: `Reversión pago pedido${order ? ` ${order.orderNumber}` : ""} (cuenta cambiada)`,
+          });
+        }
+        // Create income on new account
+        if (newAccountId) {
+          const acc = treasuryAccounts.find((a) => a.id === newAccountId);
+          await createTreasuryMovement({
+            treasuryAccountId: newAccountId,
+            type: "income",
+            amount: newAmount,
+            date: new Date(editForm.paymentDate),
+            referenceType: "sale",
+            referenceId: orderId,
+            description: `Pago pedido${order ? ` ${order.orderNumber}` : ""} (editado)${acc ? ` → ${acc.name}` : ""}`,
+          });
+        }
+      } else if (newAccountId && newAmount !== oldAmount) {
+        // Same account, amount changed — adjust the difference
+        await createTreasuryMovement({
+          treasuryAccountId: newAccountId,
+          type: "adjustment",
+          amount: newAmount - oldAmount,
+          date: new Date(),
+          referenceId: orderId,
+          description: `Ajuste pago pedido${order ? ` ${order.orderNumber}` : ""}`,
+        });
+      }
+
+      setPayments((prev) => prev.map((p) =>
+        p.id === editingPayment.id
+          ? { ...p, type: editForm.type, amount: newAmount, method: editForm.method, paymentDate: new Date(editForm.paymentDate), notes: editForm.notes || undefined, treasuryAccountId: newAccountId }
+          : p
+      ));
+      setOrder((prev) => {
+        if (!prev) return prev;
+        const diff = newAmount - oldAmount;
+        const newDepositPaid = prev.depositPaid + diff;
+        return { ...prev, depositPaid: newDepositPaid, balanceDue: prev.finalSalePrice - newDepositPaid };
+      });
+      setEditingPayment(null);
+    } catch {
+      setEditError("Error al guardar los cambios.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDeletePayment() {
+    if (!deletingPayment) return;
+    setDeleteConfirming(true);
+    try {
+      await deleteOrderPayment(deletingPayment.id, orderId, deletingPayment.amount);
+      if (deletingPayment.treasuryAccountId) {
+        await createTreasuryMovement({
+          treasuryAccountId: deletingPayment.treasuryAccountId,
+          type: "adjustment",
+          amount: -deletingPayment.amount,
+          date: new Date(),
+          referenceId: orderId,
+          description: `Reversión pago eliminado pedido${order ? ` ${order.orderNumber}` : ""}`,
+        });
+      }
+      setPayments((prev) => prev.filter((p) => p.id !== deletingPayment.id));
+      setOrder((prev) => {
+        if (!prev) return prev;
+        const newDepositPaid = Math.max(0, prev.depositPaid - deletingPayment.amount);
+        return { ...prev, depositPaid: newDepositPaid, balanceDue: prev.finalSalePrice - newDepositPaid };
+      });
+      setDeletingPayment(null);
+    } catch {
+      // keep modal open on error
+    } finally {
+      setDeleteConfirming(false);
     }
   }
 
@@ -517,7 +646,7 @@ export default function OrderDetailPage() {
             ) : (
               <div className="flex flex-col gap-0">
                 {payments.map((payment, idx) => (
-                  <div key={payment.id} className="flex gap-3">
+                  <div key={payment.id} className="flex gap-3 group">
                     <div className="flex flex-col items-center">
                       <div className="size-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
                         <DollarSign size={11} />
@@ -525,19 +654,44 @@ export default function OrderDetailPage() {
                       {idx < payments.length - 1 && <div className="w-px flex-1 bg-zinc-800 my-1" />}
                     </div>
                     <div className="pb-4 flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-zinc-200">
-                          {ORDER_PAYMENT_TYPE_LABELS[payment.type]} — {formatCurrency(payment.amount)}
-                        </span>
-                        <div className="flex flex-col items-end shrink-0">
-                          <span className="text-xs text-zinc-500">{formatRelative(payment.createdAt)}</span>
-                          <span className="text-xs text-zinc-600">{formatAbsolute(payment.createdAt)}</span>
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div>
+                          <span className="text-sm font-medium text-zinc-200">
+                            {ORDER_PAYMENT_TYPE_LABELS[payment.type]} — {formatCurrency(payment.amount)}
+                          </span>
+                          <p className="text-xs text-zinc-500 mt-0.5">
+                            {ORDER_PAYMENT_METHOD_LABELS[payment.method]} · {formatDateShort(payment.paymentDate)}
+                          </p>
+                          {payment.notes && <p className="text-xs text-zinc-500 mt-0.5">{payment.notes}</p>}
+                          {payment.treasuryAccountId && (() => {
+                            const acc = treasuryAccounts.find((a) => a.id === payment.treasuryAccountId);
+                            return acc ? <p className="text-xs text-amber-500/70 mt-0.5">↳ {acc.name}</p> : null;
+                          })()}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs text-zinc-500">{formatRelative(payment.createdAt)}</span>
+                            <span className="text-xs text-zinc-600">{formatAbsolute(payment.createdAt)}</span>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEditPayment(payment)}
+                              className="p-1.5 text-zinc-500 hover:text-zinc-200 rounded-md hover:bg-zinc-800 transition-colors"
+                              title="Editar pago"
+                            >
+                              <Edit size={12} />
+                            </button>
+                            <button
+                              onClick={() => setDeletingPayment(payment)}
+                              className="p-1.5 text-zinc-600 hover:text-red-400 rounded-md hover:bg-red-500/10 transition-colors"
+                              title="Eliminar pago"
+                            >
+                              <Loader2 size={12} className="hidden" />{/* placeholder */}
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <p className="text-xs text-zinc-500">
-                        {ORDER_PAYMENT_METHOD_LABELS[payment.method]} · {formatDateShort(payment.paymentDate)}
-                      </p>
-                      {payment.notes && <p className="text-xs text-zinc-500 mt-0.5">{payment.notes}</p>}
                     </div>
                   </div>
                 ))}
@@ -769,6 +923,156 @@ export default function OrderDetailPage() {
                 className="px-3 py-1.5 rounded-lg bg-amber-500 text-xs font-semibold text-zinc-950 hover:bg-amber-400 transition-colors"
               >
                 Cerrar igualmente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit payment modal */}
+      {editingPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-100">Editar pago</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Los cambios en el monto o la cuenta se reflejarán automáticamente en Tesorería.
+                </p>
+              </div>
+              <button onClick={() => setEditingPayment(null)} className="text-zinc-500 hover:text-zinc-200 transition-colors ml-3 shrink-0">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label>Tipo de pago</Label>
+                  <select
+                    value={editForm.type}
+                    onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value as OrderPaymentType }))}
+                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+                  >
+                    {(Object.keys(ORDER_PAYMENT_TYPE_LABELS) as OrderPaymentType[]).map((t) => (
+                      <option key={t} value={t}>{ORDER_PAYMENT_TYPE_LABELS[t]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Método de pago</Label>
+                  <select
+                    value={editForm.method}
+                    onChange={(e) => setEditForm((f) => ({ ...f, method: e.target.value as OrderPaymentMethod }))}
+                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+                  >
+                    {(Object.keys(ORDER_PAYMENT_METHOD_LABELS) as OrderPaymentMethod[]).map((m) => (
+                      <option key={m} value={m}>{ORDER_PAYMENT_METHOD_LABELS[m]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Monto *</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Fecha del pago *</Label>
+                  <Input
+                    type="date"
+                    value={editForm.paymentDate}
+                    onChange={(e) => setEditForm((f) => ({ ...f, paymentDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Cuenta de destino</Label>
+                {treasuryAccounts.length === 0 ? (
+                  <p className="text-xs text-zinc-500">No hay cuentas en Tesorería</p>
+                ) : (
+                  <select
+                    value={editForm.accountId}
+                    onChange={(e) => setEditForm((f) => ({ ...f, accountId: e.target.value }))}
+                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+                  >
+                    <option value="">Sin cuenta asociada</option>
+                    {treasuryAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Notas</Label>
+                <Textarea
+                  rows={2}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="Referencia de transferencia, observación..."
+                />
+              </div>
+              {editError && <p className="text-xs text-red-400">{editError}</p>}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-800">
+              <button
+                onClick={() => setEditingPayment(null)}
+                className="px-3 py-1.5 rounded-lg border border-zinc-700 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdatePayment}
+                disabled={editSaving}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-500 text-xs font-semibold text-zinc-950 hover:bg-amber-400 disabled:opacity-60 transition-colors"
+              >
+                {editSaving && <Loader2 size={11} className="animate-spin" />}
+                Guardar cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete payment confirm modal */}
+      {deletingPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl p-6 flex flex-col gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-100">¿Eliminar este pago?</h2>
+              <p className="text-xs text-zinc-400 mt-2">
+                Se eliminará el pago de{" "}
+                <span className="font-semibold text-zinc-200">{formatCurrency(deletingPayment.amount)}</span>{" "}
+                ({ORDER_PAYMENT_TYPE_LABELS[deletingPayment.type]}).
+              </p>
+              {deletingPayment.treasuryAccountId && (() => {
+                const acc = treasuryAccounts.find((a) => a.id === deletingPayment.treasuryAccountId);
+                return acc ? (
+                  <p className="text-xs text-amber-400/80 mt-1">
+                    Se revertirá el movimiento en la cuenta <strong>{acc.name}</strong>.
+                  </p>
+                ) : null;
+              })()}
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setDeletingPayment(null)}
+                disabled={deleteConfirming}
+                className="px-3 py-1.5 rounded-lg border border-zinc-700 text-xs text-zinc-400 hover:text-zinc-100 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeletePayment}
+                disabled={deleteConfirming}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-red-500 text-xs font-semibold text-white hover:bg-red-400 disabled:opacity-60 transition-colors"
+              >
+                {deleteConfirming && <Loader2 size={11} className="animate-spin" />}
+                Eliminar pago
               </button>
             </div>
           </div>
