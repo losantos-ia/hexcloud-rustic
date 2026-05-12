@@ -300,8 +300,8 @@ export default function NewOrderPage() {
       if (values.projectType === "maintenance") {
         const locationAddress =
           clean(values.deliveryAddress) ??
-          [values.clientAddress, values.clientCity].filter(Boolean).join(", ") ||
-          "Por definir";
+          ([values.clientAddress, values.clientCity].filter(Boolean).join(", ") ||
+          "Por definir");
         const installationDate =
           values.promisedDeliveryDate
             ? values.promisedDeliveryDate
