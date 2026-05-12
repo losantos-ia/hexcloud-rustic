@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, Plus, Trash2, Search, X, ShoppingCart, Package } fr
 import Link from "next/link";
 import { orderSchema, type OrderFormValues } from "@/lib/schemas/order";
 import { createOrder } from "@/lib/firestore/orders";
+import { createMaintenanceAsset } from "@/lib/firestore/maintenance";
 import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
 import { listClients, getClientById } from "@/lib/firestore/clients";
 import { listInventoryItems } from "@/lib/firestore/inventory";
@@ -295,6 +296,30 @@ export default function NewOrderPage() {
       });
       if (fromQuotationId) {
         await updateQuotation(fromQuotationId, { status: "converted_to_order" });
+      }
+      if (values.projectType === "maintenance") {
+        const locationAddress =
+          clean(values.deliveryAddress) ??
+          [values.clientAddress, values.clientCity].filter(Boolean).join(", ") ||
+          "Por definir";
+        const installationDate =
+          values.promisedDeliveryDate
+            ? values.promisedDeliveryDate
+            : new Date().toISOString().split("T")[0];
+        await createMaintenanceAsset({
+          clientId: selectedClient?.id ?? clean(values.clientId),
+          clientName: values.clientName.trim(),
+          clientPhone: values.clientPhone.trim(),
+          projectType: "custom",
+          orderId: id,
+          locationAddress,
+          googleMapsUrl: clean(values.googleMapsUrl),
+          installationDate,
+          maintenanceFrequencyMonths: 6,
+          status: "active",
+          createdSource: "automatic",
+          notes: clean(values.notes),
+        });
       }
       router.push(`/pedidos/${id}`);
     } catch {
