@@ -179,12 +179,14 @@ export default function NewOrderPage() {
           notes: q.notes ?? "",
           internalNotes: q.internalNotes ?? "",
           items: qItems.map((i) => ({
-            description: i.description,
+            description: i.notes?.trim()
+              ? `${i.description}\n${i.notes.trim()}`
+              : i.description,
             quantity: i.quantity,
             unit: i.unit ?? "und",
             unitPrice: i.unitPrice,
             category: mapCat(i.category),
-            notes: i.notes ?? "",
+            notes: "",
           })),
         });
       }
