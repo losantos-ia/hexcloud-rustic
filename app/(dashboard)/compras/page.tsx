@@ -287,15 +287,12 @@ function FilterPanel({
   filterLocation, setFilterLocation,
   filterPayment, setFilterPayment,
   filterStatus, setFilterStatus,
-  filterFrom, filterTo, setFilterFrom, setFilterTo,
   locations,
 }: {
   filterCategory: ExpenseCategory | ""; setFilterCategory: (v: ExpenseCategory | "") => void;
   filterLocation: string; setFilterLocation: (v: string) => void;
   filterPayment: ExpensePaymentMethod | ""; setFilterPayment: (v: ExpensePaymentMethod | "") => void;
   filterStatus: ExpenseStatus | ""; setFilterStatus: (v: ExpenseStatus | "") => void;
-  filterFrom: string; filterTo: string;
-  setFilterFrom: (v: string) => void; setFilterTo: (v: string) => void;
   locations: import("@/types/inventory").InventoryLocation[];
 }) {
   const [open, setOpen] = useState(false);
@@ -308,10 +305,8 @@ function FilterPanel({
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
-  const activeCount = [filterCategory, filterLocation, filterPayment, filterStatus, filterFrom || filterTo]
+  const activeCount = [filterCategory, filterLocation, filterPayment, filterStatus]
     .filter(Boolean).length;
-
-  const fmtDate = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 
   return (
     <div ref={ref} className="relative shrink-0">
@@ -407,49 +402,13 @@ function FilterPanel({
             </select>
           </div>
 
-          {/* Rango de fechas */}
-          <div className="flex flex-col gap-1.5">
-            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Rango de fechas</p>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={filterFrom}
-                onChange={(e) => setFilterFrom(e.target.value)}
-                className="flex-1 text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
-              />
-              <input
-                type="date"
-                value={filterTo}
-                onChange={(e) => setFilterTo(e.target.value)}
-                className="flex-1 text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
-              />
-            </div>
-            {(filterFrom || filterTo) && (
-              <p className="text-[10px] text-zinc-500">
-                {filterFrom ? fmtDate(filterFrom) : "inicio"} → {filterTo ? fmtDate(filterTo) : "hoy"}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-1 mt-0.5">
-              {DATE_PRESETS.slice(0, 6).map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => { const r = p.getRange(); setFilterFrom(r.from); setFilterTo(r.to); }}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Footer */}
           {activeCount > 0 && (
             <button
               type="button"
               onClick={() => {
                 setFilterCategory(""); setFilterLocation(""); setFilterPayment("");
-                setFilterStatus(""); setFilterFrom(""); setFilterTo("");
+                setFilterStatus("");
                 setOpen(false);
               }}
               className="text-xs text-zinc-400 hover:text-zinc-100 border border-zinc-700 hover:border-zinc-500 rounded-lg py-1.5 transition-colors"
@@ -530,8 +489,6 @@ export default function ComprasPage() {
   const [filterLocation, setFilterLocation] = useState("");
   const [filterPayment, setFilterPayment] = useState<ExpensePaymentMethod | "">("");
   const [filterStatus, setFilterStatus] = useState<ExpenseStatus | "">("");
-  const [filterFrom, setFilterFrom] = useState("");
-  const [filterTo, setFilterTo] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
@@ -662,9 +619,13 @@ export default function ComprasPage() {
           filterLocation={filterLocation} setFilterLocation={setFilterLocation}
           filterPayment={filterPayment} setFilterPayment={setFilterPayment}
           filterStatus={filterStatus} setFilterStatus={setFilterStatus}
-          filterFrom={filterFrom} filterTo={filterTo}
-          setFilterFrom={setFilterFrom} setFilterTo={setFilterTo}
           locations={locations}
+        />
+        <DateRangeFilter
+          from={filterFrom}
+          to={filterTo}
+          onChange={(f, t) => { setFilterFrom(f); setFilterTo(t); }}
+          onClear={() => { setFilterFrom(""); setFilterTo(""); }}
         />
         {(filterCategory || filterLocation || filterPayment || filterStatus || filterFrom || filterTo || search) && (
           <button
