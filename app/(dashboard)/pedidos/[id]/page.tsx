@@ -15,6 +15,8 @@ import {
   getOrderById, listOrderItems, listOrderPayments,
   updateOrder, addOrderPayment,
 } from "@/lib/firestore/orders";
+import { listTreasuryAccounts, createTreasuryMovement } from "@/lib/firestore/treasury";
+import type { TreasuryAccount } from "@/types/treasury";
 import { listExpensesByOrder } from "@/lib/firestore/expenses";
 import type { Order, OrderItem, OrderPayment, OrderStatus } from "@/types/order";
 import type { Expense } from "@/types/expenses";
@@ -111,6 +113,8 @@ export default function OrderDetailPage() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [payments, setPayments] = useState<OrderPayment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [treasuryAccounts, setTreasuryAccounts] = useState<TreasuryAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"detalle" | "gastos">("detalle");
   const [loading, setLoading] = useState(true);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -141,12 +145,15 @@ export default function OrderDetailPage() {
       listOrderItems(orderId),
       listOrderPayments(orderId),
       listExpensesByOrder(orderId).catch(() => [] as Expense[]),
+      listTreasuryAccounts().catch(() => [] as TreasuryAccount[]),
     ])
-      .then(([o, i, p, e]) => {
+      .then(([o, i, p, e, accs]) => {
         setOrder(o);
         setItems(i);
         setPayments(p);
         setExpenses(e);
+        setTreasuryAccounts(accs);
+        if (accs.length > 0) setSelectedAccountId(accs[0].id);
       })
       .catch((err) => {
         console.error("Error loading order:", err);
@@ -204,6 +211,21 @@ export default function OrderDetailPage() {
         const newBalanceDue = prev.finalSalePrice - newDepositPaid;
         return { ...prev, depositPaid: newDepositPaid, balanceDue: newBalanceDue };
       });
+      // Create treasury movement if an account is selected
+      if (selectedAccountId) {
+        const acc = treasuryAccounts.find((a) => a.id === selectedAccountId);
+        await createTreasuryMovement({
+          treasuryAccountId: selectedAccountId,
+          type: "income",
+          amount: values.amount,
+          date: new Date(values.paymentDate),
+          referenceType: "sale",
+          referenceId: orderId,
+          description: `Pago pedido${order ? ` ${order.orderNumber}` : ""} – ${ORDER_PAYMENT_TYPE_LABELS[values.type]}${
+            acc ? ` → ${acc.name}` : ""
+          }`,
+        });
+      }
       reset({ type: "deposit", method: "cash", paymentDate: new Date().toISOString().split("T")[0] });
       setShowPaymentForm(false);
     } catch {
@@ -447,6 +469,22 @@ export default function OrderDetailPage() {
                     <Label>Fecha del pago *</Label>
                     <DatePicker value={watch("paymentDate")} onChange={(v) => setValue("paymentDate", v ?? "")} />
                     {errors.paymentDate && <p className="text-xs text-red-400">{errors.paymentDate.message}</p>}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Cuenta de destino</Label>
+                    {treasuryAccounts.length === 0 ? (
+                      <p className="text-xs text-zinc-500">No hay cuentas en Tesorería</p>
+                    ) : (
+                      <select
+                        value={selectedAccountId}
+                        onChange={(e) => setSelectedAccountId(e.target.value)}
+                        className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500 [&>option]:bg-zinc-900"
+                      >
+                        {treasuryAccounts.map((a) => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5 sm:col-span-2">
                     <Label>Notas</Label>
