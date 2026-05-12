@@ -40,6 +40,8 @@ export const expenseSchema = z.object({
   notes: z.string().optional(),
   taxRate: z.number().min(0).max(100).optional(),
   lineItems: z.array(lineItemSchema).optional(),
+  orderId: z.string().optional(),
+  orderNumber: z.string().optional(),
 });
 
 export const updateExpenseSchema = expenseSchema.partial();

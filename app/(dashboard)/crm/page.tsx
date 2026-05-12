@@ -5,8 +5,10 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, TrendingUp, Clock, FileText, Trophy, MoreHorizontal, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Search, TrendingUp, Clock, FileText, Trophy, MoreHorizontal, Pencil, Trash2, Loader2, AlertTriangle, Zap } from "lucide-react";
 import { listLeads, deleteLead } from "@/lib/firestore/leads";
+import { listOverdueTasks, listTodayTasks } from "@/lib/firestore/lead-tasks";
+import type { LeadTask } from "@/types/lead-task";
 import type { Lead, LeadStatus, LeadSource, LeadInterestedIn } from "@/types/lead";
 import {
   LEAD_SOURCE_LABELS,
@@ -88,11 +90,15 @@ export default function CrmPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [overdueTasks, setOverdueTasks] = useState<LeadTask[]>([]);
+  const [todayTasks, setTodayTasks] = useState<LeadTask[]>([]);
 
   useEffect(() => {
     listLeads()
       .then(setLeads)
       .finally(() => setLoading(false));
+    listOverdueTasks().then(setOverdueTasks);
+    listTodayTasks().then(setTodayTasks);
   }, []);
 
   async function handleDeleteLead() {
@@ -183,6 +189,30 @@ export default function CrmPage() {
           Nuevo lead
         </Link>
       </div>
+
+      {/* Follow-up alert widgets */}
+      {(overdueTasks.length > 0 || todayTasks.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {overdueTasks.length > 0 && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-4 py-3 flex items-center gap-3">
+              <AlertTriangle size={18} className="text-red-400 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-red-400">{overdueTasks.length} seguimiento{overdueTasks.length !== 1 ? "s" : ""} vencido{overdueTasks.length !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-zinc-500">Abre cada lead para reprogramar o completar</p>
+              </div>
+            </div>
+          )}
+          {todayTasks.length > 0 && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 flex items-center gap-3">
+              <Zap size={18} className="text-amber-400 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-400">{todayTasks.length} seguimiento{todayTasks.length !== 1 ? "s" : ""} para hoy</p>
+                <p className="text-xs text-zinc-500">Gestiona los contactos de hoy</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -41,7 +41,7 @@ function stripUndefined<T extends object>(obj: T): Partial<T> {
 function docToExpense(id: string, data: Record<string, unknown>): Expense {
   return {
     id,
-    expenseNumber: data.expenseNumber as string,
+    expenseNumber: data.expenseNumber as string | undefined,
     date: toDate(data.date),
     category: data.category as Expense["category"],
     amount: data.amount as number,
@@ -55,6 +55,8 @@ function docToExpense(id: string, data: Record<string, unknown>): Expense {
     receiptUrl: data.receiptUrl as string | undefined,
     notes: data.notes as string | undefined,
     lineItems: (data.lineItems as Array<{ sku?: string; inventoryItemId?: string; description: string; quantity: number; unitPrice: number }>) ?? undefined,
+    orderId: data.orderId as string | undefined,
+    orderNumber: data.orderNumber as string | undefined,
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   };
@@ -76,10 +78,8 @@ export async function generateExpenseNumber(): Promise<string> {
 // ── CRUD ──────────────────────────────────────────────────
 
 export async function createExpense(values: ExpenseFormValues): Promise<string> {
-  const expenseNumber = await generateExpenseNumber();
   const payload: Record<string, unknown> = {
     ...stripUndefined(values as object),
-    expenseNumber,
     date: Timestamp.fromDate(new Date(`${values.date}T00:00:00`)),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -154,6 +154,16 @@ export async function listExpensesByCategory(category: ExpenseCategory): Promise
   const q = query(
     collection(db, COL),
     where("category", "==", category),
+    orderBy("date", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => docToExpense(d.id, d.data() as Record<string, unknown>));
+}
+
+export async function listExpensesByOrder(orderId: string): Promise<Expense[]> {
+  const q = query(
+    collection(db, COL),
+    where("orderId", "==", orderId),
     orderBy("date", "desc")
   );
   const snap = await getDocs(q);

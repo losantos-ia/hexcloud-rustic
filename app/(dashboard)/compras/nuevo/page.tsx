@@ -4,7 +4,9 @@ export const dynamic = "force-dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Phone, Mail, ExternalLink, Package, Search, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Phone, Mail, ExternalLink, Package, Search, X, Upload, FileText, ImageIcon } from "lucide-react";
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -13,8 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSuppliers, getSupplier } from "@/lib/firestore/purchases";
 import { listInventoryItems } from "@/lib/firestore/inventory";
+import { listOrders } from "@/lib/firestore/orders";
 import type { Supplier } from "@/types/purchases";
 import type { InventoryItem } from "@/types/inventory";
+import type { Order } from "@/types/order";
 import { SUPPLIER_CATEGORY_LABELS } from "@/types/purchases";
 import { expenseSchema, type ExpenseFormValues } from "@/lib/schemas/expenses";
 import { createExpense } from "@/lib/firestore/expenses";
@@ -61,17 +65,77 @@ export default function NuevoGastoPage() {
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   // Inventory search popup
   const [searchPopupIndex, setSearchPopupIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const supplierContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptUploadError, setReceiptUploadError] = useState<string | null>(null);
+  const [receiptUploadProgress, setReceiptUploadProgress] = useState(0);
+
+  async function handleFileSelect(file: File) {
+    const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      setReceiptUploadError("Solo se aceptan PDF e imágenes (JPG, PNG, WEBP).");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setReceiptUploadError("El archivo no debe superar 10 MB.");
+      return;
+    }
+    setReceiptFile(file);
+    setReceiptUploadError(null);
+    setReceiptUploadProgress(0);
+    setReceiptPreview(URL.createObjectURL(file));
+    setReceiptUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `expenses/receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const sRef = storageRef(storage, path);
+      const uploadTask = uploadBytesResumable(sRef, file);
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snap) => setReceiptUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+          (err) => { setReceiptUploadError("Error al subir el archivo."); reject(err); },
+          () => resolve(),
+        );
+      });
+      const url = await getDownloadURL(uploadTask.snapshot.ref);
+      setValue("receiptUrl", url);
+    } catch {
+      setReceiptUploadError("Error al subir el archivo. Intenta de nuevo.");
+      setReceiptFile(null);
+      setReceiptPreview(null);
+    } finally {
+      setReceiptUploading(false);
+    }
+  }
+
+  function removeReceiptFile() {
+    if (receiptPreview) URL.revokeObjectURL(receiptPreview);
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptUploadError(null);
+    setReceiptUploadProgress(0);
+    setValue("receiptUrl", "");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   useEffect(() => {
     listInventoryLocations().then(setLocations);
     listSuppliers().then(setSuppliers);
     listInventoryItems().then(setInventoryItems);
+    listOrders().then((orders) => {
+      const active = orders.filter((o) => o.status !== "cancelled" && o.status !== "closed");
+      setActiveOrders(active);
+    });
   }, []);
 
   // Handle return from supplier creation page
@@ -198,7 +262,7 @@ export default function NuevoGastoPage() {
     setServerError(null);
     try {
       const id = await createExpense(values);
-      router.push(`/gastos/${id}`);
+      router.push(`/compras/${id}`);
     } catch {
       setServerError("Error al registrar el gasto. Inténtalo de nuevo.");
     }
@@ -276,25 +340,108 @@ export default function NuevoGastoPage() {
       >
         {/* ── Sticky header ── */}
         <div className="sticky top-0 z-40 bg-zinc-950 border-b border-zinc-800 py-3 mb-4 flex items-center gap-4 -mx-4 md:-mx-6 px-4 md:px-6">
-          <Link href="/gastos" className="text-zinc-400 hover:text-zinc-200 transition-colors">
+          <Link href="/compras" className="text-zinc-400 hover:text-zinc-200 transition-colors">
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-zinc-100">Registrar gasto</h1>
+            <h1 className="text-lg font-bold text-zinc-100">Registrar compra</h1>
             <p className="text-xs text-zinc-500">Nuevo gasto operacional</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Link href="/gastos">
+            <Link href="/compras">
               <Button type="button" variant="outline" size="sm">Cancelar</Button>
             </Link>
             <Button type="submit" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? "Guardando…" : "Registrar gasto"}
+              {isSubmitting ? "Guardando…" : "Registrar compra"}
             </Button>
           </div>
         </div>
 
-        {/* ── Document card ── */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
+        {/* ── Two-column layout ── */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+
+          {/* LEFT: Archive panel */}
+          <div className="w-full lg:w-[300px] xl:w-[340px] shrink-0 lg:sticky lg:top-[70px]">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Archivo</p>
+                {receiptFile && !receiptUploading && (
+                  <button type="button" onClick={removeReceiptFile} className="text-xs text-red-400 hover:text-red-300 transition-colors">
+                    Eliminar archivo
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
+              />
+              {!receiptFile ? (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) handleFileSelect(f); }}
+                  className="flex flex-col items-center justify-center gap-4 cursor-pointer px-6 py-16 select-none hover:bg-zinc-800/40 group transition-colors"
+                >
+                  <div className="size-12 rounded-xl bg-zinc-800 group-hover:bg-zinc-700 flex items-center justify-center transition-colors">
+                    <Upload size={20} className="text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-zinc-400 font-medium">Selecciona o arrastra</p>
+                    <p className="text-xs text-zinc-600 mt-0.5">un documento</p>
+                  </div>
+                  <span className="text-xs text-zinc-500 border border-zinc-700 rounded-md px-3 py-1 group-hover:border-zinc-600 group-hover:text-zinc-400 transition-colors">PDF, JPG, PNG · máx. 10 MB</span>
+                </div>
+              ) : (
+                <>
+                  {receiptPreview && (
+                    receiptFile.type === "application/pdf" ? (
+                      <iframe
+                        src={receiptPreview}
+                        className="w-full border-0 block"
+                        style={{ height: "420px" }}
+                        title="Vista previa"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={receiptPreview}
+                        alt="Vista previa"
+                        className="w-full object-contain bg-zinc-950 block"
+                        style={{ maxHeight: "420px" }}
+                      />
+                    )
+                  )}
+                  <div className="px-4 py-3 border-t border-zinc-800 flex items-center gap-2">
+                    {receiptFile.type === "application/pdf" ? (
+                      <FileText size={14} className="text-zinc-500 shrink-0" />
+                    ) : (
+                      <ImageIcon size={14} className="text-zinc-500 shrink-0" />
+                    )}
+                    <p className="text-xs text-zinc-400 truncate flex-1">{receiptFile.name}</p>
+                    {receiptUploading ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-16 h-1 rounded-full bg-zinc-700 overflow-hidden">
+                          <div className="h-full bg-amber-500 transition-all" style={{ width: `${receiptUploadProgress}%` }} />
+                        </div>
+                        <span className="text-xs text-zinc-500">{receiptUploadProgress}%</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-zinc-600 shrink-0">{(receiptFile.size / 1024).toFixed(0)} KB</span>
+                    )}
+                  </div>
+                </>
+              )}
+              {receiptUploadError && (
+                <p className="text-xs text-red-400 px-4 pb-3">{receiptUploadError}</p>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT: Form card */}
+          <div className="flex-1 min-w-0 rounded-xl border border-zinc-800 bg-zinc-900 divide-y divide-zinc-800">
 
           {/* Proveedor */}
           <div className="px-6 py-5 relative" ref={supplierContainerRef}>
@@ -325,7 +472,7 @@ export default function NuevoGastoPage() {
                 ))}
                 {supplierName.trim().length > 0 && !exactMatch && (
                   <Link
-                    href={`/compras/proveedores/nuevo?returnTo=/gastos/nuevo&supplierName=${encodeURIComponent(supplierName.trim())}`}
+                    href={`/compras/proveedores/nuevo?returnTo=/compras/nuevo&supplierName=${encodeURIComponent(supplierName.trim())}`}
                     className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2"
                   >
                     <Plus size={12} />
@@ -407,6 +554,24 @@ export default function NuevoGastoPage() {
                 <option value="">Selecciona una ubicación…</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Proyecto / Pedido (opcional)" className="sm:col-span-3">
+              <select
+                className={selectCls}
+                value={watch("orderId") ?? ""}
+                onChange={(e) => {
+                  const order = activeOrders.find((o) => o.id === e.target.value);
+                  setValue("orderId", e.target.value || undefined);
+                  setValue("orderNumber", order?.orderNumber ?? undefined);
+                }}
+              >
+                <option value="">Sin proyecto asociado (gasto general)</option>
+                {activeOrders.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.orderNumber} — {o.clientName}{o.title ? ` · ${o.title}` : ""}
+                  </option>
                 ))}
               </select>
             </Field>
@@ -588,6 +753,7 @@ export default function NuevoGastoPage() {
             </div>
           </div>
 
+          </div>
         </div>
 
         {serverError && (
@@ -599,3 +765,5 @@ export default function NuevoGastoPage() {
     </div>
   );
 }
+
+
