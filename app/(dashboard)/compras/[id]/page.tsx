@@ -332,7 +332,7 @@ export default function GastoDetailPage() {
                         }
                         setPaymentError(null);
                         setPaymentForm({
-                          amount: "",
+                          amount: remaining > 0 ? String(remaining) : "",
                           date: new Date().toISOString().split("T")[0],
                           accountId: accounts[0]?.id ?? "",
                           notes: "",
