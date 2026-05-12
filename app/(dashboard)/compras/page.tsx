@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Plus, Receipt, Search, TrendingDown, MoreHorizontal, Pencil, Trash2,
-  Calendar, ChevronLeft, ChevronRight, X,
+  Calendar, ChevronLeft, ChevronRight, X, SlidersHorizontal, ChevronDown,
 } from "lucide-react";
 import { listExpenses, deleteExpense } from "@/lib/firestore/expenses";
 import { listInventoryLocations } from "@/lib/firestore/inventory";
@@ -282,6 +282,187 @@ function DateRangeFilter({
   );
 }
 
+function FilterPanel({
+  filterCategory, setFilterCategory,
+  filterLocation, setFilterLocation,
+  filterPayment, setFilterPayment,
+  filterStatus, setFilterStatus,
+  filterFrom, filterTo, setFilterFrom, setFilterTo,
+  locations,
+}: {
+  filterCategory: ExpenseCategory | ""; setFilterCategory: (v: ExpenseCategory | "") => void;
+  filterLocation: string; setFilterLocation: (v: string) => void;
+  filterPayment: ExpensePaymentMethod | ""; setFilterPayment: (v: ExpensePaymentMethod | "") => void;
+  filterStatus: ExpenseStatus | ""; setFilterStatus: (v: ExpenseStatus | "") => void;
+  filterFrom: string; filterTo: string;
+  setFilterFrom: (v: string) => void; setFilterTo: (v: string) => void;
+  locations: import("@/types/inventory").InventoryLocation[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  const activeCount = [filterCategory, filterLocation, filterPayment, filterStatus, filterFrom || filterTo]
+    .filter(Boolean).length;
+
+  const fmtDate = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors focus:outline-none ${
+          activeCount > 0
+            ? "bg-amber-500/10 border-amber-500/40 text-amber-300"
+            : "bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500"
+        }`}
+      >
+        <SlidersHorizontal size={14} />
+        Filtros
+        {activeCount > 0 && (
+          <span className="size-4 rounded-full bg-amber-500 text-zinc-950 text-[10px] font-bold flex items-center justify-center">
+            {activeCount}
+          </span>
+        )}
+        <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 z-50 w-72 rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl p-4 flex flex-col gap-4">
+
+          {/* Estado */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Estado</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["", "pendiente", "vencido", "parcial", "pagado"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setFilterStatus(s as ExpenseStatus | "")}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    filterStatus === s
+                      ? s === "" ? "bg-zinc-700 border-zinc-500 text-zinc-100"
+                        : s === "pagado" ? "bg-green-500/20 border-green-500/50 text-green-300"
+                        : s === "parcial" ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                        : s === "vencido" ? "bg-red-500/20 border-red-500/50 text-red-300"
+                        : "bg-zinc-700 border-zinc-500 text-zinc-100"
+                      : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+                  }`}
+                >
+                  {s === "" ? "Todos" : STATUS_LABEL[s as ExpenseStatus]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Categoría */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Categoría</p>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "")}
+              className="text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
+            >
+              <option value="">Todas las categorías</option>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS[c]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Ubicación */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Ubicación</p>
+            <select
+              value={filterLocation}
+              onChange={(e) => setFilterLocation(e.target.value)}
+              className="text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
+            >
+              <option value="">Todas las ubicaciones</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Método de pago */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Método de pago</p>
+            <select
+              value={filterPayment}
+              onChange={(e) => setFilterPayment(e.target.value as ExpensePaymentMethod | "")}
+              className="text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
+            >
+              <option value="">Todos los métodos</option>
+              {EXPENSE_PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>{EXPENSE_PAYMENT_METHOD_LABELS[m]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Rango de fechas */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Rango de fechas</p>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={filterFrom}
+                onChange={(e) => setFilterFrom(e.target.value)}
+                className="flex-1 text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
+              />
+              <input
+                type="date"
+                value={filterTo}
+                onChange={(e) => setFilterTo(e.target.value)}
+                className="flex-1 text-sm rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+            {(filterFrom || filterTo) && (
+              <p className="text-[10px] text-zinc-500">
+                {filterFrom ? fmtDate(filterFrom) : "inicio"} → {filterTo ? fmtDate(filterTo) : "hoy"}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {DATE_PRESETS.slice(0, 6).map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => { const r = p.getRange(); setFilterFrom(r.from); setFilterTo(r.to); }}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer */}
+          {activeCount > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setFilterCategory(""); setFilterLocation(""); setFilterPayment("");
+                setFilterStatus(""); setFilterFrom(""); setFilterTo("");
+                setOpen(false);
+              }}
+              className="text-xs text-zinc-400 hover:text-zinc-100 border border-zinc-700 hover:border-zinc-500 rounded-lg py-1.5 transition-colors"
+            >
+              Limpiar todos los filtros
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RowMenu({ expenseId, onDelete }: { expenseId: string; onDelete: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -348,6 +529,9 @@ export default function ComprasPage() {
   const [filterCategory, setFilterCategory] = useState<ExpenseCategory | "">("");
   const [filterLocation, setFilterLocation] = useState("");
   const [filterPayment, setFilterPayment] = useState<ExpensePaymentMethod | "">("");
+  const [filterStatus, setFilterStatus] = useState<ExpenseStatus | "">("");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
@@ -398,6 +582,10 @@ export default function ComprasPage() {
       if (filterPayment && e.paymentMethod !== filterPayment) return false;
       if (filterFrom && e.date < new Date(`${filterFrom}T00:00:00`)) return false;
       if (filterTo && e.date > new Date(`${filterTo}T23:59:59`)) return false;
+      if (filterStatus) {
+        const s = getExpenseStatus(e.amount, paidMap[e.id] ?? 0, e.dueDate);
+        if (s !== filterStatus) return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         return (
@@ -409,7 +597,7 @@ export default function ComprasPage() {
       }
       return true;
     });
-  }, [expenses, filterCategory, filterLocation, filterPayment, filterFrom, filterTo, search]);
+  }, [expenses, filterCategory, filterLocation, filterPayment, filterFrom, filterTo, filterStatus, search, paidMap]);
 
   const filteredTotal = useMemo(
     () => filtered.reduce((s, e) => s + e.amount, 0),
@@ -469,55 +657,26 @@ export default function ComprasPage() {
             className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
           />
         </div>
-        <div className="flex gap-2 items-center shrink-0">
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | "")}
-          className="text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 px-2 py-1.5 focus:outline-none focus:border-amber-500"
-        >
-          <option value="">Todas las categorías</option>
-          {EXPENSE_CATEGORIES.map((c) => (
-            <option key={c} value={c}>{EXPENSE_CATEGORY_LABELS[c]}</option>
-          ))}
-        </select>
-        <select
-          value={filterLocation}
-          onChange={(e) => setFilterLocation(e.target.value)}
-          className="text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 px-2 py-1.5 focus:outline-none focus:border-amber-500"
-        >
-          <option value="">Todas las ubicaciones</option>
-          {locations.map((l) => (
-            <option key={l.id} value={l.id}>{l.name}</option>
-          ))}
-        </select>
-        <select
-          value={filterPayment}
-          onChange={(e) => setFilterPayment(e.target.value as ExpensePaymentMethod | "")}
-          className="text-sm rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 px-2 py-1.5 focus:outline-none focus:border-amber-500"
-        >
-          <option value="">Todos los métodos</option>
-          {EXPENSE_PAYMENT_METHODS.map((m) => (
-            <option key={m} value={m}>{EXPENSE_PAYMENT_METHOD_LABELS[m]}</option>
-          ))}
-        </select>
-        <DateRangeFilter
-          from={filterFrom}
-          to={filterTo}
-          onChange={(f, t) => { setFilterFrom(f); setFilterTo(t); }}
-          onClear={() => { setFilterFrom(""); setFilterTo(""); }}
+        <FilterPanel
+          filterCategory={filterCategory} setFilterCategory={setFilterCategory}
+          filterLocation={filterLocation} setFilterLocation={setFilterLocation}
+          filterPayment={filterPayment} setFilterPayment={setFilterPayment}
+          filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+          filterFrom={filterFrom} filterTo={filterTo}
+          setFilterFrom={setFilterFrom} setFilterTo={setFilterTo}
+          locations={locations}
         />
-        {(filterCategory || filterLocation || filterPayment || filterFrom || filterTo || search) && (
+        {(filterCategory || filterLocation || filterPayment || filterStatus || filterFrom || filterTo || search) && (
           <button
             onClick={() => {
               setSearch(""); setFilterCategory(""); setFilterLocation("");
-              setFilterPayment(""); setFilterFrom(""); setFilterTo("");
+              setFilterPayment(""); setFilterStatus(""); setFilterFrom(""); setFilterTo("");
             }}
-            className="text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors whitespace-nowrap"
           >
-            Limpiar
+            <X size={12} /> Limpiar
           </button>
         )}
-        </div>
       </div>
 
       {/* Table */}
