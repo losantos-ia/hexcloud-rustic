@@ -10,7 +10,7 @@ import { ArrowLeft, Loader2, Plus, Trash2, Search, X, ShoppingCart, Package } fr
 import Link from "next/link";
 import { orderSchema, type OrderFormValues } from "@/lib/schemas/order";
 import { createOrder } from "@/lib/firestore/orders";
-import { createMaintenanceAsset } from "@/lib/firestore/maintenance";
+import { createMaintenanceAsset, createMaintenanceRecord } from "@/lib/firestore/maintenance";
 import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
 import { listClients, getClientById } from "@/lib/firestore/clients";
 import { listInventoryItems } from "@/lib/firestore/inventory";
@@ -322,7 +322,7 @@ export default function NewOrderPage() {
               )
             )
           : 6;
-        await createMaintenanceAsset({
+        const assetId = await createMaintenanceAsset({
           clientId: selectedClient?.id ?? clean(values.clientId),
           clientName: values.clientName.trim(),
           clientPhone: values.clientPhone.trim(),
@@ -336,6 +336,14 @@ export default function NewOrderPage() {
           createdSource: "automatic",
           notes: clean(values.notes),
         });
+        if (maintMaintenanceDate) {
+          await createMaintenanceRecord({
+            maintenanceAssetId: assetId,
+            scheduledDate: maintMaintenanceDate,
+            type: "preventive",
+            status: "scheduled",
+          });
+        }
       }
       router.push(`/pedidos/${id}`);
     } catch {
