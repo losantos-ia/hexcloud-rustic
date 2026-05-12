@@ -528,8 +528,13 @@ export default function ComprasPage() {
                     <td className="px-4 py-3 text-zinc-300 text-sm">
                       {expense.supplierName || <span className="text-zinc-600">—</span>}
                     </td>
-                    <td className="px-4 py-3 text-zinc-400 max-w-xs truncate text-xs">
-                      {expense.description || <span className="text-zinc-600">—</span>}
+                    <td className="px-4 py-3 text-zinc-400 max-w-xs text-xs">
+                      {(() => {
+                        const raw = expense.lineItems?.[0]?.description || expense.description || "";
+                        return raw
+                          ? <span className="truncate block" title={raw}>{raw.length > 45 ? raw.slice(0, 45) + "…" : raw}</span>
+                          : <span className="text-zinc-600">—</span>;
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={CATEGORY_VARIANT[expense.category]}>
@@ -572,7 +577,7 @@ export default function ComprasPage() {
                   <div className="flex flex-col gap-1">
                     <span className="font-mono text-[10px] text-amber-400">{expense.invoiceNumber || expense.expenseNumber || '—'}</span>
                     <span className="text-sm font-semibold text-zinc-100">
-                      {expense.description || EXPENSE_CATEGORY_LABELS[expense.category]}
+                      {expense.lineItems?.[0]?.description || expense.description || EXPENSE_CATEGORY_LABELS[expense.category]}
                     </span>
                     {expense.supplierName && (
                       <span className="text-xs text-zinc-500">{expense.supplierName}</span>
