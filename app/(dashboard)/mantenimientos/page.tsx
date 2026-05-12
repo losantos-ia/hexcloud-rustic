@@ -225,15 +225,18 @@ export default function MantenimientosPage() {
                         <td className="px-4 py-3 text-zinc-300">{MAINTENANCE_PROJECT_TYPE_LABELS[asset.projectType]}</td>
                         <td className="px-4 py-3 text-zinc-400 max-w-[180px] truncate">{asset.locationAddress}</td>
                         <td className="px-4 py-3 text-zinc-400">{formatDate(asset.installationDate)}</td>
-                        <td className={`px-4 py-3 font-medium ${st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-300"}`}>
-                          {formatDate(asset.nextMaintenanceDate)}
+                        <td className="px-4 py-3 font-medium">
+                          {scheduledByAssetId[asset.id] ? (
+                            <span className="text-blue-400">{formatDate(scheduledByAssetId[asset.id].scheduledDate)}</span>
+                          ) : (
+                            <span className={st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-300"}>
+                              {formatDate(asset.nextMaintenanceDate)}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           {scheduledByAssetId[asset.id] ? (
-                            <div className="flex flex-col gap-1">
-                              <Badge variant="blue">Programado</Badge>
-                              <span className="text-xs text-blue-400">{formatDate(scheduledByAssetId[asset.id].scheduledDate)}</span>
-                            </div>
+                            <Badge variant="blue">Programado</Badge>
                           ) : (
                             <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
                           )}
@@ -263,7 +266,7 @@ export default function MantenimientosPage() {
                       <div className="size-9 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
                         <Wrench size={16} className="text-amber-400" />
                       </div>
-                      <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-medium text-zinc-100 truncate">{asset.clientName}</p>
                           {scheduledByAssetId[asset.id] ? (
