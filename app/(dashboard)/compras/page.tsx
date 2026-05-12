@@ -504,9 +504,10 @@ export default function ComprasPage() {
                 <tr className="border-b border-zinc-800 text-xs text-zinc-500">
                   <th className="text-left px-4 py-3 font-medium">Número</th>
                   <th className="text-left px-4 py-3 font-medium">Fecha</th>
-                  <th className="text-left px-4 py-3 font-medium">Categoría</th>
+                  <th className="text-left px-4 py-3 font-medium">Vencimiento</th>
+                  <th className="text-left px-4 py-3 font-medium">Proveedor</th>
                   <th className="text-left px-4 py-3 font-medium">Descripción</th>
-                  <th className="text-left px-4 py-3 font-medium">Ubicación</th>
+                  <th className="text-left px-4 py-3 font-medium">Categoría</th>
                   <th className="text-left px-4 py-3 font-medium">Método</th>
                   <th className="text-right px-4 py-3 font-medium">Monto</th>
                   <th className="w-10" />
@@ -520,17 +521,20 @@ export default function ComprasPage() {
                     className="border-b border-zinc-800/60 hover:bg-zinc-900/60 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3 font-mono text-xs text-amber-400">{expense.invoiceNumber || expense.expenseNumber || <span className="text-zinc-600">—</span>}</td>
-                    <td className="px-4 py-3 text-zinc-400">{formatDate(expense.date)}</td>
+                    <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">{formatDate(expense.date)}</td>
+                    <td className="px-4 py-3 text-zinc-400 whitespace-nowrap text-xs">
+                      {expense.dueDate ? formatDate(expense.dueDate) : <span className="text-zinc-600">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-300 text-sm">
+                      {expense.supplierName || <span className="text-zinc-600">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400 max-w-xs truncate text-xs">
+                      {expense.description || <span className="text-zinc-600">—</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant={CATEGORY_VARIANT[expense.category]}>
                         {EXPENSE_CATEGORY_LABELS[expense.category]}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-300 max-w-xs truncate">
-                      {expense.description || expense.supplierName || <span className="text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400 text-xs">
-                      {expense.locationName ?? expense.locationId}
                     </td>
                     <td className="px-4 py-3 text-zinc-500 text-xs">
                       {EXPENSE_PAYMENT_METHOD_LABELS[expense.paymentMethod]}
@@ -544,7 +548,7 @@ export default function ComprasPage() {
                   </tr>
                 ))}
                 <tr className="border-t border-zinc-700">
-                  <td colSpan={6} className="px-4 py-3 text-xs text-zinc-500 font-medium">
+                  <td colSpan={7} className="px-4 py-3 text-xs text-zinc-500 font-medium">
                     Total ({filtered.length} compras)
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-amber-400">
