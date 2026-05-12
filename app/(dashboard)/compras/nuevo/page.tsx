@@ -98,7 +98,8 @@ export default function NuevoGastoPage() {
       const ext = file.name.split(".").pop();
       const path = `expenses/receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const sRef = storageRef(storage, path);
-      const uploadTask = uploadBytesResumable(sRef, file);
+      const metadata = file.type ? { contentType: file.type } : undefined;
+      const uploadTask = uploadBytesResumable(sRef, file, metadata);
       await new Promise<void>((resolve, reject) => {
         uploadTask.on(
           "state_changed",

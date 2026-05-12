@@ -11,13 +11,11 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
-    // Expense receipts — authenticated users can upload PDF/images up to 10 MB
+    // Expense receipts — any authenticated user can read/write up to 10 MB
     match /expenses/receipts/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null
-        && request.resource.size < 10 * 1024 * 1024
-        && (request.resource.contentType.matches('image/.*')
-            || request.resource.contentType == 'application/pdf');
+        && request.resource.size < 10 * 1024 * 1024;
     }
 
     // Default: deny everything else

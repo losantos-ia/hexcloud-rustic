@@ -189,7 +189,8 @@ service cloud.firestore {
     // Expenses
     match /expenses/{expenseId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if isAdminOrVendedor();
+      allow create: if request.auth != null;
+      allow update, delete: if isAdminOrVendedor();
     }
   }
 }
