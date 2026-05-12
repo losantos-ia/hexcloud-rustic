@@ -65,6 +65,13 @@ const STATUS_FLOW: { status: OrderStatus; label: string; icon: React.ReactNode }
   { status: "closed", label: "Cerrar pedido", icon: <CheckCircle2 size={13} /> },
 ];
 
+const MAINTENANCE_STATUS_FLOW: { status: OrderStatus; label: string; icon: React.ReactNode }[] = [
+  { status: "confirmed", label: "Confirmar pedido", icon: <CheckCircle2 size={13} /> },
+  { status: "delivered", label: "Marcar realizado", icon: <CheckCircle2 size={13} /> },
+  { status: "paid", label: "Marcar pagado", icon: <DollarSign size={13} /> },
+  { status: "closed", label: "Cerrar pedido", icon: <CheckCircle2 size={13} /> },
+];
+
 function isOverdue(date?: Date, status?: OrderStatus): boolean {
   if (!date || !status) return false;
   const terminal: OrderStatus[] = ["delivered", "installed", "paid", "closed", "cancelled"];
@@ -389,12 +396,13 @@ export default function OrderDetailPage() {
   }
 
   const overdue = isOverdue(order.promisedDeliveryDate, order.status);
-  const nextStatusAction = STATUS_FLOW.find((s) => s.status !== order.status &&
-    STATUS_FLOW.findIndex((x) => x.status === order.status) < STATUS_FLOW.findIndex((x) => x.status === s.status) &&
-    STATUS_FLOW.indexOf(s) === STATUS_FLOW.findIndex((x) => x.status === order.status) + 1
+  const activeFlow = order.projectType === "maintenance" ? MAINTENANCE_STATUS_FLOW : STATUS_FLOW;
+  const nextStatusAction = activeFlow.find((s) => s.status !== order.status &&
+    activeFlow.findIndex((x) => x.status === order.status) < activeFlow.findIndex((x) => x.status === s.status) &&
+    activeFlow.indexOf(s) === activeFlow.findIndex((x) => x.status === order.status) + 1
   );
 
-  const allStatusActions = STATUS_FLOW.filter((s) => s.status !== order.status);
+  const allStatusActions = activeFlow.filter((s) => s.status !== order.status);
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -433,7 +441,7 @@ export default function OrderDetailPage() {
           >
             <Download size={12} /> Ver PDF
           </Link>
-          {["closed", "cancelled", "delivered", "installed", "paid"].includes(order.status) ? (
+          {["closed", "cancelled", "delivered", "installed", "paid"].includes(order.status) || order.projectType === "maintenance" ? (
             <button
               disabled
               className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-500 cursor-not-allowed opacity-40"
