@@ -134,11 +134,13 @@ export default function TesoreriaPage() {
   const cashTotal      = accounts.filter((a) => a.type === "cash" || a.type === "store_cash").reduce((s, a) => s + a.currentBalance, 0);
   const profitsTotal   = accounts.filter((a) => a.type === "profits").reduce((s, a) => s + a.currentBalance, 0);
 
-  const filteredMovements = movements.filter((m) => {
-    if (filterAccount && m.treasuryAccountId !== filterAccount) return false;
-    if (filterType && m.type !== filterType) return false;
-    return true;
-  });
+  const filteredMovements = movements
+    .filter((m) => {
+      if (filterAccount && m.treasuryAccountId !== filterAccount) return false;
+      if (filterType && m.type !== filterType) return false;
+      return true;
+    })
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? "—";
 
