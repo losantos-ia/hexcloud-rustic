@@ -86,6 +86,7 @@ export default function GastoDetailPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [confirmDeletePaymentId, setConfirmDeletePaymentId] = useState<string | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [alreadyPaidNotice, setAlreadyPaidNotice] = useState(false);
 
   async function loadPayments() {
     const [p, a] = await Promise.all([
@@ -318,21 +319,31 @@ export default function GastoDetailPage() {
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setPaymentError(null);
-                      setPaymentForm({
-                        amount: "",
-                        date: new Date().toISOString().split("T")[0],
-                        accountId: accounts[0]?.id ?? "",
-                        notes: "",
-                      });
-                      setShowPaymentModal(true);
-                    }}
-                    className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 rounded-md px-2.5 py-1.5 transition-colors"
-                  >
-                    <Plus size={12} /> Registrar pago
-                  </button>
+                  <div className="flex flex-col items-end gap-1">
+                    {alreadyPaidNotice && (
+                      <p className="text-xs text-green-400 font-medium">&#10003; Este gasto ya est&aacute; pagado</p>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (remaining <= 0) {
+                          setAlreadyPaidNotice(true);
+                          setTimeout(() => setAlreadyPaidNotice(false), 3000);
+                          return;
+                        }
+                        setPaymentError(null);
+                        setPaymentForm({
+                          amount: "",
+                          date: new Date().toISOString().split("T")[0],
+                          accountId: accounts[0]?.id ?? "",
+                          notes: "",
+                        });
+                        setShowPaymentModal(true);
+                      }}
+                      className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 rounded-md px-2.5 py-1.5 transition-colors"
+                    >
+                      <Plus size={12} /> Registrar pago
+                    </button>
+                  </div>
                 </div>
 
                 {payments.length === 0 ? (
