@@ -198,6 +198,10 @@ export default function NewOrderPage() {
   const watchDepositPaid = watch("depositPaid");
   const watchTaxRate = watch("taxRate") ?? 0;
   const watchInstallation = watch("installationRequired");
+  const watchProjectType = watch("projectType");
+  const isMaintenance = watchProjectType === "maintenance";
+  const [maintInstallationDate, setMaintInstallationDate] = useState<string>("");
+  const [maintMaintenanceDate, setMaintMaintenanceDate] = useState<string>("");
   const [depositPercent, setDepositPercent] = useState(0);
 
   const subtotal = (watchItems ?? []).reduce((sum, item) => {
@@ -303,9 +307,17 @@ export default function NewOrderPage() {
           ([values.clientAddress, values.clientCity].filter(Boolean).join(", ") ||
           "Por definir");
         const installationDate =
-          values.promisedDeliveryDate
-            ? values.promisedDeliveryDate
-            : new Date().toISOString().split("T")[0];
+          maintInstallationDate ||
+          new Date().toISOString().split("T")[0];
+        const maintenanceFrequencyMonths = maintMaintenanceDate
+          ? Math.max(
+              1,
+              Math.round(
+                (new Date(maintMaintenanceDate).getTime() - new Date(installationDate).getTime()) /
+                  (1000 * 60 * 60 * 24 * 30)
+              )
+            )
+          : 6;
         await createMaintenanceAsset({
           clientId: selectedClient?.id ?? clean(values.clientId),
           clientName: values.clientName.trim(),
@@ -315,7 +327,7 @@ export default function NewOrderPage() {
           locationAddress,
           googleMapsUrl: clean(values.googleMapsUrl),
           installationDate,
-          maintenanceFrequencyMonths: 6,
+          maintenanceFrequencyMonths,
           status: "active",
           createdSource: "automatic",
           notes: clean(values.notes),
@@ -518,7 +530,25 @@ export default function NewOrderPage() {
         </Section>
 
         {/* Delivery */}
-        <Section title="Entrega e instalación">
+        {isMaintenance ? (
+          <Section title="Fechas del mantenimiento">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Fecha de instalación">
+                <DatePicker value={maintInstallationDate} onChange={(v) => setMaintInstallationDate(v ?? "")} />
+              </Field>
+              <Field label="Fecha de mantenimiento">
+                <DatePicker value={maintMaintenanceDate} onChange={(v) => setMaintMaintenanceDate(v ?? "")} />
+              </Field>
+              <Field label="Dirección" className="sm:col-span-2">
+                <Input {...register("deliveryAddress")} placeholder="Dirección de instalación" />
+              </Field>
+              <Field label="Link Google Maps" className="sm:col-span-2">
+                <Input {...register("googleMapsUrl")} placeholder="https://maps.google.com/..." />
+              </Field>
+            </div>
+          </Section>
+        ) : (
+          <Section title="Entrega e instalación">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Fecha de entrega prometida">
               <DatePicker value={watch("promisedDeliveryDate")} onChange={(v) => setValue("promisedDeliveryDate", v || undefined)} />
@@ -546,6 +576,7 @@ export default function NewOrderPage() {
             )}
           </div>
         </Section>
+        )}
 
         {/* Items */}
         <Section title="Ítems del pedido">
