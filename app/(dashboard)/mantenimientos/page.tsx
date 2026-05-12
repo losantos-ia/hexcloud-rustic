@@ -4,8 +4,8 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Plus, Wrench, AlertTriangle, Clock, CheckCircle2, Search, MoreHorizontal, Pencil } from "lucide-react";
-import { listMaintenanceAssets } from "@/lib/firestore/maintenance";
-import type { MaintenanceAsset, MaintenanceProjectType } from "@/types/maintenance";
+import { listMaintenanceAssets, listScheduledMaintenanceRecords } from "@/lib/firestore/maintenance";
+import type { MaintenanceAsset, MaintenanceProjectType, MaintenanceRecord } from "@/types/maintenance";
 import { MAINTENANCE_PROJECT_TYPE_LABELS, MAINTENANCE_ASSET_SOURCE_LABELS } from "@/types/maintenance";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
@@ -79,14 +79,27 @@ function RowMenu({ assetId }: { assetId: string }) {
 }
 export default function MantenimientosPage() {
   const [assets, setAssets] = useState<MaintenanceAsset[]>([]);
+  const [scheduledByAssetId, setScheduledByAssetId] = useState<Record<string, MaintenanceRecord>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<MaintenanceProjectType | "">("");
-  const [filterStatus, setFilterStatus] = useState<"overdue" | "upcoming" | "ok" | "">("");
+  const [filterStatus, setFilterStatus] = useState<"overdue" | "upcoming" | "ok" | "">("")
 
   useEffect(() => {
-    listMaintenanceAssets().then((data) => {
+    Promise.all([
+      listMaintenanceAssets(),
+      listScheduledMaintenanceRecords().catch(() => [] as MaintenanceRecord[]),
+    ]).then(([data, records]) => {
       setAssets(data.filter((a) => a.status === "active"));
+      // Keep only the earliest upcoming scheduled record per asset
+      const map: Record<string, MaintenanceRecord> = {};
+      for (const r of records) {
+        const existing = map[r.maintenanceAssetId];
+        if (!existing || r.scheduledDate < existing.scheduledDate) {
+          map[r.maintenanceAssetId] = r;
+        }
+      }
+      setScheduledByAssetId(map);
       setLoading(false);
     });
   }, []);
@@ -216,7 +229,14 @@ export default function MantenimientosPage() {
                           {formatDate(asset.nextMaintenanceDate)}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
+                          {scheduledByAssetId[asset.id] ? (
+                            <div className="flex flex-col gap-1">
+                              <Badge variant="blue">Programado</Badge>
+                              <span className="text-xs text-blue-400">{formatDate(scheduledByAssetId[asset.id].scheduledDate)}</span>
+                            </div>
+                          ) : (
+                            <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={asset.createdSource === "automatic" ? "blue" : "default"}>
@@ -246,13 +266,23 @@ export default function MantenimientosPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-medium text-zinc-100 truncate">{asset.clientName}</p>
-                          <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
+                          {scheduledByAssetId[asset.id] ? (
+                            <Badge variant="blue">Programado</Badge>
+                          ) : (
+                            <Badge variant={STATUS_VARIANT[st]}>{STATUS_LABEL[st]}</Badge>
+                          )}
                         </div>
                         <p className="text-xs text-zinc-500 mt-0.5">{MAINTENANCE_PROJECT_TYPE_LABELS[asset.projectType]} · {asset.clientPhone}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className={`text-xs font-medium ${st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-400"}`}>
-                            Próximo: {formatDate(asset.nextMaintenanceDate)}
-                          </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {scheduledByAssetId[asset.id] ? (
+                            <p className="text-xs font-medium text-blue-400">
+                              Programado: {formatDate(scheduledByAssetId[asset.id].scheduledDate)}
+                            </p>
+                          ) : (
+                            <p className={`text-xs font-medium ${st === "overdue" ? "text-red-400" : st === "upcoming" ? "text-amber-400" : "text-zinc-400"}`}>
+                              Próximo: {formatDate(asset.nextMaintenanceDate)}
+                            </p>
+                          )}
                           <Badge variant={asset.createdSource === "automatic" ? "blue" : "default"} className="text-[10px] py-0">
                             {MAINTENANCE_ASSET_SOURCE_LABELS[asset.createdSource ?? "manual"]}
                           </Badge>

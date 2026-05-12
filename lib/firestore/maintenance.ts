@@ -219,6 +219,16 @@ export async function completeMaintenanceRecord(
   });
 }
 
+export async function listScheduledMaintenanceRecords(): Promise<MaintenanceRecord[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, RECORDS_COL),
+      where("status", "in", ["scheduled", "pending"])
+    )
+  );
+  return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
+}
+
 export async function listMaintenanceRecordsByAsset(
   assetId: string
 ): Promise<MaintenanceRecord[]> {
