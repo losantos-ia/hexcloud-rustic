@@ -314,7 +314,7 @@ export default function GastoDetailPage() {
                     {payments.length > 0 && (
                       <p className="text-xs text-zinc-600 mt-0.5">
                         Pagado: <span className={remaining <= 0 ? "text-green-400" : "text-amber-400"}>{formatCurrency(totalPaid)}</span>
-                        {remaining > 0 && <span className="text-zinc-600"> · Pendiente: {formatCurrency(remaining)}</span>}
+                        {remaining > 0 && <span className="text-red-400"> · Pendiente: {formatCurrency(remaining)}</span>}
                         {remaining <= 0 && <span className="text-green-400"> · Saldado</span>}
                       </p>
                     )}
