@@ -86,6 +86,7 @@ export default function GastoDetailPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [confirmDeletePaymentId, setConfirmDeletePaymentId] = useState<string | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [alreadyPaidNotice, setAlreadyPaidNotice] = useState(false);
 
   async function loadPayments() {
     const [p, a] = await Promise.all([
@@ -313,72 +314,90 @@ export default function GastoDetailPage() {
                     {payments.length > 0 && (
                       <p className="text-xs text-zinc-600 mt-0.5">
                         Pagado: <span className={remaining <= 0 ? "text-green-400" : "text-amber-400"}>{formatCurrency(totalPaid)}</span>
-                        {remaining > 0 && <span className="text-zinc-600"> · Pendiente: {formatCurrency(remaining)}</span>}
+                        {remaining > 0 && <span className="text-red-400"> · Pendiente: {formatCurrency(remaining)}</span>}
                         {remaining <= 0 && <span className="text-green-400"> · Saldado</span>}
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setPaymentError(null);
-                      setPaymentForm({
-                        amount: "",
-                        date: new Date().toISOString().split("T")[0],
-                        accountId: accounts[0]?.id ?? "",
-                        notes: "",
-                      });
-                      setShowPaymentModal(true);
-                    }}
-                    className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 rounded-md px-2.5 py-1.5 transition-colors"
-                  >
-                    <Plus size={12} /> Registrar pago
-                  </button>
+                  <div className="flex flex-col items-end gap-1">
+                    {alreadyPaidNotice && (
+                      <p className="text-xs text-green-400 font-medium">&#10003; Este gasto ya est&aacute; pagado</p>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (remaining <= 0) {
+                          setAlreadyPaidNotice(true);
+                          setTimeout(() => setAlreadyPaidNotice(false), 3000);
+                          return;
+                        }
+                        setPaymentError(null);
+                        setPaymentForm({
+                          amount: remaining > 0 ? String(remaining) : "",
+                          date: new Date().toISOString().split("T")[0],
+                          accountId: accounts[0]?.id ?? "",
+                          notes: "",
+                        });
+                        setShowPaymentModal(true);
+                      }}
+                      className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/50 rounded-md px-2.5 py-1.5 transition-colors"
+                    >
+                      <Plus size={12} /> Registrar pago
+                    </button>
+                  </div>
                 </div>
 
                 {payments.length === 0 ? (
                   <div className="px-4 py-6 text-center text-xs text-zinc-600">Sin pagos registrados</div>
                 ) : (
-                  <div className="divide-y divide-zinc-800">
-                    {payments.map((p) => {
+                  <div className="px-4 py-3 flex flex-col gap-0">
+                    {[...payments].sort((a, b) => a.date.getTime() - b.date.getTime()).map((p, idx, arr) => {
                       const AccIcon = ACCOUNT_ICON[accounts.find((a) => a.id === p.accountId)?.type ?? "other"];
+                      const isLast = idx === arr.length - 1;
                       return (
-                        <div key={p.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="size-7 rounded-md bg-zinc-800 flex items-center justify-center shrink-0">
+                        <div key={p.id} className="flex gap-3">
+                          {/* Timeline spine */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className="size-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center z-10">
                               <AccIcon size={13} className="text-amber-400" />
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-zinc-200 tabular-nums">{formatCurrency(p.amount)}</p>
-                              <p className="text-xs text-zinc-500 truncate">
-                                {p.accountName} · {p.date.toLocaleDateString("es-ES")}
-                              </p>
-                            </div>
+                            {!isLast && <div className="w-px flex-1 bg-zinc-800 my-1" />}
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {confirmDeletePaymentId === p.id ? (
-                              <>
+                          {/* Content */}
+                          <div className={`flex-1 min-w-0 flex items-start justify-between gap-2 ${!isLast ? "pb-4" : "pb-1"}`}>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-zinc-100 tabular-nums">{formatCurrency(p.amount)}</p>
+                              <p className="text-xs text-zinc-400 mt-0.5">
+                                {p.date.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                              </p>
+                              <p className="text-xs text-zinc-600 mt-0.5 truncate">{p.accountName}</p>
+                              {p.notes && <p className="text-xs text-zinc-500 italic mt-0.5 truncate">{p.notes}</p>}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                              {confirmDeletePaymentId === p.id ? (
+                                <>
+                                  <button
+                                    onClick={() => handleDeletePayment(p.id)}
+                                    disabled={deletingPaymentId === p.id}
+                                    className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                  >
+                                    {deletingPaymentId === p.id ? "…" : "Confirmar"}
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmDeletePaymentId(null)}
+                                    className="text-zinc-500 hover:text-zinc-300 p-1 rounded-md hover:bg-zinc-800 transition-colors"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </>
+                              ) : (
                                 <button
-                                  onClick={() => handleDeletePayment(p.id)}
-                                  disabled={deletingPaymentId === p.id}
-                                  className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                  onClick={() => setConfirmDeletePaymentId(p.id)}
+                                  className="text-zinc-600 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-colors"
                                 >
-                                  {deletingPaymentId === p.id ? "…" : "Confirmar"}
+                                  <Trash2 size={12} />
                                 </button>
-                                <button
-                                  onClick={() => setConfirmDeletePaymentId(null)}
-                                  className="text-zinc-500 hover:text-zinc-300 p-1 rounded-md hover:bg-zinc-800 transition-colors"
-                                >
-                                  <X size={12} />
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => setConfirmDeletePaymentId(p.id)}
-                                className="text-zinc-600 hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-colors"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
