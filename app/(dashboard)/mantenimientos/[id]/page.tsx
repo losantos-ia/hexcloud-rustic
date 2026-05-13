@@ -19,6 +19,7 @@ import {
   listPendingMaintenanceNotifications,
   markNotificationAsSent,
 } from "@/lib/firestore/maintenance";
+import { getOrderById } from "@/lib/firestore/orders";
 import type { MaintenanceAsset, MaintenanceRecord, MaintenanceNotification } from "@/types/maintenance";
 import {
   MAINTENANCE_PROJECT_TYPE_LABELS,
@@ -96,6 +97,7 @@ export default function MaintenanceAssetDetailPage() {
   const [notifications, setNotifications] = useState<MaintenanceNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [linkedOrderNumber, setLinkedOrderNumber] = useState<string | null>(null);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [completing, setCompleting] = useState<string | null>(null);
@@ -128,6 +130,11 @@ export default function MaintenanceAssetDetailPage() {
       setAsset(a);
       setRecords(r);
       setNotifications(n.filter((notif) => notif.maintenanceAssetId === assetId));
+      if (a.orderId) {
+        getOrderById(a.orderId).then((order) => {
+          if (order) setLinkedOrderNumber(order.orderNumber);
+        }).catch(() => {});
+      }
       setLoading(false);
     }).catch(() => { setLoadError("Error al cargar el activo."); setLoading(false); });
   }, [assetId]);
@@ -248,7 +255,17 @@ export default function MaintenanceAssetDetailPage() {
         <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-3">
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Proyecto</h3>
           <InfoRow icon={Wrench} label="Tipo" value={MAINTENANCE_PROJECT_TYPE_LABELS[asset.projectType]} />
-          {asset.orderId && <InfoRow icon={Wrench} label="Pedido" value={asset.orderId} />}
+          {asset.orderId && (
+            <div className="flex items-start gap-3">
+              <Wrench className="size-4 text-zinc-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[11px] text-zinc-500">Pedido</p>
+                <Link href={`/pedidos/${asset.orderId}`} className="text-sm text-amber-400 hover:underline">
+                  {linkedOrderNumber ?? asset.orderId}
+                </Link>
+              </div>
+            </div>
+          )}
           {asset.productionOrderId && <InfoRow icon={Wrench} label="Producción" value={asset.productionOrderId} />}
         </div>
 
