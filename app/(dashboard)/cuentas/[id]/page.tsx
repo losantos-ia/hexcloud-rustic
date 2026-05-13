@@ -145,7 +145,7 @@ export default function TreasuryAccountDetailPage() {
         treasuryAccountId: id,
         type,
         amount,
-        date: new Date(movDate),
+        date: new Date(`${movDate}T12:00:00`),
         description: movDesc.trim(),
         referenceType: "manual",
       });
@@ -165,7 +165,7 @@ export default function TreasuryAccountDetailPage() {
         fromAccountId: id,
         toAccountId: transferTo,
         amount,
-        date: new Date(transferDate),
+        date: new Date(`${transferDate}T12:00:00`),
         notes: transferNotes.trim() || undefined,
       });
       setModal(null);
@@ -185,7 +185,7 @@ export default function TreasuryAccountDetailPage() {
         treasuryAccountId: id,
         type: "adjustment",
         amount,
-        date: new Date(adjDate),
+        date: new Date(`${adjDate}T12:00:00`),
         description: adjDesc.trim(),
         referenceType: "manual",
       });
