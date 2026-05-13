@@ -133,7 +133,7 @@ export default function GastoDetailPage() {
         amount: Number(paymentForm.amount),
         date: paymentDate,
         description: expense
-          ? `Gasto: ${expense.supplierName ?? expense.category} – ${expense.expenseNumber ?? id}`
+          ? `Gasto: ${expense.supplierName ?? expense.category}${expense.invoiceNumber ? ` – Fac. ${expense.invoiceNumber}` : ""}`
           : `Pago de gasto ${id}`,
         referenceType: "expense",
         referenceId: paymentId,
