@@ -492,6 +492,9 @@ export default function ComprasPage() {
   const [filterFrom, setFilterFrom] = useState("");
   const [filterTo, setFilterTo] = useState("");
 
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     Promise.all([listExpenses(), listInventoryLocations(), listAllExpensePayments().catch(() => [])])
       .then(([exp, locs, payments]) => {
@@ -560,6 +563,37 @@ export default function ComprasPage() {
     () => filtered.reduce((s, e) => s + e.amount, 0),
     [filtered]
   );
+
+  const allSelected = filtered.length > 0 && filtered.every((e) => selectedIds.has(e.id));
+  const someSelected = !allSelected && filtered.some((e) => selectedIds.has(e.id));
+  const selectedTotal = useMemo(
+    () => filtered.filter((e) => selectedIds.has(e.id)).reduce((s, e) => s + e.amount, 0),
+    [filtered, selectedIds]
+  );
+
+  function toggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((e) => next.delete(e.id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((e) => next.add(e.id));
+        return next;
+      });
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -658,6 +692,15 @@ export default function ComprasPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-xs text-zinc-500">
+                  <th className="pl-4 pr-2 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                      onChange={toggleAll}
+                      className="size-3.5 rounded accent-amber-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 font-medium">Número</th>
                   <th className="text-left px-4 py-3 font-medium">Fecha</th>
                   <th className="text-left px-4 py-3 font-medium">Vencimiento</th>
@@ -675,8 +718,18 @@ export default function ComprasPage() {
                   <tr
                     key={expense.id}
                     onClick={() => window.location.href = `/compras/${expense.id}`}
-                    className="border-b border-zinc-800/60 hover:bg-zinc-900/60 cursor-pointer transition-colors"
+                    className={`border-b border-zinc-800/60 cursor-pointer transition-colors ${
+                      selectedIds.has(expense.id) ? "bg-amber-500/5 hover:bg-amber-500/10" : "hover:bg-zinc-900/60"
+                    }`}
                   >
+                    <td className="pl-4 pr-2 py-3" onClick={(e) => { e.stopPropagation(); toggleRow(expense.id); }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(expense.id)}
+                        onChange={() => toggleRow(expense.id)}
+                        className="size-3.5 rounded accent-amber-500 cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-amber-400">{expense.invoiceNumber || expense.expenseNumber || <span className="text-zinc-600">—</span>}</td>
                     <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">{formatDate(expense.date)}</td>
                     <td className="px-4 py-3 text-zinc-400 whitespace-nowrap text-xs">
@@ -713,6 +766,7 @@ export default function ComprasPage() {
                   </tr>
                 ))}
                 <tr className="border-t border-zinc-700">
+                  <td />
                   <td colSpan={8} className="px-4 py-3 text-xs text-zinc-500 font-medium">
                     Total ({filtered.length} compras)
                   </td>
@@ -759,6 +813,28 @@ export default function ComprasPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Fixed selection bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 px-6 py-3.5 bg-zinc-900/95 backdrop-blur border-t border-zinc-700 shadow-2xl">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold text-zinc-100">
+              {selectedIds.size} {selectedIds.size === 1 ? "seleccionada" : "seleccionadas"}
+            </span>
+            <span className="h-4 w-px bg-zinc-700" />
+            <span className="text-sm text-zinc-400">
+              Total: <span className="font-bold text-amber-400">{formatCurrency(selectedTotal)}</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-500 transition-colors"
+          >
+            <X size={13} /> Deseleccionar
+          </button>
+        </div>
       )}
     </div>
   );
