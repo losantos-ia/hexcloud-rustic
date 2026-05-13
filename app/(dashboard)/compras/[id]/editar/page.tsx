@@ -145,12 +145,16 @@ export default function EditarGastoPage() {
 
   const lineItemsWatched = watch("lineItems") ?? [];
   const hasItems = fields.length > 0;
-  const computedTotal = lineItemsWatched.reduce((sum, item) => {
+  const computedSubtotal = lineItemsWatched.reduce((sum, item) => {
     return sum + (Number(item?.quantity) || 0) * (Number(item?.unitPrice) || 0);
   }, 0);
+  const computedItemTax = lineItemsWatched.reduce((sum, item) => {
+    const base = (Number(item?.quantity) || 0) * (Number(item?.unitPrice) || 0);
+    return sum + base * (Number(item?.taxRate) || 0) / 100;
+  }, 0);
   const taxRateWatched = Number(watch("taxRate") ?? 0);
-  const subtotal = hasItems ? computedTotal : manualSubtotal;
-  const taxAmount = subtotal * taxRateWatched / 100;
+  const subtotal = hasItems ? computedSubtotal : manualSubtotal;
+  const taxAmount = hasItems ? computedItemTax : manualSubtotal * taxRateWatched / 100;
   const totalFinal = subtotal + taxAmount;
 
   useEffect(() => {
@@ -194,6 +198,7 @@ export default function EditarGastoPage() {
             description: i.description,
             quantity: i.quantity,
             unitPrice: i.unitPrice,
+            taxRate: i.taxRate ?? 0,
           })) : [],
           orderId: expense.orderId ?? "",
           orderNumber: expense.orderNumber ?? "",
@@ -586,6 +591,7 @@ export default function EditarGastoPage() {
                         <th className="text-left text-xs text-zinc-500 font-normal pb-2 pr-3">Descripción</th>
                         <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-28">Unidades</th>
                         <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-32">Precio unit.</th>
+                        <th className="text-right text-xs text-zinc-500 font-normal pb-2 px-3 w-24">ISV %</th>
                         <th className="text-right text-xs text-zinc-500 font-normal pb-2 pl-3 w-28">Total</th>
                         <th className="w-8" />
                       </tr>
@@ -594,7 +600,9 @@ export default function EditarGastoPage() {
                       {fields.map((field, index) => {
                         const qty = Number(lineItemsWatched[index]?.quantity) || 0;
                         const price = Number(lineItemsWatched[index]?.unitPrice) || 0;
-                        const rowTotal = qty * price;
+                        const itemTax = Number(lineItemsWatched[index]?.taxRate) || 0;
+                        const rowBase = qty * price;
+                        const rowTotal = rowBase + rowBase * itemTax / 100;
                         return (
                           <tr key={field.id} className="border-b border-zinc-800/60 last:border-0">
                             <td className="py-2 pr-3">
@@ -636,6 +644,9 @@ export default function EditarGastoPage() {
                             <td className="py-2 px-3">
                               <input type="number" step="0.01" min="0" {...register(`lineItems.${index}.unitPrice`, { valueAsNumber: true })} className={`${cellInputCls} text-right`} />
                             </td>
+                            <td className="py-2 px-3">
+                              <input type="number" step="0.01" min="0" max="100" {...register(`lineItems.${index}.taxRate`, { valueAsNumber: true })} className={`${cellInputCls} text-right`} />
+                            </td>
                             <td className="py-2 pl-3 text-right text-sm text-zinc-200 font-mono tabular-nums whitespace-nowrap">
                               {fmt(rowTotal)}
                             </td>
@@ -650,8 +661,8 @@ export default function EditarGastoPage() {
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={3} className="pt-3 text-right text-xs text-zinc-500 pr-3">Total</td>
-                        <td className="pt-3 text-right text-zinc-100 font-semibold font-mono tabular-nums">{fmt(computedTotal)}</td>
+                        <td colSpan={4} className="pt-3 text-right text-xs text-zinc-500 pr-3">Subtotal</td>
+                        <td className="pt-3 text-right text-zinc-100 font-semibold font-mono tabular-nums">{fmt(computedSubtotal)}</td>
                         <td />
                       </tr>
                     </tfoot>
@@ -661,7 +672,7 @@ export default function EditarGastoPage() {
               <div className="mt-3">
                 <button
                   type="button"
-                  onClick={() => append({ sku: "", inventoryItemId: "", description: "", quantity: 1, unitPrice: 0 })}
+                  onClick={() => append({ sku: "", inventoryItemId: "", description: "", quantity: 1, unitPrice: 0, taxRate: 15 })}
                   className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 rounded-md px-2.5 py-1.5 transition-colors"
                 >
                   <Plus size={12} /> Añadir ítem
@@ -689,21 +700,23 @@ export default function EditarGastoPage() {
                     </div>
                   </div>
                 )}
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Impuesto (%)</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      placeholder="0"
-                      {...register("taxRate", { valueAsNumber: true })}
-                      className="w-24 h-9 bg-zinc-800 border border-zinc-700 rounded px-3 text-sm text-zinc-200 focus:outline-none focus:border-amber-500"
-                    />
-                    <span className="text-zinc-500 text-sm">%</span>
+                {!hasItems && (
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1.5">Impuesto (%)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        placeholder="0"
+                        {...register("taxRate", { valueAsNumber: true })}
+                        className="w-24 h-9 bg-zinc-800 border border-zinc-700 rounded px-3 text-sm text-zinc-200 focus:outline-none focus:border-amber-500"
+                      />
+                      <span className="text-zinc-500 text-sm">%</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 px-5 py-4 w-full sm:w-64 flex flex-col gap-2 shrink-0">
                 <div className="flex justify-between text-sm text-zinc-400">
@@ -711,7 +724,7 @@ export default function EditarGastoPage() {
                   <span className="font-mono">L {fmt(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-zinc-400">
-                  <span>ISV ({taxRateWatched}%)</span>
+                  <span>{hasItems ? "ISV" : `ISV (${taxRateWatched}%)`}</span>
                   <span className="font-mono">L {fmt(taxAmount)}</span>
                 </div>
                 <div className="h-px bg-zinc-700 my-1" />
