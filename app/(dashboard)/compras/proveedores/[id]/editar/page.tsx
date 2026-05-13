@@ -44,6 +44,7 @@ export default function EditarProveedorPage() {
       if (s) {
         reset({
           name: s.name,
+          rtn: s.rtn ?? "",
           contactName: s.contactName ?? "",
           phone: s.phone ?? "",
           email: s.email ?? "",
@@ -51,10 +52,11 @@ export default function EditarProveedorPage() {
           category: s.category,
           notes: s.notes ?? "",
         });
+        setValue("category", s.category);
       }
       setLoading(false);
     });
-  }, [id, reset]);
+  }, [id, reset, setValue]);
 
   async function onSubmit(values: SupplierFormValues) {
     setSubmitting(true);
@@ -88,23 +90,45 @@ export default function EditarProveedorPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
         <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-zinc-300">Información del proveedor</h2>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <Label>Nombre *</Label>
-              <Input {...register("name")} className="bg-zinc-950 border-zinc-800 text-zinc-200" />
+              <Label>Nombre de la empresa *</Label>
+              <Input
+                {...register("name")}
+                placeholder="Ej. Maderería Nacional"
+                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
               {errors.name && <p className="text-xs text-red-400">{errors.name.message}</p>}
             </div>
+
             <div className="flex flex-col gap-1.5">
-              <Label>Contacto</Label>
-              <Input {...register("contactName")} className="bg-zinc-950 border-zinc-800 text-zinc-200" />
+              <Label>RTN (Registro Tributario Nacional)</Label>
+              <Input
+                {...register("rtn")}
+                placeholder="Ej. 08019999123456"
+                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Nombre del contacto</Label>
+              <Input
+                {...register("contactName")}
+                placeholder="Nombre de la persona de contacto"
+                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label>Categoría *</Label>
               <Select
+                defaultValue={"general"}
                 onValueChange={(v) => setValue("category", v as SupplierFormValues["category"])}
               >
                 <SelectTrigger className="bg-zinc-950 border-zinc-800 text-zinc-200">
-                  <SelectValue placeholder="Seleccionar" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-900 border-zinc-800">
                   {Object.entries(SUPPLIER_CATEGORY_LABELS).map(([k, v]) => (
@@ -112,23 +136,46 @@ export default function EditarProveedorPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.category && <p className="text-xs text-red-400">{errors.category.message}</p>}
             </div>
+
             <div className="flex flex-col gap-1.5">
               <Label>Teléfono</Label>
-              <Input {...register("phone")} className="bg-zinc-950 border-zinc-800 text-zinc-200" />
+              <Input
+                {...register("phone")}
+                placeholder="+504 0000-0000"
+                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
             </div>
+
             <div className="flex flex-col gap-1.5">
-              <Label>Correo</Label>
-              <Input {...register("email")} type="email" className="bg-zinc-950 border-zinc-800 text-zinc-200" />
+              <Label>Correo electrónico</Label>
+              <Input
+                {...register("email")}
+                type="email"
+                placeholder="correo@proveedor.com"
+                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
               {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
             </div>
+
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <Label>Dirección</Label>
-              <Input {...register("address")} className="bg-zinc-950 border-zinc-800 text-zinc-200" />
+              <Input
+                {...register("address")}
+                placeholder="Dirección física"
+                className="bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
             </div>
+
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <Label>Notas</Label>
-              <Textarea {...register("notes")} rows={3} className="resize-y bg-zinc-950 border-zinc-800 text-zinc-200" />
+              <Textarea
+                {...register("notes")}
+                placeholder="Condiciones de pago, tiempos de entrega, etc."
+                rows={3}
+                className="resize-y bg-zinc-950 border-zinc-800 text-zinc-200"
+              />
             </div>
           </div>
         </div>

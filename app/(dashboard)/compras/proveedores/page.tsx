@@ -12,6 +12,7 @@ import {
   MoreVertical,
   Trash2,
   Eye,
+  Pencil,
   Phone,
   Mail,
   Users,
@@ -208,6 +209,12 @@ export default function ProveedoresPage() {
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
                       >
                         <Eye className="size-4" /> Ver detalle
+                      </button>
+                      <button
+                        onClick={() => { router.push(`/compras/proveedores/${s.id}/editar`); setOpenMenuId(null); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+                      >
+                        <Pencil className="size-4" /> Editar
                       </button>
                       <button
                         onClick={() => handleToggleActive(s)}
