@@ -15,14 +15,17 @@ import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import { useCurrency } from "@/context/currency-context";
 import { listPaymentsByExpense, createExpensePayment, deleteExpensePayment } from "@/lib/firestore/expense-payments";
-import { listAccounts } from "@/lib/firestore/accounts";
-import type { ExpensePayment, Account, AccountType } from "@/types/accounts";
-import { ACCOUNT_TYPE_LABELS } from "@/types/accounts";
+import { listTreasuryAccounts, createTreasuryMovement } from "@/lib/firestore/treasury";
+import type { ExpensePayment } from "@/types/accounts";
+import type { TreasuryAccount, TreasuryAccountType } from "@/types/treasury";
+import { TREASURY_ACCOUNT_TYPE_LABELS } from "@/types/treasury";
 
-const ACCOUNT_ICON: Record<AccountType, React.ElementType> = {
+const ACCOUNT_ICON: Record<TreasuryAccountType, React.ElementType> = {
   bank: Landmark,
   cash: Wallet,
-  credit: CreditCard,
+  store_cash: Wallet,
+  savings: Landmark,
+  profits: Landmark,
   other: Circle,
 };
 
@@ -79,7 +82,7 @@ export default function GastoDetailPage() {
 
   // Payments state
   const [payments, setPayments] = useState<ExpensePayment[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<TreasuryAccount[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", accountId: "", notes: "" });
   const [paymentSaving, setPaymentSaving] = useState(false);
@@ -91,7 +94,7 @@ export default function GastoDetailPage() {
   async function loadPayments() {
     const [p, a] = await Promise.all([
       listPaymentsByExpense(id).catch(() => [] as ExpensePayment[]),
-      listAccounts().catch(() => [] as Account[]),
+      listTreasuryAccounts().catch(() => [] as TreasuryAccount[]),
     ]);
     setPayments(p);
     setAccounts(a);
@@ -115,13 +118,25 @@ export default function GastoDetailPage() {
     setPaymentSaving(true);
     setPaymentError(null);
     try {
-      await createExpensePayment({
+      const paymentDate = new Date(`${paymentForm.date}T12:00:00`);
+      const paymentId = await createExpensePayment({
         expenseId: id,
         amount: Number(paymentForm.amount),
-        date: new Date(paymentForm.date),
+        date: paymentDate,
         accountId: account.id,
         accountName: account.name,
         notes: paymentForm.notes.trim() || undefined,
+      });
+      await createTreasuryMovement({
+        treasuryAccountId: account.id,
+        type: "expense",
+        amount: Number(paymentForm.amount),
+        date: paymentDate,
+        description: expense
+          ? `Gasto: ${expense.supplierName ?? expense.category} – ${expense.expenseNumber ?? id}`
+          : `Pago de gasto ${id}`,
+        referenceType: "expense",
+        referenceId: paymentId,
       });
       setShowPaymentModal(false);
       setPaymentForm({ amount: "", date: "", accountId: "", notes: "" });
@@ -565,9 +580,9 @@ export default function GastoDetailPage() {
                     className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-amber-500 transition-colors"
                   >
                     <option value="">Seleccionar cuenta…</option>
-                    {accounts.map((a) => (
+                      {accounts.map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.name} ({ACCOUNT_TYPE_LABELS[a.type]})
+                        {a.name} ({TREASURY_ACCOUNT_TYPE_LABELS[a.type]})
                       </option>
                     ))}
                   </select>
