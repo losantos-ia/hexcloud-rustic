@@ -694,13 +694,13 @@ export default function ComprasPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-xs text-zinc-500">
-                  <th className="pl-4 pr-2 py-3 w-8">
+                  <th className="pl-4 pr-2 py-3 w-8 cursor-pointer" onClick={toggleAll}>
                     <input
                       type="checkbox"
                       checked={allSelected}
                       ref={(el) => { if (el) el.indeterminate = someSelected; }}
-                      onChange={toggleAll}
-                      className="size-3.5 rounded accent-amber-500 cursor-pointer"
+                      onChange={() => {}}
+                      className="size-3.5 rounded accent-amber-500 pointer-events-none"
                     />
                   </th>
                   <th className="text-left px-4 py-3 font-medium">Número</th>
@@ -725,14 +725,14 @@ export default function ComprasPage() {
                     }`}
                   >
                     <td
-                      className="pl-4 pr-2 py-3"
+                      className="pl-4 pr-2 py-3 cursor-pointer"
                       onClick={(e) => { e.stopPropagation(); toggleRow(expense.id); }}
                     >
                       <input
                         type="checkbox"
                         checked={selectedIds.has(expense.id)}
-                        onChange={() => toggleRow(expense.id)}
-                        className="size-3.5 rounded accent-amber-500 cursor-pointer"
+                        onChange={() => {}}
+                        className="size-3.5 rounded accent-amber-500 pointer-events-none"
                       />
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-amber-400" onClick={(e) => e.stopPropagation()}>
