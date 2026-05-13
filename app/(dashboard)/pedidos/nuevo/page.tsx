@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, Plus, Trash2, Search, X, ShoppingCart, Package } fr
 import Link from "next/link";
 import { orderSchema, type OrderFormValues } from "@/lib/schemas/order";
 import { createOrder } from "@/lib/firestore/orders";
+import { createMaintenanceAsset, createMaintenanceRecord } from "@/lib/firestore/maintenance";
 import { getQuotationById, listQuotationItems, updateQuotation } from "@/lib/firestore/quotations";
 import { listClients, getClientById } from "@/lib/firestore/clients";
 import { listInventoryItems } from "@/lib/firestore/inventory";
@@ -178,12 +179,14 @@ export default function NewOrderPage() {
           notes: q.notes ?? "",
           internalNotes: q.internalNotes ?? "",
           items: qItems.map((i) => ({
-            description: i.description,
+            description: i.notes?.trim()
+              ? `${i.description}\n${i.notes.trim()}`
+              : i.description,
             quantity: i.quantity,
             unit: i.unit ?? "und",
             unitPrice: i.unitPrice,
             category: mapCat(i.category),
-            notes: i.notes ?? "",
+            notes: "",
           })),
         });
       }
@@ -197,6 +200,10 @@ export default function NewOrderPage() {
   const watchDepositPaid = watch("depositPaid");
   const watchTaxRate = watch("taxRate") ?? 0;
   const watchInstallation = watch("installationRequired");
+  const watchProjectType = watch("projectType");
+  const isMaintenance = watchProjectType === "maintenance";
+  const [maintInstallationDate, setMaintInstallationDate] = useState<string>("");
+  const [maintMaintenanceDate, setMaintMaintenanceDate] = useState<string>("");
   const [depositPercent, setDepositPercent] = useState(0);
 
   const subtotal = (watchItems ?? []).reduce((sum, item) => {
@@ -285,7 +292,9 @@ export default function NewOrderPage() {
         finalSalePrice: values.finalSalePrice,
         depositRequired: values.depositRequired,
         depositPaid: values.depositPaid,
-        promisedDeliveryDate: values.promisedDeliveryDate ? new Date(values.promisedDeliveryDate) : undefined,
+        promisedDeliveryDate: isMaintenance
+          ? (maintMaintenanceDate ? new Date(`${maintMaintenanceDate}T12:00:00`) : undefined)
+          : (values.promisedDeliveryDate ? new Date(`${values.promisedDeliveryDate}T12:00:00`) : undefined),
         installationRequired: values.installationRequired,
         deliveryAddress: clean(values.deliveryAddress),
         googleMapsUrl: clean(values.googleMapsUrl),
@@ -295,6 +304,46 @@ export default function NewOrderPage() {
       });
       if (fromQuotationId) {
         await updateQuotation(fromQuotationId, { status: "converted_to_order" });
+      }
+      if (values.projectType === "maintenance") {
+        const locationAddress =
+          clean(values.deliveryAddress) ??
+          ([values.clientAddress, values.clientCity].filter(Boolean).join(", ") ||
+          "Por definir");
+        const installationDate =
+          maintInstallationDate ||
+          new Date().toISOString().split("T")[0];
+        const maintenanceFrequencyMonths = maintMaintenanceDate
+          ? Math.max(
+              1,
+              Math.round(
+                (new Date(maintMaintenanceDate).getTime() - new Date(installationDate).getTime()) /
+                  (1000 * 60 * 60 * 24 * 30)
+              )
+            )
+          : 6;
+        const assetId = await createMaintenanceAsset({
+          clientId: selectedClient?.id ?? clean(values.clientId),
+          clientName: values.clientName.trim(),
+          clientPhone: values.clientPhone.trim(),
+          projectType: "custom",
+          orderId: id,
+          locationAddress,
+          googleMapsUrl: clean(values.googleMapsUrl),
+          installationDate,
+          maintenanceFrequencyMonths,
+          status: "active",
+          createdSource: "automatic",
+          notes: clean(values.notes),
+        });
+        if (maintMaintenanceDate) {
+          await createMaintenanceRecord({
+            maintenanceAssetId: assetId,
+            scheduledDate: maintMaintenanceDate,
+            type: "preventive",
+            status: "scheduled",
+          });
+        }
       }
       router.push(`/pedidos/${id}`);
     } catch {
@@ -493,7 +542,25 @@ export default function NewOrderPage() {
         </Section>
 
         {/* Delivery */}
-        <Section title="Entrega e instalación">
+        {isMaintenance ? (
+          <Section title="Fechas del mantenimiento">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Fecha de instalación">
+                <DatePicker value={maintInstallationDate} onChange={(v) => setMaintInstallationDate(v ?? "")} />
+              </Field>
+              <Field label="Fecha de mantenimiento">
+                <DatePicker value={maintMaintenanceDate} onChange={(v) => setMaintMaintenanceDate(v ?? "")} />
+              </Field>
+              <Field label="Dirección" className="sm:col-span-2">
+                <Input {...register("deliveryAddress")} placeholder="Dirección de instalación" />
+              </Field>
+              <Field label="Link Google Maps" className="sm:col-span-2">
+                <Input {...register("googleMapsUrl")} placeholder="https://maps.google.com/..." />
+              </Field>
+            </div>
+          </Section>
+        ) : (
+          <Section title="Entrega e instalación">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Fecha de entrega prometida">
               <DatePicker value={watch("promisedDeliveryDate")} onChange={(v) => setValue("promisedDeliveryDate", v || undefined)} />
@@ -521,6 +588,7 @@ export default function NewOrderPage() {
             )}
           </div>
         </Section>
+        )}
 
         {/* Items */}
         <Section title="Ítems del pedido">
@@ -574,7 +642,7 @@ export default function NewOrderPage() {
                         <textarea
                           {...register(`items.${idx}.description`)}
                           placeholder="Descripción del ítem…"
-                          rows={1}
+                          rows={Math.max(2, (watchItems?.[idx]?.description ?? "").split("\n").length)}
                           className={`${cellCls} resize-y min-h-[2rem]`}
                         />
                         {errors.items?.[idx]?.description && (

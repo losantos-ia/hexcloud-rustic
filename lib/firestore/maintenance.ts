@@ -154,6 +154,15 @@ export async function getMaintenanceAssetById(id: string): Promise<MaintenanceAs
   return docToAsset(snap.id, snap.data() as Record<string, unknown>);
 }
 
+export async function getMaintenanceAssetByOrderId(orderId: string): Promise<MaintenanceAsset | null> {
+  const snap = await getDocs(
+    query(collection(db, ASSETS_COL), where("orderId", "==", orderId))
+  );
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return docToAsset(d.id, d.data() as Record<string, unknown>);
+}
+
 export async function listMaintenanceAssets(): Promise<MaintenanceAsset[]> {
   const snap = await getDocs(
     query(collection(db, ASSETS_COL), orderBy("nextMaintenanceDate", "asc"))
@@ -166,17 +175,18 @@ export async function listMaintenanceAssets(): Promise<MaintenanceAsset[]> {
 export async function createMaintenanceRecord(
   values: MaintenanceRecordFormValues
 ): Promise<string> {
-  const ref = await addDoc(collection(db, RECORDS_COL), {
+  const payload: Record<string, unknown> = {
     ...stripUndefined(values as object),
     scheduledDate: Timestamp.fromDate(new Date(`${values.scheduledDate}T00:00:00`)),
-    completedDate: values.completedDate
-      ? Timestamp.fromDate(new Date(`${values.completedDate}T00:00:00`))
-      : undefined,
     type: values.type ?? "preventive",
     status: values.status ?? "scheduled",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (values.completedDate) {
+    payload.completedDate = Timestamp.fromDate(new Date(`${values.completedDate}T00:00:00`));
+  }
+  const ref = await addDoc(collection(db, RECORDS_COL), payload);
   return ref.id;
 }
 
@@ -216,6 +226,16 @@ export async function completeMaintenanceRecord(
     nextMaintenanceDate: Timestamp.fromDate(nextMaintenanceDate),
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function listScheduledMaintenanceRecords(): Promise<MaintenanceRecord[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, RECORDS_COL),
+      where("status", "in", ["scheduled", "pending"])
+    )
+  );
+  return snap.docs.map((d) => docToRecord(d.id, d.data() as Record<string, unknown>));
 }
 
 export async function listMaintenanceRecordsByAsset(
