@@ -719,12 +719,15 @@ export default function ComprasPage() {
                 {filtered.map((expense) => (
                   <tr
                     key={expense.id}
-                    onClick={() => toggleRow(expense.id)}
+                    onClick={() => window.location.href = `/compras/${expense.id}`}
                     className={`border-b border-zinc-800/60 cursor-pointer transition-colors ${
                       selectedIds.has(expense.id) ? "bg-amber-500/5 hover:bg-amber-500/10" : "hover:bg-zinc-900/60"
                     }`}
                   >
-                    <td className="pl-4 pr-2 py-3">
+                    <td
+                      className="pl-4 pr-2 py-3"
+                      onClick={(e) => { e.stopPropagation(); toggleRow(expense.id); }}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedIds.has(expense.id)}
