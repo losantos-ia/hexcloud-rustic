@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import { useCurrency } from "@/context/currency-context";
+import { useSidebar } from "@/context/sidebar-context";
 
 type BadgeVariant = BadgeProps["variant"];
 
@@ -480,6 +481,7 @@ function RowMenu({ expenseId, onDelete }: { expenseId: string; onDelete: () => v
 
 export default function ComprasPage() {
   const { formatCurrency } = useCurrency();
+  const { collapsed } = useSidebar();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);  const [paidMap, setPaidMap] = useState<Record<string, number>>({});  const [loading, setLoading] = useState(true);
 
@@ -717,12 +719,12 @@ export default function ComprasPage() {
                 {filtered.map((expense) => (
                   <tr
                     key={expense.id}
-                    onClick={() => window.location.href = `/compras/${expense.id}`}
+                    onClick={() => toggleRow(expense.id)}
                     className={`border-b border-zinc-800/60 cursor-pointer transition-colors ${
                       selectedIds.has(expense.id) ? "bg-amber-500/5 hover:bg-amber-500/10" : "hover:bg-zinc-900/60"
                     }`}
                   >
-                    <td className="pl-4 pr-2 py-3" onClick={(e) => { e.stopPropagation(); toggleRow(expense.id); }}>
+                    <td className="pl-4 pr-2 py-3">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(expense.id)}
@@ -730,7 +732,11 @@ export default function ComprasPage() {
                         className="size-3.5 rounded accent-amber-500 cursor-pointer"
                       />
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-amber-400">{expense.invoiceNumber || expense.expenseNumber || <span className="text-zinc-600">—</span>}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-amber-400" onClick={(e) => e.stopPropagation()}>
+                      <Link href={`/compras/${expense.id}`} className="hover:underline">
+                        {expense.invoiceNumber || expense.expenseNumber || <span className="text-zinc-600">—</span>}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-zinc-400 whitespace-nowrap">{formatDate(expense.date)}</td>
                     <td className="px-4 py-3 text-zinc-400 whitespace-nowrap text-xs">
                       {expense.dueDate ? formatDate(expense.dueDate) : <span className="text-zinc-600">—</span>}
@@ -817,7 +823,11 @@ export default function ComprasPage() {
 
       {/* Fixed selection bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 px-6 py-3.5 bg-zinc-900/95 backdrop-blur border-t border-zinc-700 shadow-2xl">
+        <div
+          className={`fixed bottom-0 right-0 z-50 flex items-center justify-between gap-4 px-6 py-3.5 bg-zinc-900/95 backdrop-blur border-t border-zinc-700 shadow-2xl transition-all duration-300 ${
+            collapsed ? "lg:left-16" : "lg:left-64"
+          } left-0`}
+        >
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold text-zinc-100">
               {selectedIds.size} {selectedIds.size === 1 ? "seleccionada" : "seleccionadas"}
