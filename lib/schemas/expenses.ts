@@ -15,6 +15,7 @@ export const lineItemSchema = z.object({
   description: z.string().min(1, "Descripción requerida"),
   quantity: z.number().positive("Debe ser mayor a 0"),
   unitPrice: z.number().min(0, "Debe ser 0 o más"),
+  taxRate: z.number().min(0).max(100).optional(),
 });
 
 export type LineItemValues = z.input<typeof lineItemSchema>;
