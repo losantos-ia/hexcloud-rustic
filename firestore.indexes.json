@@ -192,6 +192,15 @@
         { "fieldPath": "treasuryAccountId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "treasuryMovements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "treasuryAccountId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

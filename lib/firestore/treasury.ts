@@ -163,7 +163,15 @@ export async function listMovementsByAccount(
       limit(limitCount)
     )
   );
-  return snap.docs.map((d) => docToMovement(d.id, d.data()));
+  const movs = snap.docs.map((d) => docToMovement(d.id, d.data()));
+  // Secondary sort by createdAt desc (in-memory) to ensure newest-first within same date
+  return movs.sort((a, b) => {
+    const dateDiff = b.date.getTime() - a.date.getTime();
+    if (dateDiff !== 0) return dateDiff;
+    const aCreated = (snap.docs.find((d) => d.id === a.id)?.data().createdAt?.toMillis?.() ?? 0) as number;
+    const bCreated = (snap.docs.find((d) => d.id === b.id)?.data().createdAt?.toMillis?.() ?? 0) as number;
+    return bCreated - aCreated;
+  });
 }
 
 export async function createTreasuryMovement(data: {
