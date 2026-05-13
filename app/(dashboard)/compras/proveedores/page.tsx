@@ -1,7 +1,7 @@
 ﻿"use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -39,6 +39,19 @@ export default function ProveedoresPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showInactive, setShowInactive] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    function handler(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [openMenuId]);
 
   useEffect(() => {
     listSuppliers()
@@ -197,39 +210,19 @@ export default function ProveedoresPage() {
                 {/* Actions */}
                 <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                    onClick={(e) => {
+                      if (openMenuId === s.id) {
+                        setOpenMenuId(null);
+                      } else {
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                        setOpenMenuId(s.id);
+                      }
+                    }}
                     className="p-1.5 rounded-lg hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
                   >
                     <MoreVertical className="size-4" />
                   </button>
-                  {openMenuId === s.id && (
-                    <div className="absolute right-0 top-8 z-20 w-44 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1">
-                      <button
-                        onClick={() => { router.push(`/compras/proveedores/${s.id}`); setOpenMenuId(null); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
-                      >
-                        <Eye className="size-4" /> Ver detalle
-                      </button>
-                      <button
-                        onClick={() => { router.push(`/compras/proveedores/${s.id}/editar`); setOpenMenuId(null); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
-                      >
-                        <Pencil className="size-4" /> Editar
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(s)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
-                      >
-                        {s.isActive ? "Desactivar" : "Activar"}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s.id)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-800"
-                      >
-                        <Trash2 className="size-4" /> Eliminar
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
@@ -240,6 +233,44 @@ export default function ProveedoresPage() {
           </>
         )}
       </div>
+
+      {/* Fixed dropdown menu — rendered outside overflow-hidden container */}
+      {openMenuId && menuPos && (() => {
+        const s = suppliers.find((x) => x.id === openMenuId);
+        if (!s) return null;
+        return (
+          <div
+            ref={menuRef}
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 50 }}
+            className="w-48 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl py-1"
+          >
+            <button
+              onClick={() => { router.push(`/compras/proveedores/${s.id}`); setOpenMenuId(null); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+            >
+              <Eye className="size-4" /> Ver detalle
+            </button>
+            <button
+              onClick={() => { router.push(`/compras/proveedores/${s.id}/editar`); setOpenMenuId(null); }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+            >
+              <Pencil className="size-4" /> Editar
+            </button>
+            <button
+              onClick={() => handleToggleActive(s)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+            >
+              {s.isActive ? "Desactivar" : "Activar"}
+            </button>
+            <button
+              onClick={() => handleDelete(s.id)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-800"
+            >
+              <Trash2 className="size-4" /> Eliminar
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
