@@ -68,7 +68,7 @@ export interface Expense {
   supplierName?: string;
   receiptUrl?: string;
   notes?: string;
-  lineItems?: { sku?: string; inventoryItemId?: string; description: string; quantity: number; unitPrice: number }[];
+  lineItems?: { sku?: string; inventoryItemId?: string; description: string; quantity: number; unitPrice: number; taxRate?: number }[];
   taxRate?: number;
   orderId?: string;
   orderNumber?: string;
