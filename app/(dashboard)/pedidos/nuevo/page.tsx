@@ -293,8 +293,8 @@ export default function NewOrderPage() {
         depositRequired: values.depositRequired,
         depositPaid: values.depositPaid,
         promisedDeliveryDate: isMaintenance
-          ? (maintMaintenanceDate ? new Date(maintMaintenanceDate) : undefined)
-          : (values.promisedDeliveryDate ? new Date(values.promisedDeliveryDate) : undefined),
+          ? (maintMaintenanceDate ? new Date(`${maintMaintenanceDate}T12:00:00`) : undefined)
+          : (values.promisedDeliveryDate ? new Date(`${values.promisedDeliveryDate}T12:00:00`) : undefined),
         installationRequired: values.installationRequired,
         deliveryAddress: clean(values.deliveryAddress),
         googleMapsUrl: clean(values.googleMapsUrl),

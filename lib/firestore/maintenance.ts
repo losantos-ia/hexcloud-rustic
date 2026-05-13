@@ -154,6 +154,15 @@ export async function getMaintenanceAssetById(id: string): Promise<MaintenanceAs
   return docToAsset(snap.id, snap.data() as Record<string, unknown>);
 }
 
+export async function getMaintenanceAssetByOrderId(orderId: string): Promise<MaintenanceAsset | null> {
+  const snap = await getDocs(
+    query(collection(db, ASSETS_COL), where("orderId", "==", orderId))
+  );
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return docToAsset(d.id, d.data() as Record<string, unknown>);
+}
+
 export async function listMaintenanceAssets(): Promise<MaintenanceAsset[]> {
   const snap = await getDocs(
     query(collection(db, ASSETS_COL), orderBy("nextMaintenanceDate", "asc"))

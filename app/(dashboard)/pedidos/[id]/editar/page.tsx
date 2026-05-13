@@ -12,6 +12,7 @@ import { orderSchema, type OrderFormValues } from "@/lib/schemas/order";
 import { getOrderById, listOrderItems, updateOrder, addOrderItem, deleteOrderItem } from "@/lib/firestore/orders";
 import { listClients, getClientById } from "@/lib/firestore/clients";
 import { listInventoryItems } from "@/lib/firestore/inventory";
+import { getMaintenanceAssetByOrderId } from "@/lib/firestore/maintenance";
 import type { Client } from "@/types/client";
 import type { InventoryItem } from "@/types/inventory";
 import {
@@ -173,6 +174,13 @@ export default function EditOrderPage() {
         if (order.projectType === "maintenance" && order.promisedDeliveryDate) {
           setMaintMaintenanceDate(order.promisedDeliveryDate.toISOString().split("T")[0]);
         }
+        if (order.projectType === "maintenance") {
+          getMaintenanceAssetByOrderId(orderId).then((asset) => {
+            if (asset?.installationDate) {
+              setMaintInstallationDate(asset.installationDate.toISOString().split("T")[0]);
+            }
+          });
+        }
         reset({
           clientName: order.clientName,
           clientPhone: order.clientPhone,
@@ -298,8 +306,8 @@ export default function EditOrderPage() {
         depositRequired: values.depositRequired,
         depositPaid: values.depositPaid,
         promisedDeliveryDate: isMaintenance
-          ? (maintMaintenanceDate ? new Date(maintMaintenanceDate) : undefined)
-          : (values.promisedDeliveryDate ? new Date(values.promisedDeliveryDate) : undefined),
+          ? (maintMaintenanceDate ? new Date(`${maintMaintenanceDate}T12:00:00`) : undefined)
+          : (values.promisedDeliveryDate ? new Date(`${values.promisedDeliveryDate}T12:00:00`) : undefined),
         installationRequired: values.installationRequired,
         deliveryAddress: clean(values.deliveryAddress),
         googleMapsUrl: clean(values.googleMapsUrl),
