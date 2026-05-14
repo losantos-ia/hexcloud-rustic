@@ -215,7 +215,7 @@ export default function OrderDetailPage() {
         type: values.type,
         amount: values.amount,
         method: values.method,
-        paymentDate: new Date(values.paymentDate),
+        paymentDate: new Date(`${values.paymentDate}T12:00:00`),
         notes: values.notes?.trim() || undefined,
         treasuryAccountId: selectedAccountId || undefined,
         createdAt: new Date(),
@@ -234,7 +234,7 @@ export default function OrderDetailPage() {
           treasuryAccountId: selectedAccountId,
           type: "income",
           amount: values.amount,
-          date: new Date(values.paymentDate),
+          date: new Date(`${values.paymentDate}T12:00:00`),
           referenceType: "sale",
           referenceId: orderId,
           description: `Pago pedido${order ? ` ${order.orderNumber}` : ""} – ${ORDER_PAYMENT_TYPE_LABELS[values.type]}${
@@ -303,7 +303,7 @@ export default function OrderDetailPage() {
             treasuryAccountId: newAccountId,
             type: "income",
             amount: newAmount,
-            date: new Date(editForm.paymentDate),
+            date: new Date(`${editForm.paymentDate}T12:00:00`),
             referenceType: "sale",
             referenceId: orderId,
             description: `Pago pedido${order ? ` ${order.orderNumber}` : ""} (editado)${acc ? ` → ${acc.name}` : ""}`,
@@ -323,7 +323,7 @@ export default function OrderDetailPage() {
 
       setPayments((prev) => prev.map((p) =>
         p.id === editingPayment.id
-          ? { ...p, type: editForm.type, amount: newAmount, method: editForm.method, paymentDate: new Date(editForm.paymentDate), notes: editForm.notes || undefined, treasuryAccountId: newAccountId }
+          ? { ...p, type: editForm.type, amount: newAmount, method: editForm.method, paymentDate: new Date(`${editForm.paymentDate}T12:00:00`), notes: editForm.notes || undefined, treasuryAccountId: newAccountId }
           : p
       ));
       setOrder((prev) => {

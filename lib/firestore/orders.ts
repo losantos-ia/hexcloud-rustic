@@ -333,7 +333,7 @@ export async function addOrderPayment(
     type: payment.type,
     amount: payment.amount,
     method: payment.method,
-    paymentDate: new Date(payment.paymentDate),
+    paymentDate: new Date(`${payment.paymentDate}T12:00:00`),
     notes: payment.notes ?? null,
     treasuryAccountId: treasuryAccountId ?? null,
     createdAt: serverTimestamp(),
@@ -372,7 +372,7 @@ export async function updateOrderPayment(
     ...(updates.type !== undefined && { type: updates.type }),
     ...(updates.amount !== undefined && { amount: updates.amount }),
     ...(updates.method !== undefined && { method: updates.method }),
-    ...(updates.paymentDate !== undefined && { paymentDate: new Date(updates.paymentDate) }),
+    ...(updates.paymentDate !== undefined && { paymentDate: new Date(`${updates.paymentDate}T12:00:00`) }),
     notes: updates.notes ?? null,
     ...(updates.treasuryAccountId !== undefined && { treasuryAccountId: updates.treasuryAccountId }),
   };
