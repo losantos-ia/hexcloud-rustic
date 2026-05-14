@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Phone, Mail, ExternalLink, Package, Search, X, Upload, FileText, ImageIcon } from "lucide-react";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -14,7 +14,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSuppliers, getSupplier } from "@/lib/firestore/purchases";
-import { listInventoryItems, listInventoryLocations } from "@/lib/firestore/inventory";
+import { listInventoryItems, listInventoryLocations, getInventoryItemById } from "@/lib/firestore/inventory";
 import { listOrders } from "@/lib/firestore/orders";
 import type { Supplier } from "@/types/purchases";
 import type { InventoryItem, InventoryLocation } from "@/types/inventory";
@@ -60,6 +60,7 @@ export default function EditarGastoPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,6 +137,7 @@ export default function EditarGastoPage() {
     reset,
     setValue,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -162,6 +164,7 @@ export default function EditarGastoPage() {
   }, [totalFinal, setValue]);
 
   useEffect(() => {
+    const newItemId = searchParams.get("newItemId");
     Promise.all([
       getExpenseById(id),
       listInventoryLocations(),
@@ -174,6 +177,26 @@ export default function EditarGastoPage() {
         setActiveOrders(orders.filter((o) => o.status !== "cancelled" && o.status !== "closed"));
         setSuppliers(supps);
         setInventoryItems(items);
+
+        // If returning from inventory creation, restore draft from sessionStorage
+        if (newItemId) {
+          const draft = sessionStorage.getItem("hexcloud-compras-editar-draft");
+          if (draft) {
+            try { reset(JSON.parse(draft)); } catch { /* fallback below */ }
+            sessionStorage.removeItem("hexcloud-compras-editar-draft");
+          }
+          const newItemIndex = Number(searchParams.get("newItemIndex") ?? "0");
+          getInventoryItemById(newItemId).then((item) => {
+            if (item) {
+              setValue(`lineItems.${newItemIndex}.sku`, item.sku ?? "");
+              setValue(`lineItems.${newItemIndex}.inventoryItemId`, item.id);
+              setValue(`lineItems.${newItemIndex}.description`, item.name);
+              setValue(`lineItems.${newItemIndex}.unitPrice`, item.lastPurchaseCost ?? item.averageCost ?? 0);
+            }
+          });
+          return;
+        }
+
         if (!expense) { setLoadError("Gasto no encontrado."); return; }
         if (expense.receiptUrl) setReceiptPreview(expense.receiptUrl);
         const lineItems_ = expense.lineItems ?? [];
@@ -206,6 +229,7 @@ export default function EditarGastoPage() {
       })
       .catch(() => setLoadError("Error al cargar el gasto."))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, reset]);
 
   function pickInventoryItem(index: number, item: InventoryItem) {
@@ -314,9 +338,26 @@ export default function EditarGastoPage() {
               </div>
               <div className="overflow-y-auto flex-1">
                 {results.length === 0 ? (
-                  <p className="px-4 py-8 text-center text-sm text-zinc-600">Sin resultados</p>
+                  <div className="px-4 py-6 flex flex-col items-center gap-3">
+                    <p className="text-center text-sm text-zinc-600">Sin resultados</p>
+                    {searchQuery.trim().length > 0 && (
+                      <button
+                        type="button"
+                        onMouseDown={() => {
+                          const draft = getValues();
+                          sessionStorage.setItem("hexcloud-compras-editar-draft", JSON.stringify(draft));
+                          setSearchPopupIndex(null);
+                          router.push(`/inventario/nuevo?sku=${encodeURIComponent(searchQuery.trim())}&returnTo=/compras/${id}/editar&returnItemIndex=${searchPopupIndex ?? 0}`);
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/40 hover:border-amber-500/70 rounded-md px-3 py-2 transition-colors"
+                      >
+                        <Plus size={12} /> Crear &quot;{searchQuery.trim()}&quot; como nuevo artículo
+                      </button>
+                    )}
+                  </div>
                 ) : (
-                  results.map((item) => (
+                  <>
+                  {results.map((item) => (
                     <button
                       key={item.id}
                       type="button"
@@ -332,7 +373,23 @@ export default function EditarGastoPage() {
                         </div>
                       </div>
                     </button>
-                  ))
+                  ))}
+                  <button
+                    type="button"
+                    onMouseDown={() => {
+                      const draft = getValues();
+                      sessionStorage.setItem("hexcloud-compras-editar-draft", JSON.stringify(draft));
+                      setSearchPopupIndex(null);
+                      router.push(`/inventario/nuevo?sku=${encodeURIComponent(searchQuery.trim())}&returnTo=/compras/${id}/editar&returnItemIndex=${searchPopupIndex ?? 0}`);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2"
+                  >
+                    <Plus size={12} />
+                    {searchQuery.trim()
+                      ? <>Crear &quot;{searchQuery.trim()}&quot; como nuevo artículo</>
+                      : <>Crear nuevo artículo</>}
+                  </button>
+                  </>
                 )}
               </div>
             </div>

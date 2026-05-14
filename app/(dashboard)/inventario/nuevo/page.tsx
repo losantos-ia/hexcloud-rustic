@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -35,6 +35,10 @@ import {
 
 export default function NuevoInventarioPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
+  const returnItemIndex = searchParams.get("returnItemIndex") ?? "0";
+  const skuParam = searchParams.get("sku") ?? "";
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [skuStatus, setSkuStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
@@ -43,7 +47,7 @@ export default function NuevoInventarioPage() {
   const form = useForm<InventoryItemFormValues>({
     resolver: zodResolver(inventoryItemSchema),
     defaultValues: {
-      sku: "",
+      sku: skuParam,
       name: "",
       description: "",
       averageCost: 0,
@@ -68,6 +72,12 @@ export default function NuevoInventarioPage() {
     if (skuDebounceRef.current) clearTimeout(skuDebounceRef.current);
   }, []);
 
+  // Pre-check SKU if coming from another page with a pre-filled SKU
+  useEffect(() => {
+    if (skuParam) handleSkuChange(skuParam);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function onSubmit(values: InventoryItemFormValues) {
     if (skuStatus === "taken") {
       setError("El código SKU ya está en uso. Elige uno diferente.");
@@ -77,7 +87,11 @@ export default function NuevoInventarioPage() {
     setError(null);
     try {
       const id = await createInventoryItem(values);
-      router.push(`/inventario/${id}`);
+      if (returnTo) {
+        router.push(`${returnTo}?newItemId=${id}&newItemSku=${encodeURIComponent(values.sku ?? "")}&newItemIndex=${returnItemIndex}`);
+      } else {
+        router.push(`/inventario/${id}`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al crear el art\u00edculo");
     } finally {

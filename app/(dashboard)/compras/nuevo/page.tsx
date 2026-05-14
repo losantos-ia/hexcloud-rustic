@@ -14,7 +14,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listSuppliers, getSupplier } from "@/lib/firestore/purchases";
-import { listInventoryItems } from "@/lib/firestore/inventory";
+import { listInventoryItems, getInventoryItemById } from "@/lib/firestore/inventory";
 import { listOrders } from "@/lib/firestore/orders";
 import type { Supplier } from "@/types/purchases";
 import type { InventoryItem } from "@/types/inventory";
@@ -156,14 +156,37 @@ export default function NuevoGastoPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Handle return from inventory item creation
+  useEffect(() => {
+    const newItemId = searchParams.get("newItemId");
+    if (!newItemId) return;
+    const newItemIndex = Number(searchParams.get("newItemIndex") ?? "0");
+    const draft = sessionStorage.getItem("hexcloud-compras-nuevo-draft");
+    if (draft) {
+      try { reset(JSON.parse(draft)); } catch { /* ignore */ }
+      sessionStorage.removeItem("hexcloud-compras-nuevo-draft");
+    }
+    getInventoryItemById(newItemId).then((item) => {
+      if (item) {
+        setValue(`lineItems.${newItemIndex}.sku`, item.sku ?? "");
+        setValue(`lineItems.${newItemIndex}.inventoryItemId`, item.id);
+        setValue(`lineItems.${newItemIndex}.description`, item.name);
+        setValue(`lineItems.${newItemIndex}.unitPrice`, item.lastPurchaseCost ?? item.averageCost ?? 0);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const today = new Date().toISOString().split("T")[0];
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     setValue,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -312,9 +335,26 @@ export default function NuevoGastoPage() {
               {/* Results */}
               <div className="overflow-y-auto flex-1">
                 {results.length === 0 ? (
-                  <p className="px-4 py-8 text-center text-sm text-zinc-600">Sin resultados</p>
+                  <div className="px-4 py-6 flex flex-col items-center gap-3">
+                    <p className="text-center text-sm text-zinc-600">Sin resultados</p>
+                    {searchQuery.trim().length > 0 && (
+                      <button
+                        type="button"
+                        onMouseDown={() => {
+                          const draft = getValues();
+                          sessionStorage.setItem("hexcloud-compras-nuevo-draft", JSON.stringify(draft));
+                          setSearchPopupIndex(null);
+                          router.push(`/inventario/nuevo?sku=${encodeURIComponent(searchQuery.trim())}&returnTo=/compras/nuevo&returnItemIndex=${searchPopupIndex ?? 0}`);
+                        }}
+                        className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/40 hover:border-amber-500/70 rounded-md px-3 py-2 transition-colors"
+                      >
+                        <Plus size={12} /> Crear &quot;{searchQuery.trim()}&quot; como nuevo artículo
+                      </button>
+                    )}
+                  </div>
                 ) : (
-                  results.map((item) => (
+                  <>
+                  {results.map((item) => (
                     <button
                       key={item.id}
                       type="button"
@@ -332,7 +372,23 @@ export default function NuevoGastoPage() {
                         </div>
                       </div>
                     </button>
-                  ))
+                  ))}
+                  <button
+                    type="button"
+                    onMouseDown={() => {
+                      const draft = getValues();
+                      sessionStorage.setItem("hexcloud-compras-nuevo-draft", JSON.stringify(draft));
+                      setSearchPopupIndex(null);
+                      router.push(`/inventario/nuevo?sku=${encodeURIComponent(searchQuery.trim())}&returnTo=/compras/nuevo&returnItemIndex=${searchPopupIndex ?? 0}`);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2"
+                  >
+                    <Plus size={12} />
+                    {searchQuery.trim()
+                      ? <>Crear &quot;{searchQuery.trim()}&quot; como nuevo artículo</>
+                      : <>Crear nuevo artículo</>}
+                  </button>
+                  </>
                 )}
               </div>
             </div>
