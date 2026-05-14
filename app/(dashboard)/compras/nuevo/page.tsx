@@ -144,6 +144,12 @@ export default function NuevoGastoPage() {
     const supplierId = searchParams.get("supplierId");
     const supplierNameParam = searchParams.get("supplierName");
     if (supplierId) {
+      // Restore form draft saved before navigating to create supplier
+      const draft = sessionStorage.getItem("hexcloud-compras-nuevo-draft");
+      if (draft) {
+        try { reset(JSON.parse(draft)); } catch { /* ignore */ }
+        sessionStorage.removeItem("hexcloud-compras-nuevo-draft");
+      }
       getSupplier(supplierId).then((s) => {
         if (s) {
           setSelectedSupplier(s);
@@ -532,13 +538,18 @@ export default function NuevoGastoPage() {
                   </button>
                 ))}
                 {supplierName.trim().length > 0 && !exactMatch && (
-                  <Link
-                    href={`/compras/proveedores/nuevo?returnTo=/compras/nuevo&supplierName=${encodeURIComponent(supplierName.trim())}`}
+                  <button
+                    type="button"
+                    onMouseDown={() => {
+                      const draft = getValues();
+                      sessionStorage.setItem("hexcloud-compras-nuevo-draft", JSON.stringify(draft));
+                      router.push(`/compras/proveedores/nuevo?returnTo=/compras/nuevo&supplierName=${encodeURIComponent(supplierName.trim())}`);
+                    }}
                     className="w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-zinc-800 border-t border-zinc-800 transition-colors flex items-center gap-2"
                   >
                     <Plus size={12} />
                     Crear &quot;{supplierName.trim()}&quot; como nuevo proveedor
-                  </Link>
+                  </button>
                 )}
               </div>
             )}
