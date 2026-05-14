@@ -2,14 +2,14 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { clientSchema, type ClientFormValues } from "@/lib/schemas/client";
-import { createClient } from "@/lib/firestore/clients";
+import { createClient, checkClientNameExists } from "@/lib/firestore/clients";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -26,6 +26,8 @@ export default function NuevoClientePage() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("returnTo");
   const [serverError, setServerError] = useState<string | null>(null);
+  const [nameStatus, setNameStatus] = useState<"idle" | "checking" | "taken" | "available">("idle");
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     register,
@@ -39,10 +41,24 @@ export default function NuevoClientePage() {
     },
   });
 
+  function handleNameChange(value: string) {
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    if (!value.trim()) { setNameStatus("idle"); return; }
+    setNameStatus("checking");
+    nameDebounceRef.current = setTimeout(async () => {
+      const exists = await checkClientNameExists(value.trim());
+      setNameStatus(exists ? "taken" : "available");
+    }, 500);
+  }
+
   const clean = (v?: string) => (v?.trim() === "" ? undefined : v?.trim());
 
   async function onSubmit(values: ClientFormValues) {
     setServerError(null);
+    if (nameStatus === "taken") {
+      setServerError("Ya existe un cliente con este nombre. Usa un nombre diferente.");
+      return;
+    }
     try {
       const id = await createClient({
         fullName: values.fullName.trim(),
@@ -107,9 +123,22 @@ export default function NuevoClientePage() {
                 id="fullName"
                 placeholder="Juan García / Muebles La Montaña S.A.S."
                 {...register("fullName")}
-                aria-invalid={!!errors.fullName}
+                aria-invalid={!!errors.fullName || nameStatus === "taken"}
+                onChange={(e) => {
+                  register("fullName").onChange(e);
+                  handleNameChange(e.target.value);
+                }}
               />
               <FieldError message={errors.fullName?.message} />
+              {nameStatus === "checking" && (
+                <p className="text-xs text-zinc-400">Verificando nombre…</p>
+              )}
+              {nameStatus === "taken" && (
+                <p className="text-xs text-red-400">&#10005; Ya existe un cliente con este nombre</p>
+              )}
+              {nameStatus === "available" && (
+                <p className="text-xs text-green-400">&#10003; Nombre disponible</p>
+              )}
             </div>
 
             {/* Phone */}
@@ -255,7 +284,7 @@ export default function NuevoClientePage() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <Button type="submit" disabled={isSubmitting} className="gap-2">
+          <Button type="submit" disabled={isSubmitting || nameStatus === "taken" || nameStatus === "checking"} className="gap-2">
             {isSubmitting && <Loader2 className="size-4 animate-spin" />}
             {isSubmitting ? "Guardando…" : "Crear cliente"}
           </Button>

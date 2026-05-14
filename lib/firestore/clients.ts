@@ -7,6 +7,7 @@ import {
   getDoc,
   getDocs,
   query,
+  where,
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
@@ -78,4 +79,13 @@ export async function listClients(): Promise<Client[]> {
 
 export async function deleteClient(id: string): Promise<void> {
   await deleteDoc(doc(db, COL, id));
+}
+
+export async function checkClientNameExists(fullName: string): Promise<boolean> {
+  const q = query(
+    collection(db, COL),
+    where("fullName", "==", fullName.trim())
+  );
+  const snap = await getDocs(q);
+  return !snap.empty;
 }
