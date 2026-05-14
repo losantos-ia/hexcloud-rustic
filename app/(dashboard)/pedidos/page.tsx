@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Plus, Search, Clock, CheckCircle2, Factory, Truck, DollarSign, MoreVertical, Download,
+  Plus, Search, Clock, CheckCircle2, Factory, Truck, DollarSign, MoreVertical, Download, X,
 } from "lucide-react";
 import { listOrders } from "@/lib/firestore/orders";
 import type { Order, OrderStatus, OrderProjectType, OrderPriority, OrderSource } from "@/types/order";
@@ -20,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import { useCurrency } from "@/context/currency-context";
+import { useSidebar } from "@/context/sidebar-context";
 
 type BadgeVariant = BadgeProps["variant"];
 
@@ -58,6 +59,7 @@ function formatDateShort(date?: Date): string {
 export default function PedidosPage() {
   const router = useRouter();
   const { formatCurrency, formatCompact } = useCurrency();
+  const { collapsed } = useSidebar();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -68,6 +70,7 @@ export default function PedidosPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     listOrders().then(setOrders).finally(() => setLoading(false));
@@ -90,6 +93,22 @@ export default function PedidosPage() {
     setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
     setOpenMenuId(id);
   }, []);
+
+  function toggleRow(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((o) => o.id)));
+    }
+  }
 
   const stats = useMemo(() => {
     const active = orders.filter((o) => ACTIVE_ORDER_STATUSES.includes(o.status));
@@ -120,6 +139,12 @@ export default function PedidosPage() {
       return true;
     });
   }, [orders, filterStatus, filterType, filterPriority, filterSource, search]);
+
+  const selectedOrders = useMemo(() => filtered.filter((o) => selectedIds.has(o.id)), [filtered, selectedIds]);
+  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
+  const selectedTotal = selectedOrders.reduce((s, o) => s + o.finalSalePrice, 0);
+  const selectedBalance = selectedOrders.reduce((s, o) => s + o.balanceDue, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -268,9 +293,20 @@ export default function PedidosPage() {
                   return (
                     <tr
                       key={order.id}
-                      className={`hover:bg-zinc-800/50 transition-colors cursor-pointer ${urgent ? "border-l-2 border-l-red-500" : ""}`}
+                      className={`hover:bg-zinc-800/50 transition-colors cursor-pointer ${urgent ? "border-l-2 border-l-red-500" : ""} ${selectedIds.has(order.id) ? "bg-amber-500/5" : ""}`}
                       onClick={() => router.push(`/pedidos/${order.id}`)}
                     >
+                      <td
+                        className="pl-4 py-3 w-10"
+                        onClick={(e) => { e.stopPropagation(); toggleRow(order.id); }}
+                      >
+                        <input
+                          type="checkbox"
+                          readOnly
+                          checked={selectedIds.has(order.id)}
+                          className="pointer-events-none accent-amber-500 size-3.5"
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-mono text-amber-400">{order.orderNumber}</span>
                       </td>
@@ -380,6 +416,33 @@ export default function PedidosPage() {
             onClick={() => { router.push(`/pedidos/${openMenuId}/pdf`); setOpenMenuId(null); }}
           >
             <Download size={13} className="text-zinc-400" /> Ver PDF
+          </button>
+        </div>
+      )}
+
+      {/* Selection bottom bar */}
+      {selectedIds.size > 0 && (
+        <div
+          className={`fixed bottom-0 right-0 z-40 border-t border-zinc-700 bg-zinc-900/95 backdrop-blur-sm px-6 py-3 flex items-center gap-6 transition-all left-0 ${collapsed ? "lg:left-16" : "lg:left-64"}`}
+        >
+          <span className="text-sm text-zinc-400 shrink-0">
+            <span className="font-semibold text-zinc-200">{selectedIds.size}</span> seleccionado{selectedIds.size !== 1 ? "s" : ""}
+          </span>
+          <div className="flex items-center gap-6 flex-1 flex-wrap">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Total</span>
+              <span className="text-sm font-semibold text-zinc-200">{formatCurrency(selectedTotal)}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Saldo</span>
+              <span className="text-sm font-semibold text-amber-400">{formatCurrency(selectedBalance)}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-500 rounded-md px-3 py-1.5 transition-colors shrink-0"
+          >
+            <X size={12} /> Deseleccionar
           </button>
         </div>
       )}
