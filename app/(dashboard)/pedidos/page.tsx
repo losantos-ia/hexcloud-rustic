@@ -274,6 +274,15 @@ export default function PedidosPage() {
             <table className="hidden md:table w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-left">
+                  <th className="pl-4 pr-2 py-3 w-8 cursor-pointer" onClick={toggleAll}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                      onChange={() => {}}
+                      className="size-3.5 rounded accent-amber-500 pointer-events-none"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Número</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Cliente</th>
                   <th className="px-4 py-3 text-xs font-medium text-zinc-500">Proyecto</th>
