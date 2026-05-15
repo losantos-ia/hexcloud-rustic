@@ -773,7 +773,12 @@ export default function OrderDetailPage() {
                                 <span className="text-xs text-zinc-500">{EXPENSE_CATEGORY_LABELS[exp.category]}</span>
                               </td>
                               <td className="py-2.5 pl-4 text-zinc-400 text-xs max-w-[200px]">
-                                <p className="truncate">{exp.description || "—"}</p>
+                                <p className="truncate">
+                                  {exp.description ||
+                                    (exp.lineItems && exp.lineItems.length > 0
+                                      ? exp.lineItems.map((i) => i.description).filter(Boolean).join(", ")
+                                      : "—")}
+                                </p>
                               </td>
                               <td className="py-2.5 pl-4 text-right text-zinc-500 text-xs whitespace-nowrap">
                                 {formatDateShort(exp.date)}
