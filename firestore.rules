@@ -218,5 +218,18 @@ service cloud.firestore {
       allow create: if isAdminOrVendedor();
       allow update, delete: if isAdminOrVendedor();
     }
+
+    // HR — Employees
+    match /employees/{employeeId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdminOrVendedor();
+    }
+
+    // HR — Time clock entries
+    match /timeClockEntries/{entryId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if isAdminOrVendedor();
+    }
   }
 }
