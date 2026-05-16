@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { employeeSchema, type EmployeeFormValues } from "@/lib/schemas/hr";
 import { createEmployee } from "@/lib/firestore/hr";
@@ -21,6 +21,8 @@ import type { EmployeeRole, EmployeeDepartment, EmployeePaymentType } from "@/ty
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import type { UserRole } from "@/types/user";
+import { USER_ROLE_LABELS } from "@/types/user";
 
 const selectClass =
   "flex h-10 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-white transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50";
@@ -29,6 +31,14 @@ export default function NuevoEmpleadoPage() {
   const router = useRouter();
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
+
+  // User account creation
+  const [createAccount, setCreateAccount] = useState(false);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
+  const [accountRole, setAccountRole] = useState<UserRole>("vendedor");
+  const [showPwd, setShowPwd] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
 
   const {
     register,
@@ -55,6 +65,14 @@ export default function NuevoEmpleadoPage() {
 
   async function onSubmit(values: EmployeeFormValues) {
     setServerError(null);
+    setAccountError(null);
+
+    // Validate account fields if creating account
+    if (createAccount) {
+      if (!accountEmail.trim()) { setAccountError("El correo de acceso es obligatorio."); return; }
+      if (accountPassword.length < 6) { setAccountError("La contraseña debe tener al menos 6 caracteres."); return; }
+    }
+
     try {
       const selectedLoc = locations.find((l) => l.id === values.locationId);
       const id = await createEmployee({
@@ -74,6 +92,28 @@ export default function NuevoEmpleadoPage() {
         startDate: values.startDate ? new Date(`${values.startDate}T12:00:00`) : undefined,
         notes: values.notes?.trim() || undefined,
       });
+      // Optionally create user account
+      if (createAccount) {
+        const res = await fetch("/api/hr/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: accountEmail.trim(),
+            password: accountPassword,
+            displayName: values.fullName.trim(),
+            role: accountRole,
+            employeeId: id,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json();
+          // Employee was already created; go to detail but show the account error
+          setAccountError(body.error ?? "Error al crear la cuenta de acceso.");
+          router.push(`/recursos-humanos/empleados/${id}`);
+          return;
+        }
+      }
+
       router.push(`/recursos-humanos/empleados/${id}`);
     } catch {
       setServerError("Error al crear el empleado. Intenta de nuevo.");
@@ -260,6 +300,81 @@ export default function NuevoEmpleadoPage() {
             placeholder="Observaciones adicionales sobre el empleado..."
             rows={3}
           />
+        </div>
+
+        {/* User account */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col gap-4">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div
+              onClick={() => setCreateAccount((v) => !v)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                createAccount ? "bg-amber-500" : "bg-zinc-700"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform ${
+                  createAccount ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-200 flex items-center gap-1.5">
+                <UserPlus size={14} className="text-zinc-400" />
+                Crear cuenta de acceso al sistema
+              </p>
+              <p className="text-xs text-zinc-500">Permite al empleado iniciar sesión en el ERP.</p>
+            </div>
+          </label>
+
+          {createAccount && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 border-t border-zinc-800">
+              <div className="flex flex-col gap-1.5">
+                <Label>Correo de acceso *</Label>
+                <Input
+                  type="email"
+                  value={accountEmail}
+                  onChange={(e) => setAccountEmail(e.target.value)}
+                  placeholder="empleado@empresa.com"
+                  required={createAccount}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Contraseña inicial *</Label>
+                <div className="relative">
+                  <Input
+                    type={showPwd ? "text" : "password"}
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    placeholder="Mín. 6 caracteres"
+                    required={createAccount}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                  >
+                    {showPwd ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Rol en el sistema *</Label>
+                <select
+                  value={accountRole}
+                  onChange={(e) => setAccountRole(e.target.value as UserRole)}
+                  className={selectClass}
+                >
+                  {(Object.entries(USER_ROLE_LABELS) as [UserRole, string][]).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {accountError && (
+            <p className="text-xs text-red-400">{accountError}</p>
+          )}
         </div>
 
         {serverError && (

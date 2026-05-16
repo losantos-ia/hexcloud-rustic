@@ -75,6 +75,10 @@ export interface Employee {
   status: EmployeeStatus;
   startDate?: Date;
   notes?: string;
+  /** Firebase Auth UID — set when the employee has a system user account */
+  uid?: string;
+  /** Whether the linked Firebase Auth account is disabled */
+  userDisabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

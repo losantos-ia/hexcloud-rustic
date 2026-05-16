@@ -51,6 +51,8 @@ function docToEmployee(id: string, data: Record<string, any>): Employee {
     status: data.status,
     startDate: toDate(data.startDate),
     notes: data.notes ?? undefined,
+    uid: data.uid ?? undefined,
+    userDisabled: data.userDisabled ?? undefined,
     createdAt: toDate(data.createdAt) ?? new Date(),
     updatedAt: toDate(data.updatedAt) ?? new Date(),
   };
@@ -94,6 +96,16 @@ export async function updateEmployee(
 ): Promise<void> {
   await updateDoc(doc(db, EMPLOYEES_COL, id), {
     ...stripUndefined(data),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function setEmployeeUserDisabled(
+  employeeId: string,
+  disabled: boolean
+): Promise<void> {
+  await updateDoc(doc(db, EMPLOYEES_COL, employeeId), {
+    userDisabled: disabled,
     updatedAt: serverTimestamp(),
   });
 }

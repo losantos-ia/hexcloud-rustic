@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Pencil, LogIn, LogOut, Clock, Users,
-  Phone, Mail, FileText,
+  Phone, Mail, FileText, ShieldCheck, ShieldOff, UserX, UserPlus, Eye, EyeOff,
 } from "lucide-react";
 import {
   getEmployeeById,
@@ -16,7 +16,10 @@ import {
   clockInEmployee,
   clockOutEmployee,
   getOpenClockEntryByEmployee,
+  setEmployeeUserDisabled,
 } from "@/lib/firestore/hr";
+import type { UserRole } from "@/types/user";
+import { USER_ROLE_LABELS } from "@/types/user";
 import type { Employee, TimeClockEntry } from "@/types/hr";
 import {
   EMPLOYEE_ROLE_LABELS,
@@ -76,6 +79,20 @@ export default function EmpleadoDetailPage() {
   const [clockLoading, setClockLoading] = useState(false);
   const [clockError, setClockError] = useState<string | null>(null);
 
+  // User account management
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [accountOk, setAccountOk] = useState<string | null>(null);
+
+  // Create account form
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<UserRole>("vendedor");
+  const [showPwd, setShowPwd] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [createAccountError, setCreateAccountError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     const [emp, allEntries, open] = await Promise.all([
       getEmployeeById(id),
@@ -129,6 +146,94 @@ export default function EmpleadoDetailPage() {
     const newStatus = employee.status === "active" ? "inactive" : "active";
     await updateEmployee(id, { status: newStatus });
     setEmployee({ ...employee, status: newStatus });
+  }
+
+  async function handleToggleUser(disabled: boolean) {
+    if (!employee?.uid) return;
+    setAccountLoading(true);
+    setAccountError(null);
+    setAccountOk(null);
+    try {
+      const res = await fetch(`/api/hr/users/${employee.uid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disabled }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        setAccountError(body.error ?? "Error al actualizar la cuenta.");
+        return;
+      }
+      await setEmployeeUserDisabled(id, disabled);
+      setEmployee({ ...employee, userDisabled: disabled });
+      setAccountOk(disabled ? "Cuenta desactivada." : "Cuenta activada.");
+      setTimeout(() => setAccountOk(null), 3000);
+    } catch {
+      setAccountError("Error de conexión.");
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleDeleteUser() {
+    if (!employee?.uid) return;
+    if (!confirm(`¿Eliminar la cuenta de acceso de ${employee.fullName}? Esta acción no se puede deshacer.`)) return;
+    setAccountLoading(true);
+    setAccountError(null);
+    setAccountOk(null);
+    try {
+      const res = await fetch(`/api/hr/users/${employee.uid}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json();
+        setAccountError(body.error ?? "Error al eliminar la cuenta.");
+        return;
+      }
+      setEmployee({ ...employee, uid: undefined, userDisabled: undefined });
+      setAccountOk("Cuenta eliminada correctamente.");
+      setTimeout(() => setAccountOk(null), 3000);
+    } catch {
+      setAccountError("Error de conexión.");
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleCreateAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (!employee) return;
+    setCreateAccountError(null);
+    if (newPassword.length < 6) {
+      setCreateAccountError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setCreatingAccount(true);
+    try {
+      const res = await fetch("/api/hr/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: newEmail.trim(),
+          password: newPassword,
+          displayName: employee.fullName,
+          role: newRole,
+          employeeId: id,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setCreateAccountError(body.error ?? "Error al crear la cuenta.");
+        return;
+      }
+      setEmployee({ ...employee, uid: body.uid, userDisabled: false });
+      setShowCreateForm(false);
+      setNewEmail(""); setNewPassword("");
+      setAccountOk("Cuenta creada correctamente.");
+      setTimeout(() => setAccountOk(null), 3000);
+    } catch {
+      setCreateAccountError("Error de conexión.");
+    } finally {
+      setCreatingAccount(false);
+    }
   }
 
   if (loading) {
@@ -354,6 +459,124 @@ export default function EmpleadoDetailPage() {
                 <span className="text-zinc-200 font-mono font-medium">{formatHours(monthHours)}</span>
               </div>
             </div>
+          </div>
+
+          {/* Account management */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-zinc-300">Cuenta de acceso</h2>
+
+            {accountError && (
+              <p className="text-xs text-red-400 bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2">{accountError}</p>
+            )}
+            {accountOk && (
+              <p className="text-xs text-emerald-400 bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-3 py-2">{accountOk}</p>
+            )}
+
+            {employee.uid ? (
+              <>
+                <div className="flex items-center gap-2">
+                  {employee.userDisabled ? (
+                    <span className="flex items-center gap-1.5 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-2 py-1">
+                      <ShieldOff size={12} /> Cuenta desactivada
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2 py-1">
+                      <ShieldCheck size={12} /> Cuenta activa
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {employee.userDisabled ? (
+                    <button
+                      onClick={() => handleToggleUser(false)}
+                      disabled={accountLoading}
+                      className="text-left w-full rounded-lg px-3 py-2.5 text-sm text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <ShieldCheck size={13} />
+                      {accountLoading ? "Activando…" : "Activar cuenta"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleToggleUser(true)}
+                      disabled={accountLoading}
+                      className="text-left w-full rounded-lg px-3 py-2.5 text-sm text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <ShieldOff size={13} />
+                      {accountLoading ? "Desactivando…" : "Desactivar cuenta"}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleDeleteUser}
+                    disabled={accountLoading}
+                    className="text-left w-full rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <UserX size={13} />
+                    {accountLoading ? "Eliminando…" : "Eliminar cuenta"}
+                  </button>
+                </div>
+              </>
+            ) : showCreateForm ? (
+              <form onSubmit={handleCreateAccount} className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-zinc-400">Correo *</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="correo@empresa.com"
+                    required
+                    className="flex h-9 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-zinc-400">Contraseña *</label>
+                  <div className="relative">
+                    <input
+                      type={showPwd ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mín. 6 caracteres"
+                      required
+                      className="flex h-9 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 pr-9 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                    <button type="button" onClick={() => setShowPwd(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300">
+                      {showPwd ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-zinc-400">Rol *</label>
+                  <select
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value as UserRole)}
+                    className="flex h-9 w-full rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  >
+                    {(Object.entries(USER_ROLE_LABELS) as [UserRole, string][]).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+                {createAccountError && <p className="text-xs text-red-400">{createAccountError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={creatingAccount} className="flex-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-semibold py-2 disabled:opacity-50 transition-colors">
+                    {creatingAccount ? "Creando…" : "Crear cuenta"}
+                  </button>
+                  <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-lg border border-zinc-700 text-xs text-zinc-400 px-3 py-2 hover:border-zinc-500 transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-zinc-500">Este empleado no tiene cuenta de acceso.</p>
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="text-left w-full rounded-lg px-3 py-2.5 text-sm text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 transition-colors flex items-center gap-2"
+                >
+                  <UserPlus size={13} /> Crear cuenta de acceso
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
