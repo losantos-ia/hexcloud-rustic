@@ -2,6 +2,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -43,4 +44,8 @@ export async function createUserProfile(
 
 export async function updateUserRole(uid: string, role: UserRole): Promise<void> {
   await setDoc(doc(db, COL, uid), { role }, { merge: true });
+}
+
+export async function updateUserDisplayName(uid: string, displayName: string): Promise<void> {
+  await updateDoc(doc(db, COL, uid), { displayName });
 }
