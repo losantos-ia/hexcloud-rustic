@@ -554,7 +554,8 @@ export default function ComprasPage() {
           (e.description?.toLowerCase().includes(q) ?? false) ||
           (e.supplierName?.toLowerCase().includes(q) ?? false) ||
           (e.invoiceNumber?.toLowerCase().includes(q) ?? false) ||
-          (e.expenseNumber?.toLowerCase().includes(q) ?? false)
+          (e.expenseNumber?.toLowerCase().includes(q) ?? false) ||
+          (e.lineItems?.some((item) => item.description?.toLowerCase().includes(q)) ?? false)
         );
       }
       return true;

@@ -11,6 +11,7 @@ import {
   DollarSign,
   BarChart2,
   Settings,
+  HardHat,
 } from "lucide-react";
 
 const modules = [
@@ -22,6 +23,7 @@ const modules = [
   { label: "Inventario", href: "/inventario", icon: Package, description: "Stock de materiales y productos" },
   { label: "Compras", href: "/compras", icon: Truck, description: "Proveedores y órdenes de compra" },
   { label: "Mantenimientos", href: "/mantenimientos", icon: Wrench, description: "Maquinaria y mantenimiento" },
+  { label: "RR. HH.", href: "/recursos-humanos", icon: HardHat, description: "Empleados y fichajes" },
   { label: "Tiendas", href: "/tiendas", icon: Store, description: "Puntos de venta y sucursales" },
   { label: "Finanzas", href: "/finanzas", icon: DollarSign, description: "Contabilidad y flujo de caja" },
   { label: "Reportes", href: "/reportes", icon: BarChart2, description: "Analítica y reportes" },
