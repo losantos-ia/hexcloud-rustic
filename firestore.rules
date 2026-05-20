@@ -198,6 +198,13 @@ service cloud.firestore {
       allow update, delete: if isAdminOrVendedor();
     }
 
+    // Expense notes
+    match /expenseNotes/{noteId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow delete: if isAdminOrVendedor();
+    }
+
     // Company accounts
     match /accounts/{accountId} {
       allow read: if request.auth != null;

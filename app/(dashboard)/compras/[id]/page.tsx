@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Edit, Trash2, Receipt, MapPin, CreditCard, CalendarDays,
   Tag, User, Hash, FileText, Upload, Plus, X, Landmark, Wallet, Circle,
+  StickyNote, Send, Loader2,
 } from "lucide-react";
 import { getExpenseById, deleteExpense } from "@/lib/firestore/expenses";
 import type { Expense } from "@/types/expenses";
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import { useCurrency } from "@/context/currency-context";
 import { listPaymentsByExpense, createExpensePayment, deleteExpensePayment } from "@/lib/firestore/expense-payments";
+import { listNotesByExpense, addExpenseNote, deleteExpenseNote, type ExpenseNote } from "@/lib/firestore/expense-notes";
 import { listTreasuryAccounts, createTreasuryMovement } from "@/lib/firestore/treasury";
 import type { ExpensePayment } from "@/types/accounts";
 import type { TreasuryAccount, TreasuryAccountType } from "@/types/treasury";
@@ -79,6 +81,16 @@ export default function GastoDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [itemsExpanded, setItemsExpanded] = useState(false);
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState<"info" | "notas">("info");
+
+  // Notes
+  const [notes, setNotes] = useState<ExpenseNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(true);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   // Payments state
   const [payments, setPayments] = useState<ExpensePayment[]>([]);
@@ -168,7 +180,32 @@ export default function GastoDetailPage() {
       .catch(() => setLoadError("Error al cargar el gasto."))
       .finally(() => setLoading(false));
     loadPayments();
+    listNotesByExpense(id)
+      .then(setNotes)
+      .finally(() => setNotesLoading(false));
   }, [id]);
+
+  async function handleAddNote() {
+    if (!newNoteText.trim()) return;
+    setAddingNote(true);
+    try {
+      const note = await addExpenseNote(id, newNoteText);
+      setNotes((prev) => [note, ...prev]);
+      setNewNoteText("");
+    } finally {
+      setAddingNote(false);
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    setDeletingNoteId(noteId);
+    try {
+      await deleteExpenseNote(noteId);
+      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    } finally {
+      setDeletingNoteId(null);
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -423,6 +460,40 @@ export default function GastoDetailPage() {
             );
           })()}
 
+          {/* Tab bar */}
+          <div className="flex items-center gap-1 border-b border-zinc-800 px-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("info")}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition-colors border-b-2 -mb-px ${
+                activeTab === "info"
+                  ? "border-amber-500 text-amber-400"
+                  : "border-transparent text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <FileText size={12} /> Información
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("notas")}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-lg transition-colors border-b-2 -mb-px ${
+                activeTab === "notas"
+                  ? "border-amber-500 text-amber-400"
+                  : "border-transparent text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <StickyNote size={12} /> Notas
+              {notes.length > 0 && (
+                <span className="ml-0.5 size-4 rounded-full bg-amber-500 text-zinc-950 text-[10px] font-bold flex items-center justify-center">
+                  {notes.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* ── INFO TAB ── */}
+          {activeTab === "info" && (<>
+
           {/* General info */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-1">
             {expense.invoiceNumber && (
@@ -528,6 +599,76 @@ export default function GastoDetailPage() {
             Creado: {expense.createdAt?.toLocaleDateString("es-ES") ?? "—"}
             {expense.updatedAt && ` · Actualizado: ${expense.updatedAt.toLocaleDateString("es-ES")}`}
           </p>
+
+          </>)}
+
+          {/* ── NOTAS TAB ── */}
+          {activeTab === "notas" && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+              {/* Input */}
+              <div className="p-4 border-b border-zinc-800 flex flex-col gap-3">
+                <textarea
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleAddNote();
+                  }}
+                  placeholder="Escribe una nota sobre esta factura… (Ctrl+Enter para guardar)"
+                  rows={3}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none focus:outline-none focus:border-amber-500 transition-colors"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleAddNote}
+                    disabled={addingNote || !newNoteText.trim()}
+                    className="flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-semibold px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {addingNote ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                    {addingNote ? "Guardando…" : "Añadir nota"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Notes list */}
+              {notesLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-xs text-zinc-500">
+                  <Loader2 size={13} className="animate-spin" /> Cargando…
+                </div>
+              ) : notes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-10 text-zinc-600">
+                  <StickyNote size={20} />
+                  <p className="text-xs">No hay notas aún</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-zinc-800">
+                  {notes.map((note) => (
+                    <div key={note.id} className="px-4 py-3 flex items-start gap-3 group">
+                      <div className="size-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0 mt-0.5">
+                        <StickyNote size={12} className="text-amber-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-zinc-200 whitespace-pre-wrap">{note.text}</p>
+                        <p className="text-xs text-zinc-600 mt-1">
+                          {note.createdAt.toLocaleString("es-HN", {
+                            day: "2-digit", month: "short", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        disabled={deletingNoteId === note.id}
+                        className="text-zinc-700 hover:text-red-400 p-1 rounded-md hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0 disabled:opacity-50"
+                      >
+                        {deletingNoteId === note.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
