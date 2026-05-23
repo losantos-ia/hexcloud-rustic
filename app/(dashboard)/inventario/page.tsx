@@ -16,6 +16,8 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  Tag,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +68,29 @@ export default function InventarioPage() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((it) => it.id)));
+    }
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
 
   // Row menu
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -303,10 +328,20 @@ export default function InventarioPage() {
             <table className="w-full text-sm">
               <thead className="bg-zinc-900 border-b border-zinc-800">
                 <tr>
+                  <th className="py-3 pl-3 pr-1 w-8">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                      ref={(el) => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length; }}
+                      onChange={toggleSelectAll}
+                      className="size-4 rounded border-zinc-600 bg-zinc-800 accent-amber-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="text-left py-3 px-4 font-medium text-zinc-400">Art&iacute;culo</th>
                   <th className="text-left py-3 px-4 font-medium text-zinc-400 hidden sm:table-cell">Tipo / Unidad</th>
                   <th className="text-right py-3 px-4 font-medium text-zinc-400">Stock total</th>
                   <th className="text-left py-3 px-4 font-medium text-zinc-400 hidden lg:table-cell">Por ubicaci&oacute;n</th>
+                  <th className="text-right py-3 px-4 font-medium text-zinc-400 hidden md:table-cell">Precio</th>
                   <th className="text-right py-3 px-4 font-medium text-zinc-400 hidden md:table-cell">Valor</th>
                   <th className="text-center py-3 px-4 font-medium text-zinc-400">Estado</th>
                   <th className="py-3 px-2" />
@@ -323,9 +358,23 @@ export default function InventarioPage() {
                     : entries;
 
                   return (
-                    <tr key={item.id} className="hover:bg-zinc-900/50 transition-colors">
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-zinc-900/50 transition-colors cursor-pointer ${
+                        selectedIds.has(item.id) ? "bg-amber-500/5" : ""
+                      }`}
+                      onClick={() => toggleSelect(item.id)}
+                    >
+                      <td className="py-3 pl-3 pr-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleSelect(item.id)}
+                          className="size-4 rounded border-zinc-600 bg-zinc-800 accent-amber-500 cursor-pointer"
+                        />
+                      </td>
                       <td className="py-3 px-4">
-                        <Link href={`/inventario/${item.id}`} className="hover:text-amber-400 transition-colors">
+                        <Link href={`/inventario/${item.id}`} className="hover:text-amber-400 transition-colors" onClick={(e) => e.stopPropagation()}>
                           <p className="font-medium text-white">{item.name}</p>
                           {item.sku && <p className="text-xs text-zinc-500">{item.sku}</p>}
                           <p className="text-xs text-zinc-500 sm:hidden">
@@ -365,6 +414,15 @@ export default function InventarioPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right hidden md:table-cell">
+                        {item.salePrice != null ? (
+                          <span className="text-zinc-200 font-medium tabular-nums">{formatCurrency(item.salePrice)}</span>
+                        ) : item.averageCost > 0 ? (
+                          <span className="text-zinc-500 tabular-nums" title="Costo promedio">{formatCurrency(item.averageCost)}</span>
+                        ) : (
+                          <span className="text-zinc-700">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right hidden md:table-cell">
                         <span className="text-zinc-300">{formatCurrency(totalVal)}</span>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -393,6 +451,45 @@ export default function InventarioPage() {
         </div>
       )}
 
+      {/* ── Selection bottom bar ── */}
+      {selectedIds.size > 0 && (() => {
+        const selItems = filtered.filter((it) => selectedIds.has(it.id));
+        const selValue = selItems.reduce((sum, it) => {
+          const entries = stockByItem.get(it.id) ?? [];
+          return sum + entries.reduce((s, e) => s + e.totalValue, 0);
+        }, 0);
+        const selSaleTotal = selItems.reduce((sum, it) => {
+          if (it.salePrice == null) return sum;
+          const entries = stockByItem.get(it.id) ?? [];
+          const totalStock = entries.reduce((s, e) => s + e.currentStock, 0);
+          return sum + it.salePrice * totalStock;
+        }, 0);
+        return (
+          <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-4 bg-zinc-900 border-t border-zinc-700 px-6 py-3 shadow-2xl">
+            <span className="text-sm font-medium text-zinc-200">
+              {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-6">
+              <div className="text-right hidden sm:block">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Valor en stock</p>
+                <p className="text-sm font-bold text-zinc-100 tabular-nums">{formatCurrency(selValue)}</p>
+              </div>
+              {selSaleTotal > 0 && (
+                <div className="text-right hidden sm:block">
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-wide flex items-center gap-1"><Tag size={9} /> Precio venta</p>
+                  <p className="text-sm font-bold text-amber-400 tabular-nums">{formatCurrency(selSaleTotal)}</p>
+                </div>
+              )}
+              <button
+                onClick={clearSelection}
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-500 rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <X size={12} /> Deseleccionar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
       {/* Floating row menu */}
       {openMenuId && menuPos && (() => {
         const item = filtered.find((it) => it.id === openMenuId);
