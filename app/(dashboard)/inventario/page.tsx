@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useCurrency } from "@/context/currency-context";
 import { useRouter } from "next/navigation";
+import { useSidebar } from "@/context/sidebar-context";
 import Link from "next/link";
 import {
   Package,
@@ -58,6 +59,7 @@ function stockBadgeClass(status: "ok" | "bajo_minimo" | "sin_stock") {
 export default function InventarioPage() {
   const { formatCurrency } = useCurrency();
   const router = useRouter();
+  const { collapsed } = useSidebar();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [allStock, setAllStock] = useState<InventoryStockByLocation[]>([]);
   const [locations, setLocations] = useState<InventoryLocation[]>([]);
@@ -464,29 +466,43 @@ export default function InventarioPage() {
           const totalStock = entries.reduce((s, e) => s + e.currentStock, 0);
           return sum + it.salePrice * totalStock;
         }, 0);
+        // Unit price label: only when exactly 1 item selected
+        const singleItem = selItems.length === 1 ? selItems[0] : null;
+        const unitPrice = singleItem?.salePrice ?? (singleItem && singleItem.averageCost > 0 ? singleItem.averageCost : null);
+        const unitPriceLabel = singleItem?.salePrice != null ? "Precio / unidad" : "Costo prom. / unidad";
         return (
-          <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-4 bg-zinc-900 border-t border-zinc-700 px-6 py-3 shadow-2xl">
-            <span className="text-sm font-medium text-zinc-200">
-              {selectedIds.size} seleccionado{selectedIds.size !== 1 ? "s" : ""}
+          <div
+            className={`fixed bottom-0 right-0 z-40 border-t border-zinc-700 bg-zinc-900/95 backdrop-blur-sm px-6 py-3 flex items-center gap-6 transition-all left-0 ${
+              collapsed ? "lg:left-16" : "lg:left-64"
+            }`}
+          >
+            <span className="text-sm text-zinc-400 shrink-0">
+              <span className="font-semibold text-zinc-200">{selectedIds.size}</span> seleccionado{selectedIds.size !== 1 ? "s" : ""}
             </span>
-            <div className="flex items-center gap-6">
-              <div className="text-right hidden sm:block">
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Valor en stock</p>
-                <p className="text-sm font-bold text-zinc-100 tabular-nums">{formatCurrency(selValue)}</p>
-              </div>
-              {selSaleTotal > 0 && (
-                <div className="text-right hidden sm:block">
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-wide flex items-center gap-1"><Tag size={9} /> Precio venta</p>
-                  <p className="text-sm font-bold text-amber-400 tabular-nums">{formatCurrency(selSaleTotal)}</p>
+            <div className="flex items-center gap-6 flex-1 flex-wrap">
+              {unitPrice != null && (
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wide">{unitPriceLabel}</span>
+                  <span className="text-sm font-semibold text-zinc-200 tabular-nums">{formatCurrency(unitPrice)}</span>
                 </div>
               )}
-              <button
-                onClick={clearSelection}
-                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-500 rounded-lg px-3 py-1.5 transition-colors"
-              >
-                <X size={12} /> Deseleccionar
-              </button>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Valor en stock</span>
+                <span className="text-sm font-semibold text-zinc-200 tabular-nums">{formatCurrency(selValue)}</span>
+              </div>
+              {selSaleTotal > 0 && (
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wide flex items-center gap-1"><Tag size={9} /> Precio venta total</span>
+                  <span className="text-sm font-semibold text-amber-400 tabular-nums">{formatCurrency(selSaleTotal)}</span>
+                </div>
+              )}
             </div>
+            <button
+              onClick={clearSelection}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-500 rounded-md px-3 py-1.5 transition-colors shrink-0"
+            >
+              <X size={12} /> Deseleccionar
+            </button>
           </div>
         );
       })()}
