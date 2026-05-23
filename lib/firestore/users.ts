@@ -49,3 +49,13 @@ export async function updateUserRole(uid: string, role: UserRole): Promise<void>
 export async function updateUserDisplayName(uid: string, displayName: string): Promise<void> {
   await updateDoc(doc(db, COL, uid), { displayName });
 }
+
+export async function updateUserCurrency(uid: string, currency: string): Promise<void> {
+  await setDoc(doc(db, COL, uid), { currency }, { merge: true });
+}
+
+export async function getUserCurrency(uid: string): Promise<string | null> {
+  const snap = await getDoc(doc(db, COL, uid));
+  if (!snap.exists()) return null;
+  return (snap.data().currency as string) ?? null;
+}
