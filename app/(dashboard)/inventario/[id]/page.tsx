@@ -345,7 +345,10 @@ export default function InventarioDetailPage() {
   if (!item) return null;
 
   const totalStock = stockEntries.reduce((s, e) => s + e.currentStock, 0);
-  const totalValue = stockEntries.reduce((s, e) => s + e.totalValue, 0);
+  const totalCostValue = stockEntries.reduce((s, e) => s + e.totalValue, 0);
+  const totalSaleValue = item.salePrice != null ? item.salePrice * totalStock : null;
+  // Use sale value as the primary "total value" when cost is zero or missing
+  const totalValue = totalCostValue > 0 ? totalCostValue : (totalSaleValue ?? 0);
   const overallStatus = getAggregateStockStatus(stockEntries);
 
   return (
@@ -392,13 +395,31 @@ export default function InventarioDetailPage() {
             </div>
             <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
               <p className="text-xs text-zinc-400 mb-1">Valor total</p>
-              <p className="text-2xl font-bold text-white">{formatCurrency(totalValue)}</p>
-              <p className="text-xs text-zinc-500 mt-0.5">en {stockEntries.length} ubic.</p>
+              {totalSaleValue != null ? (
+                <>
+                  <p className="text-2xl font-bold text-amber-400">{formatCurrency(totalSaleValue)}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Costo: {formatCurrency(totalCostValue)} &middot; {stockEntries.length} ubic.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-white">{formatCurrency(totalCostValue)}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">en {stockEntries.length} ubic.</p>
+                </>
+              )}
             </div>
             <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
-              <p className="text-xs text-zinc-400 mb-1">Costo promedio</p>
-              <p className="text-2xl font-bold text-white">{formatCurrency(item.averageCost)}</p>
-              {item.salePrice && <p className="text-xs text-zinc-500 mt-0.5">Venta: {formatCurrency(item.salePrice)}</p>}
+              <p className="text-xs text-zinc-400 mb-1">Precio / Costo</p>
+              {item.salePrice != null ? (
+                <>
+                  <p className="text-2xl font-bold text-amber-400">{formatCurrency(item.salePrice)}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Costo prom.: {formatCurrency(item.averageCost)}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-white">{formatCurrency(item.averageCost)}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Costo promedio</p>
+                </>
+              )}
             </div>
           </div>
 
@@ -443,7 +464,16 @@ export default function InventarioDetailPage() {
                           </td>
                           <td className="py-3 px-4 text-right font-semibold text-white">{entry.currentStock.toLocaleString("es-PA")}</td>
                           <td className="py-3 px-4 text-right text-zinc-400 hidden sm:table-cell">{entry.minimumStock.toLocaleString("es-PA")}</td>
-                          <td className="py-3 px-4 text-right text-zinc-300 hidden sm:table-cell">{formatCurrency(entry.totalValue)}</td>
+                          <td className="py-3 px-4 text-right text-zinc-300 hidden sm:table-cell">
+                            {item.salePrice != null ? (
+                              <>
+                                <span className="text-amber-400 font-medium">{formatCurrency(item.salePrice * entry.currentStock)}</span>
+                                {entry.totalValue > 0 && <span className="block text-xs text-zinc-600">Costo: {formatCurrency(entry.totalValue)}</span>}
+                              </>
+                            ) : (
+                              formatCurrency(entry.totalValue)
+                            )}
+                          </td>
                           <td className="py-3 px-4 text-center">
                             <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium border ${stockBadgeClass(status)}`}>{STOCK_STATUS_LABELS[status]}</span>
                           </td>
