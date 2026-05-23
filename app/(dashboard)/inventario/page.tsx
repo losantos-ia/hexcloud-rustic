@@ -176,6 +176,33 @@ export default function InventarioPage() {
     return map;
   }, [allStock]);
 
+  // Sale value maps (salePrice × currentStock)
+  const itemPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of items) {
+      if (item.salePrice != null) map.set(item.id, item.salePrice);
+    }
+    return map;
+  }, [items]);
+
+  const totalSaleValue = useMemo(() => {
+    return allStock.reduce((sum, e) => {
+      const price = itemPriceMap.get(e.itemId);
+      return sum + (price != null ? price * e.currentStock : 0);
+    }, 0);
+  }, [allStock, itemPriceMap]);
+
+  const locationSaleValues = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of allStock) {
+      const price = itemPriceMap.get(e.itemId);
+      if (price != null) {
+        map.set(e.locationId, (map.get(e.locationId) ?? 0) + price * e.currentStock);
+      }
+    }
+    return map;
+  }, [allStock, itemPriceMap]);
+
   const lowStockCount = useMemo(() => {
     return items.filter((item) => {
       const entries = stockByItem.get(item.id) ?? [];
@@ -241,6 +268,11 @@ export default function InventarioPage() {
               <span className="text-xs text-zinc-400">Valor total</span>
             </div>
             <p className="text-xl font-bold text-white">{formatCurrency(totalValue)}</p>
+            {totalSaleValue > 0 && (
+              <p className="text-xs text-amber-400 mt-1 font-medium" title="Valor de venta potencial">
+                {formatCurrency(totalSaleValue)} venta
+              </p>
+            )}
           </div>
           {locations.slice(0, 3).map((loc) => (
             <div key={loc.id} className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
@@ -251,6 +283,11 @@ export default function InventarioPage() {
               <p className="text-xl font-bold text-white">
                 {formatCurrency(locationValues.get(loc.id) ?? 0)}
               </p>
+              {(locationSaleValues.get(loc.id) ?? 0) > 0 && (
+                <p className="text-xs text-amber-400 mt-1 font-medium" title="Valor de venta potencial">
+                  {formatCurrency(locationSaleValues.get(loc.id)!)} venta
+                </p>
+              )}
             </div>
           ))}
           <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
