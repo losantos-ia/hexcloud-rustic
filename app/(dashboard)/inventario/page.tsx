@@ -267,29 +267,35 @@ export default function InventarioPage() {
               <DollarSign className="h-4 w-4 text-amber-400" />
               <span className="text-xs text-zinc-400">Valor total</span>
             </div>
-            <p className="text-xl font-bold text-white">{formatCurrency(totalValue)}</p>
-            {totalSaleValue > 0 && (
-              <p className="text-xs text-amber-400 mt-1 font-medium" title="Valor de venta potencial">
-                {formatCurrency(totalSaleValue)} venta
-              </p>
+            {totalSaleValue > 0 ? (
+              <>
+                <p className="text-xl font-bold text-amber-400">{formatCurrency(totalSaleValue)}</p>
+                <p className="text-xs text-zinc-500 mt-1">Costo: {formatCurrency(totalValue)}</p>
+              </>
+            ) : (
+              <p className="text-xl font-bold text-white">{formatCurrency(totalValue)}</p>
             )}
           </div>
-          {locations.slice(0, 3).map((loc) => (
-            <div key={loc.id} className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <MapPin className="h-4 w-4 text-blue-400" />
-                <span className="text-xs text-zinc-400 truncate">{loc.name}</span>
+          {locations.slice(0, 3).map((loc) => {
+            const saleVal = locationSaleValues.get(loc.id) ?? 0;
+            const costVal = locationValues.get(loc.id) ?? 0;
+            return (
+              <div key={loc.id} className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <MapPin className="h-4 w-4 text-blue-400" />
+                  <span className="text-xs text-zinc-400 truncate">{loc.name}</span>
+                </div>
+                {saleVal > 0 ? (
+                  <>
+                    <p className="text-xl font-bold text-amber-400">{formatCurrency(saleVal)}</p>
+                    <p className="text-xs text-zinc-500 mt-1">Costo: {formatCurrency(costVal)}</p>
+                  </>
+                ) : (
+                  <p className="text-xl font-bold text-white">{formatCurrency(costVal)}</p>
+                )}
               </div>
-              <p className="text-xl font-bold text-white">
-                {formatCurrency(locationValues.get(loc.id) ?? 0)}
-              </p>
-              {(locationSaleValues.get(loc.id) ?? 0) > 0 && (
-                <p className="text-xs text-amber-400 mt-1 font-medium" title="Valor de venta potencial">
-                  {formatCurrency(locationSaleValues.get(loc.id)!)} venta
-                </p>
-              )}
-            </div>
-          ))}
+            );
+          })}
           <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
             <div className="flex items-center gap-2 mb-1">
               <TrendingDown className="h-4 w-4 text-red-400" />
