@@ -1,6 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { getUserCurrency, updateUserCurrency } from "@/lib/firestore/users";
 
 export type CurrencyCode = "COP" | "HNL" | "USD";
 
@@ -22,6 +25,19 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
 
 const STORAGE_KEY = "ra-currency";
 
+function readLocalCurrency(): CurrencyCode | null {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY) as CurrencyCode | null;
+    return v && v in CURRENCIES ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalCurrency(code: CurrencyCode) {
+  try { localStorage.setItem(STORAGE_KEY, code); } catch { /* ignore */ }
+}
+
 interface CurrencyContextValue {
   currency: CurrencyCode;
   setCurrency: (code: CurrencyCode) => void;
@@ -40,25 +56,48 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrencyState] = useState<CurrencyCode>("COP");
+  const uidRef = useRef<string | null>(null);
 
+  // On mount: load from localStorage immediately (no flicker while auth resolves)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as CurrencyCode | null;
-      if (stored && stored in CURRENCIES) {
-        setCurrencyState(stored);
+    const local = readLocalCurrency();
+    if (local) setCurrencyState(local);
+  }, []);
+
+  // Watch auth state — load Firestore preference when user signs in
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        uidRef.current = firebaseUser.uid;
+        try {
+          const remote = await getUserCurrency(firebaseUser.uid) as CurrencyCode | null;
+          if (remote && remote in CURRENCIES) {
+            setCurrencyState(remote);
+            writeLocalCurrency(remote);
+          } else {
+            // No remote preference yet — push local value to Firestore
+            const local = readLocalCurrency();
+            if (local) await updateUserCurrency(firebaseUser.uid, local);
+          }
+        } catch {
+          // Firestore unavailable — keep localStorage value
+        }
+      } else {
+        uidRef.current = null;
+        // Signed out — fall back to localStorage
+        const local = readLocalCurrency();
+        if (local) setCurrencyState(local);
       }
-    } catch {
-      // localStorage not available (SSR guard)
-    }
+    });
+    return unsub;
   }, []);
 
   const setCurrency = useCallback((code: CurrencyCode) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, code);
-    } catch {
-      // ignore
-    }
     setCurrencyState(code);
+    writeLocalCurrency(code);
+    if (uidRef.current) {
+      updateUserCurrency(uidRef.current, code).catch(() => {});
+    }
   }, []);
 
   const formatCurrency = useCallback(
@@ -98,3 +137,4 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 export function useCurrency() {
   return useContext(CurrencyContext);
 }
+
