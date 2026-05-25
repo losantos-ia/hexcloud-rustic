@@ -14,7 +14,7 @@ export type LeadInterestedIn =
   | "kiosk"
   | "deck"
   | "playground"
-  | "rustic_cafe"
+  | "standard_product"
   | "maintenance"
   | "custom"
   | "unknown";
@@ -96,10 +96,10 @@ export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
 export const LEAD_INTERESTED_IN_LABELS: Record<LeadInterestedIn, string> = {
   cabin: "Cabaña",
   pergola: "Pérgola",
-  kiosk: "Kiosko",
+  kiosk: "Kiosco",
   deck: "Deck",
-  playground: "Parque infantil",
-  rustic_cafe: "Café rústico",
+  playground: "Juego infantil",
+  standard_product: "Producto estándar",
   maintenance: "Mantenimiento",
   custom: "Proyecto personalizado",
   unknown: "Por definir",
