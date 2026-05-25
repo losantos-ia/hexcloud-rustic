@@ -55,12 +55,12 @@ export default function NewLeadPage() {
         city: clean(values.city),
         budgetRange: clean(values.budgetRange),
         expectedPurchaseDate: values.expectedPurchaseDate
-          ? new Date(values.expectedPurchaseDate)
+          ? new Date(values.expectedPurchaseDate + "T00:00:00")
           : undefined,
         notes: clean(values.notes),
         nextAction: clean(values.nextAction),
         nextActionDate: values.nextActionDate
-          ? new Date(values.nextActionDate)
+          ? new Date(values.nextActionDate + "T00:00:00")
           : undefined,
       });
       router.push(`/crm/${id}`);
