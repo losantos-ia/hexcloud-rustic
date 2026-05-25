@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const SOURCES = ["whatsapp", "instagram", "facebook", "tiktok", "store", "referral", "website", "other"] as const;
-const INTERESTED_IN = ["cabin", "pergola", "kiosk", "deck", "playground", "rustic_cafe", "maintenance", "custom", "unknown"] as const;
+const INTERESTED_IN = ["cabin", "pergola", "kiosk", "deck", "playground", "standard_product", "maintenance", "custom", "unknown"] as const;
 const STATUSES = ["new", "contacted", "qualified", "waiting_measurements", "quotation_pending", "quotation_sent", "follow_up", "negotiation", "deposit_pending", "won", "lost", "archived"] as const;
 const PRIORITIES = ["low", "medium", "high"] as const;
 const ACTIVITY_TYPES = ["call", "whatsapp", "instagram_message", "facebook_message", "note", "status_change", "meeting", "quotation_sent", "follow_up"] as const;
